@@ -13,6 +13,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+uint8_t lean_string_dec_lt(lean_object*, lean_object*);
+uint8_t lean_nat_dec_lt(lean_object*, lean_object*);
 lean_object* l_String_quote(lean_object*);
 lean_object* l_Repr_addAppParen(lean_object*, lean_object*);
 uint8_t lean_nat_dec_le(lean_object*, lean_object*);
@@ -61,6 +63,9 @@ LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringEntityId___lam__0(lean_ob
 static const lean_closure_object lp_maith_Lean_DSL_instToStringEntityId___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = sizeof(lean_closure_object) + sizeof(void*)*0, .m_other = 0, .m_tag = 245}, .m_fun = (void*)lp_maith_Lean_DSL_instToStringEntityId___lam__0, .m_arity = 1, .m_num_fixed = 0, .m_objs = {} };
 static const lean_object* lp_maith_Lean_DSL_instToStringEntityId___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringEntityId___closed__0_value;
 LEAN_EXPORT const lean_object* lp_maith_Lean_DSL_instToStringEntityId = (const lean_object*)&lp_maith_Lean_DSL_instToStringEntityId___closed__0_value;
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instLTEntityId;
+LEAN_EXPORT uint8_t lp_maith_Lean_DSL_EntityId_compare(lean_object*, lean_object*);
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_EntityId_compare___boxed(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_EntityId_ctorIdx(lean_object* v_x_1_){
 _start:
 {
@@ -441,6 +446,64 @@ return v___x_132_;
 }
 }
 }
+static lean_object* _init_lp_maith_Lean_DSL_instLTEntityId(void){
+_start:
+{
+lean_object* v___x_135_; 
+v___x_135_ = lean_box(0);
+return v___x_135_;
+}
+}
+LEAN_EXPORT uint8_t lp_maith_Lean_DSL_EntityId_compare(lean_object* v_id1_136_, lean_object* v_id2_137_){
+_start:
+{
+if (lean_obj_tag(v_id1_136_) == 0)
+{
+if (lean_obj_tag(v_id2_137_) == 0)
+{
+lean_object* v_a_138_; lean_object* v_a_139_; uint8_t v___x_140_; 
+v_a_138_ = lean_ctor_get(v_id1_136_, 0);
+v_a_139_ = lean_ctor_get(v_id2_137_, 0);
+v___x_140_ = lean_string_dec_lt(v_a_138_, v_a_139_);
+return v___x_140_;
+}
+else
+{
+uint8_t v___x_141_; 
+v___x_141_ = 1;
+return v___x_141_;
+}
+}
+else
+{
+if (lean_obj_tag(v_id2_137_) == 0)
+{
+uint8_t v___x_142_; 
+v___x_142_ = 0;
+return v___x_142_;
+}
+else
+{
+lean_object* v_a_143_; lean_object* v_a_144_; uint8_t v___x_145_; 
+v_a_143_ = lean_ctor_get(v_id1_136_, 0);
+v_a_144_ = lean_ctor_get(v_id2_137_, 0);
+v___x_145_ = lean_nat_dec_lt(v_a_143_, v_a_144_);
+return v___x_145_;
+}
+}
+}
+}
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_EntityId_compare___boxed(lean_object* v_id1_146_, lean_object* v_id2_147_){
+_start:
+{
+uint8_t v_res_148_; lean_object* v_r_149_; 
+v_res_148_ = lp_maith_Lean_DSL_EntityId_compare(v_id1_146_, v_id2_147_);
+lean_dec_ref(v_id2_147_);
+lean_dec_ref(v_id1_146_);
+v_r_149_ = lean_box(v_res_148_);
+return v_r_149_;
+}
+}
 lean_object* initialize_Init(uint8_t builtin);
 lean_object* initialize_Init(uint8_t builtin);
 static bool _G_initialized = false;
@@ -454,6 +517,8 @@ lean_dec_ref(res);
 res = initialize_Init(builtin);
 if (lean_io_result_is_error(res)) return res;
 lean_dec_ref(res);
+lp_maith_Lean_DSL_instLTEntityId = _init_lp_maith_Lean_DSL_instLTEntityId();
+lean_mark_persistent(lp_maith_Lean_DSL_instLTEntityId);
 return lean_io_result_mk_ok(lean_box(0));
 }
 #ifdef __cplusplus

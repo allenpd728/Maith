@@ -17,7 +17,7 @@
        [["Tests.Harness transitive imports (legacy)", "00000000000006bb"],
         ["Tests.Harness:importAllArts", "5d240d09428f618d"],
         ["Maith.TrainingCorpus transitive imports (legacy)",
-         "266294bcfae3baef"],
+         "f7f6a6768d8b1601"],
         ["Maith.TrainingCorpus:importAllArts", "eb52c2d54a1e45a4"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
@@ -33,4 +33,4 @@
   ["Module.name: Tests.CorpusTests", "6264abb113a20157"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "18eb7fd00a7781e1"}
+ "depHash": "b3ee51b2e77c598a"}

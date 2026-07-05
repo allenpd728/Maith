@@ -16,7 +16,7 @@
       ["imports",
        [["Tests.Harness transitive imports (legacy)", "00000000000006bb"],
         ["Tests.Harness:importAllArts", "5d240d09428f618d"],
-        ["Maith.Decoder transitive imports (legacy)", "70d3c933a3be7de5"],
+        ["Maith.Decoder transitive imports (legacy)", "9526fe1a28a903f6"],
         ["Maith.Decoder:importAllArts", "a7d51573338b3864"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
@@ -32,4 +32,4 @@
   ["Module.name: Tests.DecoderTests", "2c0939198193a0a9"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "a43d2210260c49af"}
+ "depHash": "bd45975722a4ecf7"}

@@ -37,4 +37,18 @@ instance : ToString EntityId :=
     | EntityId.var s => s
     | EntityId.term n => s!"t{n}"⟩
 
+instance : LT EntityId :=
+  ⟨fun id1 id2 => match id1, id2 with
+    | EntityId.var s1, EntityId.var s2 => s1 < s2
+    | EntityId.var _, EntityId.term _ => true
+    | EntityId.term _, EntityId.var _ => false
+    | EntityId.term n1, EntityId.term n2 => n1 < n2⟩
+
+def EntityId.compare (id1 id2 : EntityId) : Bool :=
+  match id1, id2 with
+  | EntityId.var s1, EntityId.var s2 => s1 < s2
+  | EntityId.var _, EntityId.term _ => true
+  | EntityId.term _, EntityId.var _ => false
+  | EntityId.term n1, EntityId.term n2 => n1 < n2
+
 end Lean.DSL

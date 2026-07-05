@@ -14,7 +14,7 @@
    [["deps",
      [["maith/Tests:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
       ["imports",
-       [["Maith.Graph transitive imports (legacy)", "b6af83aa98b271c3"],
+       [["Maith.Graph transitive imports (legacy)", "295dd36e49a1cc52"],
         ["Maith.Graph:importAllArts", "c5d33959bd97b7d6"],
         ["Tests.Harness transitive imports (legacy)", "00000000000006bb"],
         ["Tests.Harness:importAllArts", "5d240d09428f618d"]]]]],
@@ -32,4 +32,4 @@
   ["Module.name: Tests.PipelineTests", "18e5f6833aa622bf"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "99667521eb8a04c2"}
+ "depHash": "ff5a0e4a6dd0a0b9"}
