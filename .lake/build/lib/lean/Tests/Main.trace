@@ -1,10 +1,10 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["1138d6382759eea9.olean"],
+ {"o": ["ffc6e619e6644785.olean"],
   "m": false,
-  "i": "90fd6324505c56de.ilean",
-  "c": "0be6436c4fadb14d.c"},
+  "i": "3e2c44ba0d605300.ilean",
+  "c": "5151f9d5600e366f.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Tests/Main.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Main.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Main.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Main.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Main.setup.json --json",
@@ -28,8 +28,14 @@
         ["Tests.CorpusTests transitive imports (legacy)", "5088545f8eaf5dfc"],
         ["Tests.CorpusTests:importAllArts", "a02eb82a6372c0a2"],
         ["Tests.NormalizerTests transitive imports (legacy)",
-         "d3f50013d6056a8c"],
-        ["Tests.NormalizerTests:importAllArts", "d8f7e96aa93e6c7c"]]]]],
+         "53f3f6532896c23e"],
+        ["Tests.NormalizerTests:importAllArts", "2a9b1a4bcdbdb032"],
+        ["Tests.InjectivityTests transitive imports (legacy)",
+         "92f2517414691e93"],
+        ["Tests.InjectivityTests:importAllArts", "96b3ea4fed33648d"],
+        ["Tests.ProblemGeneratorTests transitive imports (legacy)",
+         "1b690623d4da6cc2"],
+        ["Tests.ProblemGeneratorTests:importAllArts", "9a4452aecfb5a2c3"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -37,10 +43,10 @@
       ["module plugins", "00000000000006bb"]]]]],
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
-  ["/Users/philipallen/Desktop/Maith/Tests/Main.lean", "10e7c9682a31f698"],
+  ["/Users/philipallen/Desktop/Maith/Tests/Main.lean", "91b8f579ceae50c7"],
   ["options", "00000000000006bb"],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: Tests.Main", "b5a9d8a15ffe326e"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "f8f5f50568e6aff8"}
+ "depHash": "1ddcfd8483cf05eb"}

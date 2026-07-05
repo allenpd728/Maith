@@ -95,11 +95,24 @@ else EntityId.compare r1.src r2.src
 
 )
 
+/-- Check if an operation is commutative -/
+def isCommutativeOp : OperationOp → Bool
+| OperationOp.add => true
+| OperationOp.mul => true
+| _ => false
+
+/-- Normalize operation inputs: sort inputs for commutative operations -/
+def normalizeOperationInputs (op : OperationOp) (inputs : List EntityId) : List EntityId :=
+  if isCommutativeOp op then
+    inputs.mergeSort EntityId.compare
+  else
+    inputs
+
 /-- Sort operations canonically by output, then op, then by input count. -/
 
 def normalizeOperations (ops : List Operation) : List Operation :=
 
-ops.mergeSort (fun o1 o2 =>
+ops.map (fun o => { o with inputs := normalizeOperationInputs o.op o.inputs }) |>.mergeSort (fun o1 o2 =>
 
 if o1.output = o2.output then
 

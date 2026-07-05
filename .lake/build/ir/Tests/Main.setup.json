@@ -4,10 +4,14 @@
  "name": "Tests.Main",
  "isModule": false,
  "importArts":
- {"Tests.PipelineTests":
+ {"Tests.ProblemGeneratorTests":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/ProblemGeneratorTests.olean"],
+  "Tests.PipelineTests":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/PipelineTests.olean"],
   "Tests.NormalizerTests":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/NormalizerTests.olean"],
+  "Tests.InjectivityTests":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/InjectivityTests.olean"],
   "Tests.Harness":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Harness.olean"],
   "Tests.EncoderTests":
@@ -26,6 +30,8 @@
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RelationOp.olean"],
   "Maith.Relation":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Relation.olean"],
+  "Maith.ProblemGenerator":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/ProblemGenerator.olean"],
   "Maith.Polarity":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Polarity.olean"],
   "Maith.OperationOp":

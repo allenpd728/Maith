@@ -75,9 +75,9 @@ match o.inputs with
 
       | OperationOp.add => true
 
-      | \_               => false
+      | _ => false
 
-  | \_ => false
+  | _ => false
 
 | _ => false
 
@@ -87,7 +87,7 @@ def rewriteAddZeroOp (o : Operation) : Operation :=
 
 if isAddZero o then
 
-{ inputs := \[o.inputs.head!\],  -- safe because isAddZero checked shape
+{ inputs := [o.inputs.head!],  -- safe because isAddZero checked shape
 
   output := o.output,
 
@@ -113,6 +113,6 @@ def defaultRewriteEngine : RewriteEngine :=
 
   { name := "add_zero", apply := rewriteAddZeroGraph }
 
-\] }
+] }
 
 end Lean.DSL

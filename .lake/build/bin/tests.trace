@@ -1,6 +1,6 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
- "outputs": "4390d13d25b0c656",
+ "outputs": "ff1b1aa57c51b4ea",
  "log":
  [{"message":
    ".> MACOSX_DEPLOYMENT_TARGET=99.0 /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/clang -o /Users/philipallen/Desktop/Maith/.lake/build/bin/tests @/Users/philipallen/Desktop/Maith/.lake/build/bin/tests.rsp",
@@ -8,7 +8,7 @@
  "inputs":
  [["linkObjs",
    [["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Main.c.o.export",
-     "94b45e1a238fba51"],
+     "7c3919b9cb80dafe"],
     ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Harness.c.o.export",
      "7b758d219d3c4978"],
     ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Polarity.c.o.export",
@@ -48,12 +48,18 @@
     ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/CorpusTests.c.o.export",
      "0e4e16c1a8214f3c"],
     ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Normalizer.c.o.export",
-     "f015e519e2ce717a"],
+     "33316a20f96bf5b3"],
     ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/NormalizerTests.c.o.export",
-     "c89aaa61663f61c7"]]],
+     "c89aaa61663f61c7"],
+    ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/InjectivityTests.c.o.export",
+     "df960245422898a7"],
+    ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/ProblemGenerator.c.o.export",
+     "5eea272c0e4196b8"],
+    ["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/ProblemGeneratorTests.c.o.export",
+     "4b39149274ccca96"]]],
   ["linkLibs", "00000000000006bb"],
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
   ["traceArgs: #[]", "00000000000006bb"],
   ["arm64-apple-darwin24.6.0", "77c16133d139df5a"]],
- "depHash": "1318f82e15a34500"}
+ "depHash": "d2dc76d3c9bc2fe3"}
