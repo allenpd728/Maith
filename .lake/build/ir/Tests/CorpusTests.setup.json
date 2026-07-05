@@ -1,21 +1,11 @@
 {"plugins": [],
  "package": "maith",
  "options": {},
- "name": "Tests.Main",
+ "name": "Tests.CorpusTests",
  "isModule": false,
  "importArts":
- {"Tests.PipelineTests":
-  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/PipelineTests.olean"],
-  "Tests.Harness":
+ {"Tests.Harness":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Harness.olean"],
-  "Tests.EncoderTests":
-  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/EncoderTests.olean"],
-  "Tests.DecoderTests":
-  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/DecoderTests.olean"],
-  "Tests.CorpusTests":
-  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/CorpusTests.olean"],
-  "Tests.ComponentTests":
-  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/ComponentTests.olean"],
   "Maith.TrainingCorpus":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/TrainingCorpus.olean"],
   "Maith.Token":
@@ -38,8 +28,6 @@
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Entity.olean"],
   "Maith.Encoder":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Encoder.olean"],
-  "Maith.Decoder":
-  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Decoder.olean"],
   "Maith.Attribute":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Attribute.olean"]},
  "dynlibs": []}

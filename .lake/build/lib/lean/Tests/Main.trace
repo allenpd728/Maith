@@ -1,10 +1,10 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["7af2b69d42e1742d.olean"],
+ {"o": ["8d609e3dce68ca39.olean"],
   "m": false,
-  "i": "40f83d470da909ef.ilean",
-  "c": "b380a9f0f24bf2b8.c"},
+  "i": "a7d64428dae6fe95.ilean",
+  "c": "da46b6ccab96a634.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Tests/Main.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Main.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Main.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Main.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Main.setup.json --json",
@@ -21,10 +21,12 @@
         ["Tests.ComponentTests:importAllArts", "645165ef0ed90dc6"],
         ["Tests.EncoderTests transitive imports (legacy)", "949fdd723442b540"],
         ["Tests.EncoderTests:importAllArts", "dbc63e26e88ff2c1"],
-        ["Tests.DecoderTests transitive imports (legacy)", "9279a2282aa70ab6"],
+        ["Tests.DecoderTests transitive imports (legacy)", "c752841e4f375eb6"],
         ["Tests.DecoderTests:importAllArts", "db560e8432a69c1e"],
         ["Tests.PipelineTests transitive imports (legacy)", "9a8d578ec6eb6df7"],
-        ["Tests.PipelineTests:importAllArts", "ee9d0f3a040ee94e"]]]]],
+        ["Tests.PipelineTests:importAllArts", "ee9d0f3a040ee94e"],
+        ["Tests.CorpusTests transitive imports (legacy)", "3336788dae353b81"],
+        ["Tests.CorpusTests:importAllArts", "a02eb82a6372c0a2"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -32,10 +34,10 @@
       ["module plugins", "00000000000006bb"]]]]],
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
-  ["/Users/philipallen/Desktop/Maith/Tests/Main.lean", "1fe5dc20e400fe1b"],
+  ["/Users/philipallen/Desktop/Maith/Tests/Main.lean", "8dea05fba659cdd0"],
   ["options", "00000000000006bb"],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: Tests.Main", "b5a9d8a15ffe326e"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "ac6d69b611b7267c"}
+ "depHash": "e1619ba8aabdefd5"}

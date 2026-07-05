@@ -1,6 +1,6 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
- "outputs": "6ec0d6a3beeeaae6.o",
+ "outputs": "39cba3e262222be9.o",
  "log":
  [{"message":
    ".> /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/clang -c -o /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Decoder.c.o.export /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Decoder.c -I /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/include -fstack-clash-protection -fdata-sections -ffunction-sections -fvisibility=hidden -Wno-unused-command-line-argument --sysroot /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0 -nostdinc -isystem /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/include/clang -O3 -DNDEBUG -DLEAN_EXPORTING",
@@ -8,11 +8,11 @@
  "inputs":
  [["Maith.Decoder:c",
    [["/Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Decoder.c",
-     "0e488913e9cf8d3f"],
+     "05ea8d1ea6254022"],
     ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
      "fc45ac412f28501c"]]],
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
   ["traceArgs: #[-O3, -DNDEBUG, -DLEAN_EXPORTING]", "c1efb66122fb2b9a"],
   ["arm64-apple-darwin24.6.0", "77c16133d139df5a"]],
- "depHash": "0a96794b3e6f8281"}
+ "depHash": "54f1d090185edb31"}

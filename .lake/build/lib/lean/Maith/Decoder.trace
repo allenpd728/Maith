@@ -1,19 +1,16 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["7a773d52ed338ac8.olean"],
+ {"o": ["de9f80db510edaef.olean"],
   "m": false,
-  "i": "7b0844361158793a.ilean",
-  "c": "0e488913e9cf8d3f.c"},
+  "i": "416b095c66b759c9.ilean",
+  "c": "05ea8d1ea6254022.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Maith/Decoder.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Decoder.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Decoder.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Decoder.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Decoder.setup.json --json",
    "level": "trace"},
   {"message":
    "Maith/Decoder.lean:36:18: `structure ... :=` has been deprecated in favor of `structure ... where`.\n\nNote: This linter can be disabled with `set_option linter.deprecated false`",
-   "level": "warning"},
-  {"message":
-   "Maith/Decoder.lean:106:91: `String.trim` has been deprecated: Use `String.trimAscii` instead\n\nNote: The updated constant has a different type:\n  String → String.Slice\ninstead of\n  String → String",
    "level": "warning"}],
  "inputs":
  [["Maith.Decoder:deps",
@@ -47,10 +44,10 @@
       ["module plugins", "00000000000006bb"]]]]],
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
-  ["/Users/philipallen/Desktop/Maith/Maith/Decoder.lean", "76bb8364bf47b50f"],
+  ["/Users/philipallen/Desktop/Maith/Maith/Decoder.lean", "b1fc9cbc6ef06dc2"],
   ["options", "00000000000006bb"],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: Maith.Decoder", "8c8e708f6ecc9c17"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "35524dea5c5f5b5a"}
+ "depHash": "8358f751f7d1cc54"}
