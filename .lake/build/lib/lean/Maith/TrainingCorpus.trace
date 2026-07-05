@@ -20,9 +20,9 @@
    [["deps",
      [["maith/Maith:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
       ["imports",
-       [["Maith.Graph transitive imports (legacy)", "b6af83aa98b271c3"],
+       [["Maith.Graph transitive imports (legacy)", "295dd36e49a1cc52"],
         ["Maith.Graph:importAllArts", "c5d33959bd97b7d6"],
-        ["Maith.Encoder transitive imports (legacy)", "af47b5baa9aff06f"],
+        ["Maith.Encoder transitive imports (legacy)", "de591a05ea73bdcc"],
         ["Maith.Encoder:importAllArts", "cffc2834caf1df85"],
         ["Maith.Token transitive imports (legacy)", "00000000000006bb"],
         ["Maith.Token:importAllArts", "a1d05cea5b1904f3"]]]]],
@@ -40,4 +40,4 @@
   ["Module.name: Maith.TrainingCorpus", "db49738c37eb28d2"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "0c7fe407b8a735a0"}
+ "depHash": "73bab5b7b34ff380"}

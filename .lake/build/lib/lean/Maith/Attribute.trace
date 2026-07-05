@@ -18,7 +18,7 @@
      [["maith/Maith:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
       ["imports",
        [["Maith.EntityId transitive imports (legacy)", "00000000000006bb"],
-        ["Maith.EntityId:importAllArts", "36b0c99b483493cc"],
+        ["Maith.EntityId:importAllArts", "895586eeaf2dfa8f"],
         ["Maith.Polarity transitive imports (legacy)", "00000000000006bb"],
         ["Maith.Polarity:importAllArts", "e7ee1daf301cbf9e"]]]]],
     ["libs",
@@ -34,4 +34,4 @@
   ["Module.name: Maith.Attribute", "6989b22877daa3a5"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "b964e9cbd404517c"}
+ "depHash": "a7353f69646b4b59"}

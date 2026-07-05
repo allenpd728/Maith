@@ -16,7 +16,7 @@
       ["imports",
        [["Tests.Harness transitive imports (legacy)", "00000000000006bb"],
         ["Tests.Harness:importAllArts", "5d240d09428f618d"],
-        ["Maith.Encoder transitive imports (legacy)", "af47b5baa9aff06f"],
+        ["Maith.Encoder transitive imports (legacy)", "de591a05ea73bdcc"],
         ["Maith.Encoder:importAllArts", "cffc2834caf1df85"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
@@ -32,4 +32,4 @@
   ["Module.name: Tests.EncoderTests", "35ac7572632c4005"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "b226bfe6afb1bcab"}
+ "depHash": "32956a78c0a56671"}

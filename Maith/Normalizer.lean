@@ -71,9 +71,9 @@ else
 
   | EntityId.var s1, EntityId.var s2 => s1 < s2
 
-  | EntityId.var \_,  EntityId.term \_ => true
+  | EntityId.var _,  EntityId.term _ => true
 
-  | EntityId.term \_, EntityId.var \_  => false
+  | EntityId.term _, EntityId.var _  => false
 
   | EntityId.term n1, EntityId.term n2 => n1 < n2
 
@@ -87,15 +87,15 @@ rels.mergeSort (fun r1 r2 =>
 
 if r1.src = r2.src then
 
-  if r1.op = r2.op then r1.tgt < r2.tgt
+  if r1.op = r2.op then EntityId.compare r1.tgt r2.tgt
 
   else toString r1.op < toString r2.op
 
-else r1.src < r2.src
+else EntityId.compare r1.src r2.src
 
 )
 
-/-- Sort operations canonically by output, then op, then inputs. -/
+/-- Sort operations canonically by output, then op, then by input count. -/
 
 def normalizeOperations (ops : List Operation) : List Operation :=
 
@@ -103,11 +103,11 @@ ops.mergeSort (fun o1 o2 =>
 
 if o1.output = o2.output then
 
-  if o1.op = o2.op then o1.inputs < o2.inputs
+  if o1.op = o2.op then o1.inputs.length < o2.inputs.length
 
   else toString o1.op < toString o2.op
 
-else o1.output < o2.output
+else EntityId.compare o1.output o2.output
 
 )
 

@@ -11,6 +11,7 @@ import Tests.EncoderTests
 import Tests.DecoderTests
 import Tests.PipelineTests
 import Tests.CorpusTests
+import Tests.NormalizerTests
 
 def main : IO Unit := do
   IO.println ""
@@ -25,6 +26,7 @@ def main : IO Unit := do
   Tests.Decoder.runAllDecoderTests
   Tests.Pipeline.runAllPipelineTests
   Tests.TrainingCorpus.runAllCorpusTests
+  Tests.Normalizer.runAllNormalizerTests
   
   IO.println ""
   IO.println "╔════════════════════════════════════════════════════╗"
