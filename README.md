@@ -1,198 +1,83 @@
-Lean 4 Transformer-Centric IR — Project README
-==============================================
+# Maith IR Pipeline
 
-This README documents the full architecture, purpose, and workflow of the Lean‑based transformer‑native IR system. It is designed for GitHub Copilot and VS Code integration, providing a clear entry point for contributors and future automation.
+## Status
 
-## Current Status
+- `lake clean && lake build tests` succeeded on 2026-07-05.
+- Build completed with **62 jobs** and **0 failures**.
+- `./.lake/build/bin/tests` completed with **54/54 counted tests passing**.
+- The test executable also printed **6 corpus pipeline validation checks**, and those passed.
+- The build emits deprecation warnings from existing `structure :=` declarations, but they do not block the build.
 
-🟢 **FULLY OPERATIONAL AND TESTED**
+## Verified fixes on 2026-07-05
 
-The Maith IR pipeline is **production-ready** with **54+ passing tests** covering:
-- ✓ Core IR types (Polarity, EntityId, Entity, Attribute, Relation, Operation, Graph)
-- ✓ Encoder/Decoder pipeline (IR ↔ Token transformations) — **FIXED**
-- ✓ Graph normalization (canonical ordering) — **FIXED**
-- ✓ Training corpus generation with Mathlib enumeration — **FIXED**
-- ✓ Injectivity verification (graph uniqueness) — **FIXED**
-- ✓ Problem generation (SLM training problems) — **FIXED**
-- ✓ Rewrite engine with symbolic graph transformations — **FIXED**
-- ✓ Examples and curriculum generation — **FIXED**
-- ✓ TokenSpec with comprehensive token vocabulary — **FIXED**
-- ✓ GraphEquivalence verification system — **FIXED**
+- `Maith/Examples.lean`: fixed Lean 3-style list syntax in `mkGraph`.
+- `Maith/Cirriculum.lean`: added the missing imports for `Maith.Normalizer`, `Maith.Transpiler`, and `Maith.RewriteEngine`.
+- `Maith/Transpiler.lean`: removed corrupted markup-like field access text and a self-recursive record definition.
+- `Maith/Decoder.lean`: fixed String slice handling in operation decoding.
+- `Maith/ProblemGenerator.lean`: imported `Maith.CorpusBuilder` and mapped to the real `TrainingExample` fields.
+- `Maith/GraphEquivalence.lean`: verified the current boolean structural equality helpers compile with `Maith.Normalizer` and `Maith.RewritePipeline`.
 
-**Latest Achievement**: All critical modules fixed and verified
-- ✓ Decoder.lean — Fixed list syntax and String operations for Lean 4
-- ✓ Normalizer.lean — Fixed type instances and canonical ordering
-- ✓ RewriteEngine.lean — Fixed rewrite rule implementation
-- ✓ GraphEquivalence.lean — Fixed field projections and equivalence checks
-- ✓ Examples.lean — Fixed example graph definitions
-- ✓ TokenSpec.lean — Fixed token vocabulary definitions
-- ✓ Cirriculum.lean — Fixed curriculum generation
-- ✓ ProblemGenerator.lean — Fixed problem generation logic
+## Known issues resolved
 
-**Ready for**: Phase 1 empirical validation - Training small language models on Lean 4 proofs using real Mathlib declarations
+| Date | File | Resolution |
+| --- | --- | --- |
+| 2026-07-05 | `Maith/Examples.lean` | Replaced escaped list syntax with valid Lean 4 syntax. |
+| 2026-07-05 | `Maith/Cirriculum.lean` | Added missing imports and removed corrupted field-access text. |
+| 2026-07-05 | `Maith/Transpiler.lean` | Replaced escaped brackets / corrupted field accesses and removed self-reference. |
+| 2026-07-05 | `Maith/GraphEquivalence.lean` | Verified boolean equality helpers compile against the imported normalizer and rewrite pipeline. |
 
-**Pipeline**: `Lean 4 → Transpiler → DSL → IR Graph → Normalizer → Injectivity Check → Encoder → Tokens → TrainingCorpus`
+## Architecture
 
-**Blockers**: NONE - All resolved ✓
+`Lean source -> Transpiler -> DSL -> IR Graph -> Normalizer -> Encoder -> Tokens -> Training corpus`
 
-See [TEST.md](TEST.md) for detailed test results and [Design.md](Design.md) for architectural principles.
+Supporting modules:
 
-Overview
---------
+- `RewriteEngine` and `RewritePipeline` for graph rewriting.
+- `GraphEquivalence` for structural, normalized, and rewrite-closure comparisons.
+- `Examples`, `Cirriculum`, and `ProblemGenerator` for training data generation.
 
-This project implements a complete, transformer‑friendly Intermediate Representation (IR) for Lean 4 proofs. It includes:
+## Directory structure
 
-*   A canonical DSL
-     
-*   A bijective IR
-     
-*   A reversible encoder/decoder pipeline ✓
-     
-*   A Lean transpiler
-     
-*   A rewrite engine
-     
-*   A full example library
-     
-
-The goal is to enable **small language models (SLMs)** to outperform larger models trained on raw Lean syntax by using a representation optimized for next‑token prediction.
-
-Motivation
-----------
-
-Lean 4 syntax is optimized for human readability, not transformer cognition. This project explores the hypothesis that a **representation designed for transformers** can:
-
-*   Reduce entropy
-     
-*   Improve prediction locality
-     
-*   Eliminate syntactic variation
-     
-*   Provide reversible structure
-     
-
-The IR is designed as a codec — not a language — enabling round‑trip transformations between Lean, DSL, and IR.
-
-Architecture
-------------
-
-The full pipeline:
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   Lean 4 → DSL → IR → SLM → IR → DSL → Lean 4   `
-
-### Components
-
-*   **DSL** — transformer‑friendly surface syntax
-     
-*   **IR** — bijective structural representation
-     
-*   **Encoder** — converts IR → token lists ✓
-     
-*   **Decoder** — converts token lists → IR ✓
-     
-*   **Normalizer** — graph canonicalization ✓
-     
-*   **Transpiler** — converts Lean ↔ DSL ↔ IR
-     
-*   **TrainingCorpus** — generates SLM training data ✓
-     
-*   **RewriteEngine** — symbolic graph rewriting
-     
-*   **Examples** — demonstration graphs
-     
-
-Directory Structure
--------------------
-
-Plain textANTLR4BashCC#CSSCoffeeScriptCMakeDartDjangoDockerEJSErlangGitGoGraphQLGroovyHTMLJavaJavaScriptJSONJSXKotlinLaTeXLessLuaMakefileMarkdownMATLABMarkupObjective-CPerlPHPPowerShell.propertiesProtocol BuffersPythonRRubySass (Sass)Sass (Scss)SchemeSQLShellSwiftSVGTSXTypeScriptWebAssemblyYAMLXML`   Maith/    ├── Polarity.lean    ├── EntityId.lean    ├── Entity.lean    ├── Attribute.lean    ├── RelationOp.lean    ├── OperationOp.lean    ├── Relation.lean    ├── Operation.lean    ├── Graph.lean    ├── Token.lean          ✓ NEW    ├── Encoder.lean        ✓ FIXED    ├── Decoder.lean        ✓ FIXED    ├── Normalizer.lean     ✓ NEW    ├── TrainingCorpus.lean ✓ NEW    ├── DSLHelpers.lean    ├── Transpiler.lean    ├── Examples.lean    ├── RewriteEngine.lean   └── Init.lean   `
-
-Each file corresponds to a module in the Maith Lean library.
-
-Development Workflow
---------------------
-
-### 1\. Edit Lean files in VS Code
-
-GitHub Copilot provides autocomplete using the IR pipeline.
-
-### 2\. Use the Transpiler
-
-Convert Lean ↔ DSL ↔ IR during development.
-
-### 3\. Use the Encoder/Decoder ✓
-
-Round‑trip transformations for model training and verification. Fully implemented and tested.
-
-### 4\. Generate Training Corpus ✓
-
-Export IR-encoded graphs as training data for SLMs. See [TrainingCorpus.lean](Maith/TrainingCorpus.lean).
-
-### 5\. Use the RewriteEngine
-
-Apply symbolic rewrites to IR graphs (future phase).
-
-## Getting Started
-
-### Prerequisites
-
-- Lean 4 (v4.31.0 or later)
-- Lake (v5.0.0 or later)
-- Elan (for toolchain management)
-
-### Building
-
-```bash
-cd Maith
-lake build
+```text
+Maith/
+  Polarity.lean
+  EntityId.lean
+  Entity.lean
+  Attribute.lean
+  RelationOp.lean
+  OperationOp.lean
+  Relation.lean
+  Operation.lean
+  Graph.lean
+  Token.lean
+  Encoder.lean
+  Decoder.lean
+  Normalizer.lean
+  Transpiler.lean
+  RewriteEngine.lean
+  RewritePipeline.lean
+  GraphEquivalence.lean
+  TrainingCorpus.lean
+  CorpusBuilder.lean
+  CorpusSerializer.lean
+  ProcessingPipeline.lean
+  ProblemGenerator.lean
+  MathlibLoader.lean
+  MathlibCorpusBuilder.lean
+  DSLHelper.lean
+  Examples.lean
+  TokenSpec.lean
+  Cirriculum.lean
+  Init.lean
+Tests/
+  ...
 ```
 
-### Running Tests
+## Reproducing the verified result
 
 ```bash
+cd /Users/philipallen/Desktop/Maith
+lake clean
 lake build tests
 ./.lake/build/bin/tests
 ```
-
-Expected output: **54/54 tests passing**
-
-See [TEST.md](TEST.md) for full test documentation.
-
-Research Goals
---------------
-
-### Phase 1 — **Empirical validation** (CURRENT)
-
-*   ✓ Implement IR encoder/decoder
-     
-*   ✓ Build training corpus generation
-     
-*   → Next: Train an SLM on IR‑encoded Mathlib proofs
-     
-*   → Compare next‑token accuracy against models trained on raw Lean
-     
-
-### Phase 2 — **Enterprise product**
-
-*   Build a Lean‑native proof copilot for safety‑critical software verification
-     
-
-Contributing
-------------
-
-Contributions should focus on:
-
-*   DSL design
-    
-*   IR vocabulary granularity
-    
-*   Rewrite rule design
-    
-*   Transpiler ergonomics
-    
-*   Encoder/decoder optimization
-    
-
-License
--------
-
-MIT License (or project‑specific license to be added).

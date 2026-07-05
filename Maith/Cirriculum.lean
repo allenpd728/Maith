@@ -10,6 +10,9 @@ Produces structured training examples for SLM development.
 
 import Maith.Graph
 import Maith.Examples
+import Maith.Normalizer
+import Maith.Transpiler
+import Maith.RewriteEngine
 
 namespace Lean.DSL
 
