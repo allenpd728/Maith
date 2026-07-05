@@ -30,7 +30,7 @@ A curriculum item represents a single training example:
 
 -/
 
-structure CurriculumItem :=
+structure CurriculumItem where
 
 (inputGraph      : Graph)
 
@@ -50,7 +50,7 @@ Given a graph, produce a curriculum item.
 
 -/
 
-structure CurriculumGenerator :=
+structure CurriculumGenerator where
 
 (generate : Graph → CurriculumItem)
 

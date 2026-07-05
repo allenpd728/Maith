@@ -40,7 +40,7 @@ Relations encode:
 
 -/
 
-structure Relation :=
+structure Relation where
 
 (src      : EntityId)
 

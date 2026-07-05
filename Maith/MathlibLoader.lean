@@ -15,7 +15,7 @@ namespace Lean.DSL
 /--
 Metadata about a Mathlib declaration for filtering and preprocessing.
 -/
-structure DeclarationMetadata :=
+structure DeclarationMetadata where
   (name : String)
   (module : String)
   (sizeBytes : Nat := 0)
@@ -29,7 +29,7 @@ deriving Repr
 /--
 Configuration for filtering declarations during enumeration.
 -/
-structure EnumerationConfig :=
+structure EnumerationConfig where
   (maxSizeBytes : Nat := 100_000)        -- Skip declarations > 100KB
   (maxTacticDensity : Float := 0.8)      -- Skip if > 80% tactics
   (includeProofs : Bool := true)
@@ -43,7 +43,7 @@ deriving Repr
 /--
 Result of enumerating a single Mathlib module.
 -/
-structure EnumerationResult :=
+structure EnumerationResult where
   (module : String)
   (declCount : Nat := 0)
   (declarations : List DeclarationMetadata := [])
@@ -145,7 +145,7 @@ def extractAllDeclarations (results : List EnumerationResult) :
 /--
 Statistics for enumeration across all modules.
 -/
-structure EnumerationStats :=
+structure EnumerationStats where
   (totalEnumerated : Nat := 0)
   (totalFiltered : Nat := 0)
   (resultsByModule : List (String × Nat × Nat) := [])  -- (module, count, filtered)

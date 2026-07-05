@@ -33,7 +33,7 @@ the decoder automatically.
 
 -/
 
-structure Decoder :=
+structure Decoder where
 
 (decodeEntity    : List Token → Entity)
 
@@ -104,7 +104,7 @@ def decodeOperation (toks : List Token) : Operation :=
   | ["O", inputsStr, outputStr, opStr, polStr] =>
       let trimmed : String :=
         if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
-      let inputs := (trimmed.splitOn ",").map (fun s => EntityId.var s.trim)
+      let inputs := (trimmed.splitOn ",").map (fun s => EntityId.var s)
       let outputText : String :=
         if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr
       let output :=

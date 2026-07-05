@@ -43,7 +43,7 @@ This is the central structure used by:
 
 -/
 
-structure Graph :=
+structure Graph where
 
 (entities    : List Entity)
 

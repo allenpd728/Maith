@@ -25,9 +25,9 @@ Variables come before terms; alphabetical / numeric inside each class.
 
 def normalizeEntityId : EntityId → Int
 
-| EntityId.var s  => 0
+| EntityId.var _  => 0
 
-| EntityId.term n => 1
+| EntityId.term _ => 1
 
 /-- Canonical ordering for Entity. -/
 
@@ -35,9 +35,9 @@ def normalizeEntity (e : Entity) : Int :=
 
 match e.id with
 
-| EntityId.var s  => 0
+| EntityId.var _  => 0
 
-| EntityId.term n => 1
+| EntityId.term _ => 1
 
 /-- Sort entities canonically. -/
 
@@ -207,7 +207,7 @@ let ops := normalizeOperations (g.operations.map normalizePolarityOp)
 
 /-- Normalizer module interface. -/
 
-structure Normalizer :=
+structure Normalizer where
 
 (normalize : Graph → Graph)
 

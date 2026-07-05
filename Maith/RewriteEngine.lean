@@ -25,7 +25,7 @@ pattern-based and compositional.
 
 -/
 
-structure RewriteRule :=
+structure RewriteRule where
 
 (name    : String)
 
@@ -39,7 +39,7 @@ sequentially to a graph.
 
 -/
 
-structure RewriteEngine :=
+structure RewriteEngine where
 
 (rules : List RewriteRule)
 

@@ -27,7 +27,7 @@ automatically.
 
 -/
 
-structure Transpiler :=
+structure Transpiler where
 
 (toLeanEntity    : Entity → String)
 
