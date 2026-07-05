@@ -19,6 +19,7 @@ import Maith.Graph
 -- Utilities
 import Maith.Encoder
 import Maith.Decoder
+import Maith.TrainingCorpus
 import Maith.DSLHelper
 import Maith.Transpiler
 import Maith.RewriteEngine

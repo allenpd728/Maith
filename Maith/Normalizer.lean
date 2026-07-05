@@ -45,13 +45,13 @@ def normalizeEntities (ents : List Entity) : List Entity :=
 
 ents.mergeSort (fun a b =>
 
-match [a.id](https://a.id), [b.id](https://b.id) with
+match a.id, b.id with
 
 | EntityId.var s1, EntityId.var s2 => s1 < s2
 
-| EntityId.var \_,  EntityId.term \_ => true
+| EntityId.var _,  EntityId.term _ => true
 
-| EntityId.term \_, EntityId.var \_  => false
+| EntityId.term _, EntityId.var _  => false
 
 | EntityId.term n1, EntityId.term n2 => n1 < n2
 

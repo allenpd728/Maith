@@ -103,7 +103,7 @@ def decodeOperation (toks : List Token) : Operation :=
   match toks with
   | ["O", inputsStr, outputStr, opStr, polStr] =>
       let trimmed := if inputsStr.startsWith "inputs:" then inputsStr.drop 7 else inputsStr
-      let inputs := (trimmed.split (· = ',')).toList.map (fun s => EntityId.var s.toString.trim)
+      let inputs := (trimmed.split (· = ',')).toList.map (fun s => EntityId.var s.toString)
       let output := EntityId.var (if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr)
       let op :=
         if opStr = "add" then OperationOp.add
