@@ -1,0 +1,37 @@
+{"synthetic": false,
+ "schemaVersion": "2025-09-10",
+ "outputs":
+ {"o": ["a27a1b3e78112712.olean"],
+  "m": false,
+  "i": "18acc4517495b46e.ilean",
+  "c": "c6542861e84ca75e.c"},
+ "log":
+ [{"message":
+   ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Maith/Entity.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Entity.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Entity.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Entity.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/Entity.setup.json --json",
+   "level": "trace"},
+  {"message":
+   "Maith/Entity.lean:30:17: `structure ... :=` has been deprecated in favor of `structure ... where`.\n\nNote: This linter can be disabled with `set_option linter.deprecated false`",
+   "level": "warning"}],
+ "inputs":
+ [["Maith.Entity:deps",
+   [["deps",
+     [["maith/Maith:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
+      ["imports",
+       [["Maith.EntityId transitive imports (legacy)", "00000000000006bb"],
+        ["Maith.EntityId:importAllArts", "056a1025f7d3da3e"],
+        ["Maith.Polarity transitive imports (legacy)", "00000000000006bb"],
+        ["Maith.Polarity:importAllArts", "4ae8cf2b71ae141c"]]]]],
+    ["libs",
+     [["import dynlibs", "00000000000006bb"],
+      ["package external libraries", "00000000000006bb"],
+      ["module dynlibs", "00000000000006bb"],
+      ["module plugins", "00000000000006bb"]]]]],
+  ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
+   "fc45ac412f28501c"],
+  ["/Users/philipallen/Desktop/Maith/Maith/Entity.lean", "e0cc57e7b82ee176"],
+  ["options", "00000000000006bb"],
+  ["isModule: false", "feefd2a0d3a1847e"],
+  ["Module.name: Maith.Entity", "7d2928a3f4965e46"],
+  ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
+  ["Module.leanArgs: #[]", "00000000000006bb"]],
+ "depHash": "23eedcbd060a01c2"}

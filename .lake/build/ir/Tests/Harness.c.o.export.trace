@@ -1,0 +1,18 @@
+{"synthetic": false,
+ "schemaVersion": "2025-09-10",
+ "outputs": "7b758d219d3c4978.o",
+ "log":
+ [{"message":
+   ".> /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/clang -c -o /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Harness.c.o.export /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Harness.c -I /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/include -fstack-clash-protection -fdata-sections -ffunction-sections -fvisibility=hidden -Wno-unused-command-line-argument --sysroot /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0 -nostdinc -isystem /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/include/clang -O3 -DNDEBUG -DLEAN_EXPORTING",
+   "level": "trace"}],
+ "inputs":
+ [["Tests.Harness:c",
+   [["/Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/Harness.c",
+     "613a1cf26ae768ec"],
+    ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
+     "fc45ac412f28501c"]]],
+  ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
+   "fc45ac412f28501c"],
+  ["traceArgs: #[-O3, -DNDEBUG, -DLEAN_EXPORTING]", "c1efb66122fb2b9a"],
+  ["arm64-apple-darwin24.6.0", "77c16133d139df5a"]],
+ "depHash": "55cb39bdd7672686"}
