@@ -1,10 +1,10 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["77382aafad67dec8.olean"],
+ {"o": ["2028d61083857c40.olean"],
   "m": false,
-  "i": "ea302a6ed0c0366a.ilean",
-  "c": "04d0f640becbec4a.c"},
+  "i": "d9366011171378d0.ilean",
+  "c": "a544005e42e72a28.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Tests/EncoderTests.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/EncoderTests.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/EncoderTests.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/EncoderTests.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Tests/EncoderTests.setup.json --json",
@@ -15,7 +15,9 @@
      [["maith/Tests:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
       ["imports",
        [["Tests.Harness transitive imports (legacy)", "00000000000006bb"],
-        ["Tests.Harness:importAllArts", "5d240d09428f618d"]]]]],
+        ["Tests.Harness:importAllArts", "5d240d09428f618d"],
+        ["Maith.Encoder transitive imports (legacy)", "af47b5baa9aff06f"],
+        ["Maith.Encoder:importAllArts", "cffc2834caf1df85"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -24,10 +26,10 @@
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
   ["/Users/philipallen/Desktop/Maith/Tests/EncoderTests.lean",
-   "6960ec467063cdc4"],
+   "09290b01193de276"],
   ["options", "00000000000006bb"],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: Tests.EncoderTests", "35ac7572632c4005"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "952a7520bdf445eb"}
+ "depHash": "b226bfe6afb1bcab"}

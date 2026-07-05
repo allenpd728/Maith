@@ -18,6 +18,7 @@ lean_object* l_Repr_addAppParen(lean_object*, lean_object*);
 uint8_t lean_nat_dec_le(lean_object*, lean_object*);
 lean_object* lean_nat_to_int(lean_object*);
 lean_object* l_Nat_reprFast(lean_object*);
+lean_object* lean_string_append(lean_object*, lean_object*);
 uint8_t lean_string_dec_eq(lean_object*, lean_object*);
 uint8_t lean_nat_dec_eq(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_EntityId_ctorIdx(lean_object*);
@@ -54,6 +55,12 @@ LEAN_EXPORT uint8_t lp_maith_Lean_DSL_instDecidableEqEntityId_decEq(lean_object*
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instDecidableEqEntityId_decEq___boxed(lean_object*, lean_object*);
 LEAN_EXPORT uint8_t lp_maith_Lean_DSL_instDecidableEqEntityId(lean_object*, lean_object*);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instDecidableEqEntityId___boxed(lean_object*, lean_object*);
+static const lean_string_object lp_maith_Lean_DSL_instToStringEntityId___lam__0___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 2, .m_capacity = 2, .m_length = 1, .m_data = "t"};
+static const lean_object* lp_maith_Lean_DSL_instToStringEntityId___lam__0___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringEntityId___lam__0___closed__0_value;
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringEntityId___lam__0(lean_object*);
+static const lean_closure_object lp_maith_Lean_DSL_instToStringEntityId___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = sizeof(lean_closure_object) + sizeof(void*)*0, .m_other = 0, .m_tag = 245}, .m_fun = (void*)lp_maith_Lean_DSL_instToStringEntityId___lam__0, .m_arity = 1, .m_num_fixed = 0, .m_objs = {} };
+static const lean_object* lp_maith_Lean_DSL_instToStringEntityId___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringEntityId___closed__0_value;
+LEAN_EXPORT const lean_object* lp_maith_Lean_DSL_instToStringEntityId = (const lean_object*)&lp_maith_Lean_DSL_instToStringEntityId___closed__0_value;
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_EntityId_ctorIdx(lean_object* v_x_1_){
 _start:
 {
@@ -407,6 +414,31 @@ lean_dec_ref(v_x_123_);
 lean_dec_ref(v_x_122_);
 v_r_125_ = lean_box(v_res_124_);
 return v_r_125_;
+}
+}
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringEntityId___lam__0(lean_object* v_id_127_){
+_start:
+{
+if (lean_obj_tag(v_id_127_) == 0)
+{
+lean_object* v_a_128_; 
+v_a_128_ = lean_ctor_get(v_id_127_, 0);
+lean_inc_ref(v_a_128_);
+lean_dec_ref_known(v_id_127_, 1);
+return v_a_128_;
+}
+else
+{
+lean_object* v_a_129_; lean_object* v___x_130_; lean_object* v___x_131_; lean_object* v___x_132_; 
+v_a_129_ = lean_ctor_get(v_id_127_, 0);
+lean_inc(v_a_129_);
+lean_dec_ref_known(v_id_127_, 1);
+v___x_130_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringEntityId___lam__0___closed__0));
+v___x_131_ = l_Nat_reprFast(v_a_129_);
+v___x_132_ = lean_string_append(v___x_130_, v___x_131_);
+lean_dec_ref(v___x_131_);
+return v___x_132_;
+}
 }
 }
 lean_object* initialize_Init(uint8_t builtin);

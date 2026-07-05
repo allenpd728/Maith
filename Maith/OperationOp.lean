@@ -40,4 +40,13 @@ inductive OperationOp
 
 deriving Repr, DecidableEq
 
+instance : ToString OperationOp :=
+  ⟨fun op => match op with
+    | OperationOp.add => "add"
+    | OperationOp.sub => "sub"
+    | OperationOp.mul => "mul"
+    | OperationOp.div => "div"
+    | OperationOp.neg => "neg"
+    | OperationOp.pow => "pow"⟩
+
 end Lean.DSL

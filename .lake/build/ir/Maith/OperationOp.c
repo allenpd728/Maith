@@ -87,6 +87,23 @@ LEAN_EXPORT uint8_t lp_maith_Lean_DSL_OperationOp_ofNat(lean_object*);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_OperationOp_ofNat___boxed(lean_object*);
 LEAN_EXPORT uint8_t lp_maith_Lean_DSL_instDecidableEqOperationOp(uint8_t, uint8_t);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instDecidableEqOperationOp___boxed(lean_object*, lean_object*);
+static const lean_string_object lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "add"};
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__0_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__1_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "sub"};
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__1 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__1_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__2_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "mul"};
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__2 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__2_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__3_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "div"};
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__3 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__3_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__4_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "neg"};
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__4 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__4_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__5_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "pow"};
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__5 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__5_value;
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0(uint8_t);
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___boxed(lean_object*);
+static const lean_closure_object lp_maith_Lean_DSL_instToStringOperationOp___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = sizeof(lean_closure_object) + sizeof(void*)*0, .m_other = 0, .m_tag = 245}, .m_fun = (void*)lp_maith_Lean_DSL_instToStringOperationOp___lam__0___boxed, .m_arity = 1, .m_num_fixed = 0, .m_objs = {} };
+static const lean_object* lp_maith_Lean_DSL_instToStringOperationOp___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___closed__0_value;
+LEAN_EXPORT const lean_object* lp_maith_Lean_DSL_instToStringOperationOp = (const lean_object*)&lp_maith_Lean_DSL_instToStringOperationOp___closed__0_value;
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_OperationOp_ctorIdx(uint8_t v_x_1_){
 _start:
 {
@@ -735,6 +752,59 @@ v_y_14__boxed_233_ = lean_unbox(v_y_231_);
 v_res_234_ = lp_maith_Lean_DSL_instDecidableEqOperationOp(v_x_13__boxed_232_, v_y_14__boxed_233_);
 v_r_235_ = lean_box(v_res_234_);
 return v_r_235_;
+}
+}
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0(uint8_t v_op_242_){
+_start:
+{
+switch(v_op_242_)
+{
+case 0:
+{
+lean_object* v___x_243_; 
+v___x_243_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__0));
+return v___x_243_;
+}
+case 1:
+{
+lean_object* v___x_244_; 
+v___x_244_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__1));
+return v___x_244_;
+}
+case 2:
+{
+lean_object* v___x_245_; 
+v___x_245_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__2));
+return v___x_245_;
+}
+case 3:
+{
+lean_object* v___x_246_; 
+v___x_246_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__3));
+return v___x_246_;
+}
+case 4:
+{
+lean_object* v___x_247_; 
+v___x_247_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__4));
+return v___x_247_;
+}
+default: 
+{
+lean_object* v___x_248_; 
+v___x_248_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringOperationOp___lam__0___closed__5));
+return v___x_248_;
+}
+}
+}
+}
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringOperationOp___lam__0___boxed(lean_object* v_op_249_){
+_start:
+{
+uint8_t v_op_boxed_250_; lean_object* v_res_251_; 
+v_op_boxed_250_ = lean_unbox(v_op_249_);
+v_res_251_ = lp_maith_Lean_DSL_instToStringOperationOp___lam__0(v_op_boxed_250_);
+return v_res_251_;
 }
 }
 lean_object* initialize_Init(uint8_t builtin);

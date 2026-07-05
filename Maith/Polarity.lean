@@ -32,4 +32,10 @@ inductive Polarity
 
 deriving Repr, DecidableEq
 
+instance : ToString Polarity :=
+  ⟨fun pol => match pol with
+    | Polarity.pos => "pos"
+    | Polarity.neut => "neut"
+    | Polarity.neg => "neg"⟩
+
 end Lean.DSL

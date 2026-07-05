@@ -1,10 +1,10 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["60ce26285c868f75.olean"],
+ {"o": ["4967feb4836e3667.olean"],
   "m": false,
-  "i": "ec392bfd3d4f270c.ilean",
-  "c": "e1b73dd596824590.c"},
+  "i": "82e80ccb2e0c9f97.ilean",
+  "c": "bce27a90f41b320b.c"},
  "log":
  [{"message":
    ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Maith/RelationOp.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RelationOp.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RelationOp.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/RelationOp.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/RelationOp.setup.json --json",
@@ -22,10 +22,10 @@
   ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
    "fc45ac412f28501c"],
   ["/Users/philipallen/Desktop/Maith/Maith/RelationOp.lean",
-   "9516b3728733d23b"],
+   "dacd3fc289256f07"],
   ["options", "00000000000006bb"],
   ["isModule: false", "feefd2a0d3a1847e"],
   ["Module.name: Maith.RelationOp", "40d0ea5b58570317"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "f81c2fb560f9d993"}
+ "depHash": "cb23085adf63c141"}

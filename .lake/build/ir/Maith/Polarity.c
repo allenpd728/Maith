@@ -63,6 +63,17 @@ LEAN_EXPORT uint8_t lp_maith_Lean_DSL_Polarity_ofNat(lean_object*);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_Polarity_ofNat___boxed(lean_object*);
 LEAN_EXPORT uint8_t lp_maith_Lean_DSL_instDecidableEqPolarity(uint8_t, uint8_t);
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instDecidableEqPolarity___boxed(lean_object*, lean_object*);
+static const lean_string_object lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "pos"};
+static const lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__0_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__1_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 5, .m_capacity = 5, .m_length = 4, .m_data = "neut"};
+static const lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__1 = (const lean_object*)&lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__1_value;
+static const lean_string_object lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__2_value = {.m_header = {.m_rc = 0, .m_cs_sz = 0, .m_other = 0, .m_tag = 249}, .m_size = 4, .m_capacity = 4, .m_length = 3, .m_data = "neg"};
+static const lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__2 = (const lean_object*)&lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__2_value;
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0(uint8_t);
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0___boxed(lean_object*);
+static const lean_closure_object lp_maith_Lean_DSL_instToStringPolarity___closed__0_value = {.m_header = {.m_rc = 0, .m_cs_sz = sizeof(lean_closure_object) + sizeof(void*)*0, .m_other = 0, .m_tag = 245}, .m_fun = (void*)lp_maith_Lean_DSL_instToStringPolarity___lam__0___boxed, .m_arity = 1, .m_num_fixed = 0, .m_objs = {} };
+static const lean_object* lp_maith_Lean_DSL_instToStringPolarity___closed__0 = (const lean_object*)&lp_maith_Lean_DSL_instToStringPolarity___closed__0_value;
+LEAN_EXPORT const lean_object* lp_maith_Lean_DSL_instToStringPolarity = (const lean_object*)&lp_maith_Lean_DSL_instToStringPolarity___closed__0_value;
 LEAN_EXPORT lean_object* lp_maith_Lean_DSL_Polarity_ctorIdx(uint8_t v_x_1_){
 _start:
 {
@@ -453,6 +464,41 @@ v_y_14__boxed_140_ = lean_unbox(v_y_138_);
 v_res_141_ = lp_maith_Lean_DSL_instDecidableEqPolarity(v_x_13__boxed_139_, v_y_14__boxed_140_);
 v_r_142_ = lean_box(v_res_141_);
 return v_r_142_;
+}
+}
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0(uint8_t v_pol_146_){
+_start:
+{
+switch(v_pol_146_)
+{
+case 0:
+{
+lean_object* v___x_147_; 
+v___x_147_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__0));
+return v___x_147_;
+}
+case 1:
+{
+lean_object* v___x_148_; 
+v___x_148_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__1));
+return v___x_148_;
+}
+default: 
+{
+lean_object* v___x_149_; 
+v___x_149_ = ((lean_object*)(lp_maith_Lean_DSL_instToStringPolarity___lam__0___closed__2));
+return v___x_149_;
+}
+}
+}
+}
+LEAN_EXPORT lean_object* lp_maith_Lean_DSL_instToStringPolarity___lam__0___boxed(lean_object* v_pol_150_){
+_start:
+{
+uint8_t v_pol_boxed_151_; lean_object* v_res_152_; 
+v_pol_boxed_151_ = lean_unbox(v_pol_150_);
+v_res_152_ = lp_maith_Lean_DSL_instToStringPolarity___lam__0(v_pol_boxed_151_);
+return v_res_152_;
 }
 }
 lean_object* initialize_Init(uint8_t builtin);
