@@ -1,0 +1,13 @@
+{"plugins": [],
+ "package": "maith",
+ "options": {},
+ "name": "Maith.Relation",
+ "isModule": false,
+ "importArts":
+ {"Maith.RelationOp":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RelationOp.olean"],
+  "Maith.Polarity":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Polarity.olean"],
+  "Maith.EntityId":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/EntityId.olean"]},
+ "dynlibs": []}

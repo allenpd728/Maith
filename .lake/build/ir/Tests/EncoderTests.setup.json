@@ -1,0 +1,9 @@
+{"plugins": [],
+ "package": "maith",
+ "options": {},
+ "name": "Tests.EncoderTests",
+ "isModule": false,
+ "importArts":
+ {"Tests.Harness":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Tests/Harness.olean"]},
+ "dynlibs": []}
