@@ -63,14 +63,10 @@ def opAdd : Operation := mkOp .pos [xId, yId] zId .add
 
 def exampleGraph : Graph :=
 
-mkGraph
-
-[x, y, z, zero]
-
-[attrX, attrY]
-
-[relAdd, relEq]
-
-[opAdd]
+  mkGraph
+    [x, y, z, zero]
+    [attrX, attrY]
+    [relAdd, relEq]
+    [opAdd]
 
 end Lean.DSL
