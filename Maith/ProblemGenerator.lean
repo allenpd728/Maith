@@ -17,7 +17,7 @@ import Maith.EntityId
 import Maith.Polarity
 import Maith.RelationOp
 import Maith.OperationOp
-import Maith.TrainingCorpus
+import Maith.CorpusBuilder
 
 namespace Lean.DSL
 
@@ -125,7 +125,10 @@ def generateProblems (config : ProblemGenConfig) : List GeneratedProblem :=
 /-- Convert a GeneratedProblem to a TrainingExample for corpus. -/
 def problemToTrainingExample (problem : GeneratedProblem) : TrainingExample :=
   {
-    graph := problem.graph,
+    name := s!"{problem.a}x + {problem.b} = {problem.c}"
+    module := "ProblemGenerator"
+    leanExpr := problem.leanSource
+    graph := problem.graph
     tokens := encodeGraph problem.graph
   }
 

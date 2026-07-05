@@ -28,6 +28,13 @@ import Maith.RewritePipeline
 import Maith.Normalizer
 import Maith.GraphEquivalence
 
+-- Corpus pipeline
+import Maith.CorpusBuilder
+import Maith.ProcessingPipeline
+import Maith.MathlibLoader
+import Maith.CorpusSerializer
+import Maith.MathlibCorpusBuilder
+
 -- Examples and curriculum
 import Maith.Examples
 import Maith.TokenSpec
