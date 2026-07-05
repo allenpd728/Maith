@@ -1,0 +1,29 @@
+# Lake build system
+.lake/
+lake-manifest.json
+
+# Lean build artifacts
+*.olean
+*.ilean
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.env
+
+# Temporary files
+*.tmp
+*.log
+*~

@@ -1,1 +1,0 @@
-{"decls":{"Lean.DSL.Token":[10,0,12,22,12,7,12,12]},"directImports":[],"module":"Maith.Token","references":{"{\"c\":{\"m\":\"Init.Prelude\",\"n\":\"String\"}}":{"definition":null,"usages":[[12,16,12,22,"Lean.DSL.Token"]]},"{\"c\":{\"m\":\"Maith.Token\",\"n\":\"Lean.DSL.Token\"}}":{"definition":[12,7,12,12],"usages":[]}},"version":5}
