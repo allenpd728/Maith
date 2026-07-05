@@ -17,7 +17,7 @@ import Maith.EntityId
 import Maith.Polarity
 import Maith.RelationOp
 import Maith.OperationOp
-import Maith.CorpusBuilder
+import Maith.TrainingCorpus
 
 namespace Lean.DSL
 
@@ -47,41 +47,59 @@ structure GeneratedProblem where
 
 deriving Repr, DecidableEq
 
-/-- Build IR graph for equation a*x + b = c -/
+/--
+Build IR graph for equation a*x + b = c.
+
+NOTE: Entity ids are fixed, role-based names (`x`, `a_coeff`, `b_coeff`,
+`c_rhs`, `ax_result`, `sum_result`) rather than ids derived from the
+coefficient magnitudes (e.g. `EntityId.term a.natAbs`). Deriving ids from
+values meant that any two coefficients sharing a magnitude (e.g. `a = 2,
+b = -2`, or `a = 3, c = 3`) — which happens often across the small default
+coefficient ranges used in tests/corpus generation — would silently collide
+and corrupt the graph structure. The actual coefficient values are still
+recorded faithfully via the `value`/`rhs` attributes.
+-/
 def buildEquationGraph (a b c : Int) : Graph :=
+  let idX := EntityId.var "x"
+  let idA := EntityId.var "a_coeff"
+  let idB := EntityId.var "b_coeff"
+  let idC := EntityId.var "c_rhs"
+  let idAX := EntityId.var "ax_result"
+  let idSum := EntityId.var "sum_result"
+
   -- Entities: x (variable), a (coeff), b (coeff), c (rhs constant)
-  let entityX := { id := EntityId.var "x", polarity := Polarity.pos }
-  let entityA := { id := EntityId.term a.natAbs, polarity := Polarity.pos }
-  let entityB := { id := EntityId.term b.natAbs, polarity := Polarity.pos }
-  let entityC := { id := EntityId.term c.natAbs, polarity := Polarity.pos }
-  
-  -- Attributes: mark coefficients
-  let attrA := { target := EntityId.term a.natAbs, key := "coeff", 
+  let entityX := { id := idX, polarity := Polarity.pos }
+  let entityA := { id := idA, polarity := Polarity.pos }
+  let entityB := { id := idB, polarity := Polarity.pos }
+  let entityC := { id := idC, polarity := Polarity.pos }
+
+  -- Attributes: record the actual coefficient values
+  let attrA := { target := idA, key := "coeff",
                  value := toString a, polarity := Polarity.pos }
-  let attrB := { target := EntityId.term b.natAbs, key := "coeff", 
+  let attrB := { target := idB, key := "coeff",
                  value := toString b, polarity := Polarity.pos }
-  let attrC := { target := EntityId.term c.natAbs, key := "rhs", 
+  let attrC := { target := idC, key := "rhs",
                  value := toString c, polarity := Polarity.pos }
-  
+
   -- Relations: define the structure
   -- x related to a by multiplication
-  let relMul := { src := EntityId.var "x", tgt := EntityId.term a.natAbs,
+  let relMul := { src := idX, tgt := idA,
                   op := RelationOp.mul, polarity := Polarity.pos }
   -- result of a*x related to b by addition
-  let relAdd := { src := EntityId.term a.natAbs, tgt := EntityId.term b.natAbs,
+  let relAdd := { src := idA, tgt := idB,
                   op := RelationOp.add, polarity := Polarity.pos }
   -- result equals c
-  let relEq := { src := EntityId.term b.natAbs, tgt := EntityId.term c.natAbs,
+  let relEq := { src := idB, tgt := idC,
                  op := RelationOp.eq, polarity := Polarity.pos }
-  
+
   -- Operations: explicit computation steps
-  let opMul := { inputs := [EntityId.var "x", EntityId.term a.natAbs], 
-                 output := EntityId.term (a.natAbs + 1000),
+  let opMul := { inputs := [idX, idA],
+                 output := idAX,
                  op := OperationOp.mul, polarity := Polarity.pos }
-  let opAdd := { inputs := [EntityId.term (a.natAbs + 1000), EntityId.term b.natAbs],
-                 output := EntityId.term (a.natAbs + b.natAbs + 1000),
+  let opAdd := { inputs := [idAX, idB],
+                 output := idSum,
                  op := OperationOp.add, polarity := Polarity.pos }
-  
+
   {
     entities := [entityX, entityA, entityB, entityC],
     attributes := [attrA, attrB, attrC],
@@ -125,10 +143,7 @@ def generateProblems (config : ProblemGenConfig) : List GeneratedProblem :=
 /-- Convert a GeneratedProblem to a TrainingExample for corpus. -/
 def problemToTrainingExample (problem : GeneratedProblem) : TrainingExample :=
   {
-    name := s!"{problem.a}x + {problem.b} = {problem.c}"
-    module := "ProblemGenerator"
-    leanExpr := problem.leanSource
-    graph := problem.graph
+    graph := problem.graph,
     tokens := encodeGraph problem.graph
   }
 

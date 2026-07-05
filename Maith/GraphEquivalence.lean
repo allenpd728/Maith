@@ -27,15 +27,17 @@ Two entities are structurally equal if:
 
 - their polarity matches
 
-- their type matches
+Note: `e1.id = e2.id` etc. are `Prop`s, not `Bool`s, so each comparison is
+wrapped in `decide` (valid since `EntityId` and `Polarity` derive
+`DecidableEq`) and combined with the boolean `&&`.
 
 -/
 
 def entityStructEq (e1 e2 : Entity) : Bool :=
 
-e1.id = e2.id ∧
+decide (e1.id = e2.id) &&
 
-e1.polarity = e2.polarity
+decide (e1.polarity = e2.polarity)
 
 /--
 
@@ -55,13 +57,13 @@ Two attributes are structurally equal if:
 
 def attrStructEq (a1 a2 : Attribute) : Bool :=
 
-a1.target = a2.target ∧
+decide (a1.target = a2.target) &&
 
-a1.key = a2.key ∧
+decide (a1.key = a2.key) &&
 
-a1.value = a2.value ∧
+decide (a1.value = a2.value) &&
 
-a1.polarity = a2.polarity
+decide (a1.polarity = a2.polarity)
 
 /--
 
@@ -81,13 +83,13 @@ Two relations are structurally equal if:
 
 def relStructEq (r1 r2 : Relation) : Bool :=
 
-r1.src = r2.src ∧
+decide (r1.src = r2.src) &&
 
-r1.op = r2.op ∧
+decide (r1.op = r2.op) &&
 
-r1.tgt = r2.tgt ∧
+decide (r1.tgt = r2.tgt) &&
 
-r1.polarity = r2.polarity
+decide (r1.polarity = r2.polarity)
 
 /--
 
@@ -107,13 +109,13 @@ Two operations are structurally equal if:
 
 def opStructEq (o1 o2 : Operation) : Bool :=
 
-o1.inputs = o2.inputs ∧
+decide (o1.inputs = o2.inputs) &&
 
-o1.output = o2.output ∧
+decide (o1.output = o2.output) &&
 
-o1.op = o2.op ∧
+decide (o1.op = o2.op) &&
 
-o1.polarity = o2.polarity
+decide (o1.polarity = o2.polarity)
 
 /--
 
@@ -127,19 +129,19 @@ Useful for rewrite correctness tests.
 
 def graphStructEq (g1 g2 : Graph) : Bool :=
 
-g1.entities.length = g2.entities.length ∧
+decide (g1.entities.length = g2.entities.length) &&
 
-g1.attributes.length = g2.attributes.length ∧
+decide (g1.attributes.length = g2.attributes.length) &&
 
-g1.relations.length = g2.relations.length ∧
+decide (g1.relations.length = g2.relations.length) &&
 
-g1.operations.length = g2.operations.length ∧
+decide (g1.operations.length = g2.operations.length) &&
 
-(List.zip g1.entities g2.entities).all (fun (e1,e2) => entityStructEq e1 e2) ∧
+(List.zip g1.entities g2.entities).all (fun (e1,e2) => entityStructEq e1 e2) &&
 
-(List.zip g1.attributes g2.attributes).all (fun (a1,a2) => attrStructEq a1 a2) ∧
+(List.zip g1.attributes g2.attributes).all (fun (a1,a2) => attrStructEq a1 a2) &&
 
-(List.zip g1.relations g2.relations).all (fun (r1,r2) => relStructEq r1 r2) ∧
+(List.zip g1.relations g2.relations).all (fun (r1,r2) => relStructEq r1 r2) &&
 
 (List.zip g1.operations g2.operations).all (fun (o1,o2) => opStructEq o1 o2)
 

@@ -89,7 +89,7 @@ generate := fun g =>
 
   let normalized := norm.normalize g
 
-  let rewritten := rew.rules.map (fun r => [r.name](https://r.name))
+  let rewritten := rew.rules.map (fun r => r.name)
 
   let leanForm := trans.toLeanGraph g
 

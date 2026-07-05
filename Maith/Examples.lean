@@ -65,12 +65,12 @@ def exampleGraph : Graph :=
 
 mkGraph
 
-\[x, y, z, zero\]
+[x, y, z, zero]
 
-\[attrX, attrY\]
+[attrX, attrY]
 
-\[relAdd, relEq\]
+[relAdd, relEq]
 
-\[opAdd\]
+[opAdd]
 
 end Lean.DSL

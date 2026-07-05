@@ -108,7 +108,24 @@ def normalizeOperationInputs (op : OperationOp) (inputs : List EntityId) : List 
   else
     inputs
 
-/-- Sort operations canonically by output, then op, then by input count. -/
+/--
+Lexicographic "less than" comparison for input lists.
+
+Shorter lists that are a prefix of a longer one sort first; otherwise the
+first differing element (per `EntityId.compare`) decides the order. This
+replaces comparing only `inputs.length`, which could not distinguish two
+operations that had the same output, same op, and the same number of
+inputs but different actual input entities.
+-/
+def compareEntityIdList : List EntityId → List EntityId → Bool
+  | [], [] => false
+  | [], _ :: _ => true
+  | _ :: _, [] => false
+  | x :: xs, y :: ys =>
+      if x = y then compareEntityIdList xs ys
+      else EntityId.compare x y
+
+/-- Sort operations canonically by output, then op, then by inputs (lexicographically). -/
 
 def normalizeOperations (ops : List Operation) : List Operation :=
 
@@ -116,7 +133,7 @@ ops.map (fun o => { o with inputs := normalizeOperationInputs o.op o.inputs }) |
 
 if o1.output = o2.output then
 
-  if o1.op = o2.op then o1.inputs.length < o2.inputs.length
+  if o1.op = o2.op then compareEntityIdList o1.inputs o2.inputs
 
   else toString o1.op < toString o2.op
 

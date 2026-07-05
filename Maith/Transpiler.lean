@@ -83,19 +83,15 @@ toLeanOperation := fun o =>
 
 toLeanGraph := fun g =>
 
-  let ents := g.entities.map (fun e => s!"entity {e.id} @ {e.polarity}")
+  let ents := g.entities.map (fun e => defaultTranspiler.toLeanEntity e)
 
-  let attrs := g.attributes.map (fun a =>
-    s!"attr {a.target} {a.key} := {a.value} @ {a.polarity}")
+  let attrs := g.attributes.map (fun a => defaultTranspiler.toLeanAttribute a)
 
-  let rels := g.relations.map (fun r =>
-    s!"rel {r.src} {r.op} {r.tgt} @ {r.polarity}")
+  let rels := g.relations.map (fun r => defaultTranspiler.toLeanRelation r)
 
-  let ops := g.operations.map (fun o =>
-    let ins := String.intercalate ", " (o.inputs.map toString)
-    s!"op ({ins}) -> {o.output} using {o.op} @ {o.polarity}")
+  let ops := g.operations.map (fun o => defaultTranspiler.toLeanOperation o)
 
-  String.intercalate "\\n"
+  String.intercalate "\n"
 
     (["-- GRAPH BEGIN"] ++ ents ++ attrs ++ rels ++ ops ++ ["-- GRAPH END"]),
 
