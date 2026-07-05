@@ -4,7 +4,9 @@
  "name": "Maith.Encoder",
  "isModule": false,
  "importArts":
- {"Maith.RelationOp":
+ {"Maith.Token":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Token.olean"],
+  "Maith.RelationOp":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RelationOp.olean"],
   "Maith.Relation":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Relation.olean"],

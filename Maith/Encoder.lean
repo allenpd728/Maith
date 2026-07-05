@@ -15,12 +15,9 @@ import Maith.Operation
 import Maith.Graph
 import Maith.Polarity
 import Maith.EntityId
+import Maith.Token
 
 namespace Lean.DSL
-
-/-- Token type used by the encoder and decoder. -/
-
-abbrev Token := String
 
 /--
 
@@ -56,84 +53,55 @@ and provides a foundation for future SLM‑ready encoding.
 
 -/
 
-def defaultEncoder : Encoder :=
-
-{
-
-encodeEntity := fun e =>
-
-  \[
-
+def encodeEntity (e : Entity) : List Token :=
+  [
     "E",
-
-    toString [e.id](https://e.id),
-
+    toString e.id,
     toString e.polarity
+  ]
 
-  \],
-
-encodeAttribute := fun a =>
-
-  \[
-
+def encodeAttribute (a : Attribute) : List Token :=
+  [
     "A",
-
     toString a.target,
-
     a.key,
-
     a.value,
-
     toString a.polarity
+  ]
 
-  \],
-
-encodeRelation := fun r =>
-
-  \[
-
+def encodeRelation (r : Relation) : List Token :=
+  [
     "R",
-
     toString r.src,
-
     toString r.tgt,
-
     toString r.op,
-
     toString r.polarity
+  ]
 
-  \],
-
-encodeOperation := fun o =>
-
+def encodeOperation (o : Operation) : List Token :=
   let inputTokens := o.inputs.map (fun id => toString id)
-
-  \[
-
+  [
     "O",
-
     "inputs:" ++ String.intercalate "," inputTokens,
-
     "output:" ++ toString o.output,
-
     toString o.op,
-
     toString o.polarity
+  ]
 
-  \],
+def encodeGraph (g : Graph) : List Token :=
+  let ents := g.entities.flatMap encodeEntity
+  let attrs := g.attributes.flatMap encodeAttribute
+  let rels := g.relations.flatMap encodeRelation
+  let ops := g.operations.flatMap encodeOperation
+  ["GRAPH_BEGIN"] ++ ents ++ attrs ++ rels ++ ops ++ ["GRAPH_END"]
 
-encodeGraph := fun g =>
-
-  let ents := g.entities.bind (fun e => defaultEncoder.encodeEntity e)
-
-  let attrs := g.attributes.bind (fun a => defaultEncoder.encodeAttribute a)
-
-  let rels := g.relations.bind (fun r => defaultEncoder.encodeRelation r)
-
-  let ops := g.operations.bind (fun o => defaultEncoder.encodeOperation o)
-
-  \["GRAPH_BEGIN"\] ++ ents ++ attrs ++ rels ++ ops ++ \["GRAPH_END"\]
-
+def defaultEncoder : Encoder :=
+{
+  encodeEntity := encodeEntity
+  encodeAttribute := encodeAttribute
+  encodeRelation := encodeRelation
+  encodeOperation := encodeOperation
+  encodeGraph := encodeGraph
 }
 
 end Lean.DSL

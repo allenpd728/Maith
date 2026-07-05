@@ -32,4 +32,9 @@ inductive EntityId
 
 deriving Repr, DecidableEq
 
+instance : ToString EntityId :=
+  ⟨fun id => match id with
+    | EntityId.var s => s
+    | EntityId.term n => s!"t{n}"⟩
+
 end Lean.DSL

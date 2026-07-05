@@ -7,6 +7,7 @@ Exports all IR components and utilities.
 -- Core types
 import Maith.Polarity
 import Maith.EntityId
+import Maith.Token
 import Maith.Entity
 import Maith.Attribute
 import Maith.RelationOp

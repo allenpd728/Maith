@@ -46,4 +46,16 @@ inductive RelationOp
 
 deriving Repr, DecidableEq
 
+instance : ToString RelationOp :=
+  ⟨fun op => match op with
+    | RelationOp.eq => "eq"
+    | RelationOp.add => "add"
+    | RelationOp.sub => "sub"
+    | RelationOp.mul => "mul"
+    | RelationOp.div => "div"
+    | RelationOp.le => "le"
+    | RelationOp.ge => "ge"
+    | RelationOp.lt => "lt"
+    | RelationOp.gt => "gt"⟩
+
 end Lean.DSL

@@ -17,13 +17,13 @@
    [["deps",
      [["maith/Maith:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
       ["imports",
-       [["Maith.Entity transitive imports (legacy)", "cdc13932a769fd36"],
+       [["Maith.Entity transitive imports (legacy)", "615f49d814ea478b"],
         ["Maith.Entity:importAllArts", "7b9cd1ac2767f280"],
-        ["Maith.Attribute transitive imports (legacy)", "cdc13932a769fd36"],
+        ["Maith.Attribute transitive imports (legacy)", "615f49d814ea478b"],
         ["Maith.Attribute:importAllArts", "c69ec177972c0a25"],
-        ["Maith.Relation transitive imports (legacy)", "f15559b921186278"],
+        ["Maith.Relation transitive imports (legacy)", "d235a8c0a821e008"],
         ["Maith.Relation:importAllArts", "a53f8e02fe981406"],
-        ["Maith.Operation transitive imports (legacy)", "8e05474016e9e11c"],
+        ["Maith.Operation transitive imports (legacy)", "b193b5078e65a4f2"],
         ["Maith.Operation:importAllArts", "81262a5902773249"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
@@ -38,4 +38,4 @@
   ["Module.name: Maith.Graph", "838c5034b2c63fca"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "2fa4859dd84baf0e"}
+ "depHash": "633bd8e505321448"}
