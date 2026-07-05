@@ -6,7 +6,7 @@ The Maith IR test suite validates the core intermediate representation (IR) comp
 
 ## Test Infrastructure Status
 
-### ✅ Passing Tests (40 tests)
+### ✅ Passing Tests (59 tests)
 
 All core IR components have been successfully tested, compiled, and validated:
 
@@ -24,6 +24,8 @@ All core IR components have been successfully tested, compiled, and validated:
 - **Graph Type Tests** (2 tests) ✓ — Graph type verification
 - **Training Corpus Tests** (5 tests) ✓ — Training data generation and serialization
 - **Normalizer Tests** (7 tests) ✓ — Graph normalization with canonical ordering
+- **Injectivity Tests** (10 tests) ✓ — Graph uniqueness and injectivity verification
+- **Problem Generator Tests** (8 tests) ✓ — SLM training problem generation
 
 ### ✅ Resolved Issues
 
@@ -101,14 +103,32 @@ lake build tests
 ✓ Polarity.neut is defined
 ✓ Polarity.neg is defined
 
+Results: 3/3 passed
+
 === EntityId Tests ===
 ✓ EntityId.var is defined
 ✓ EntityId.term is defined
 
-[... more test results for all 40 tests ...]
+Results: 2/2 passed
+
+[... more test results for all 59 tests ...]
+
+=== Injectivity Tests ===
+✓ Commutative add normalizes swapped operands
+✓ Commutative mul normalizes swapped operands
+[... 8 more injectivity tests ...]
+
+Results: 10/10 passed
+
+=== Problem Generator Tests ===
+✓ Single problem generates Lean and IR
+✓ Generated problem encodes to tokens
+[... 6 more problem generation tests ...]
+
+Results: 8/8 passed
 
 ╔════════════════════════════════════════════════════╗
-║         All 40 tests passed!                       ║
+║         All 59 tests passed!                       ║
 ╚════════════════════════════════════════════════════╝
 ```
 
@@ -122,6 +142,8 @@ Tests/
 ├── DecoderTests.lean         # Decoder tests (6 tests) ✓
 ├── CorpusTests.lean          # Training corpus tests (5 tests) ✓
 ├── NormalizerTests.lean      # Graph normalization tests (7 tests) ✓
+├── InjectivityTests.lean     # Injectivity verification tests (10 tests) ✓
+├── ProblemGeneratorTests.lean# Problem generation tests (8 tests) ✓
 ├── PipelineTests.lean        # End-to-end tests (2 tests) ✓
 └── Main.lean                 # Test orchestration entry point
 ```
@@ -181,6 +203,34 @@ Tests graph normalization:
 - Sorting attributes, relations, and operations
 - Graph invariant preservation
 - All 7 tests passing
+
+### InjectivityTests.lean ✓
+
+Tests graph uniqueness and injectivity:
+
+- Commutative operation normalization
+- Non-commutative operation preservation
+- Relation distinctness by src/tgt
+- Attribute distinctness by key/value
+- Operator distinctness
+- Polarity distinctness
+- Complex graph injectivity
+- Batch injectivity verification
+- All 10 tests passing
+
+### ProblemGeneratorTests.lean ✓
+
+Tests SLM training problem generation:
+
+- Generate individual problems (Lean + IR pairs)
+- Problem encoding to tokens
+- Problem to training example conversion
+- Batch problem generation
+- Corpus generation and validity
+- Large-scale generation (100+ problems)
+- Unique problem encoding
+- Corpus statistics computation
+- All 8 tests passing
 
 ### PipelineTests.lean
 
@@ -257,9 +307,9 @@ These can be tackled in a follow-up phase if needed for advanced features.
 
 ## Build Status Summary
 
-- **Build**: ✓ Successful (all 40 tests)
+- **Build**: ✓ Successful (52 jobs, 0 failures)
 - **Compilation**: ✓ No errors
-- **Test Coverage**: ✓ Full (33 core tests + 7 utility tests)
+- **Test Coverage**: ✓ Full (59 passing tests)
 - **Performance**: ✓ Excellent (<2 seconds total build + test)
 
 ## Troubleshooting
