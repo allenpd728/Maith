@@ -12,6 +12,8 @@ validation, and SLM curriculum generation.
 
 import Maith.Graph
 import Maith.Entity
+import Maith.Normalizer
+import Maith.RewritePipeline
 
 namespace Lean.DSL
 
@@ -33,9 +35,7 @@ def entityStructEq (e1 e2 : Entity) : Bool :=
 
 e1.id = e2.id ∧
 
-e1.polarity = e2.polarity ∧
-
-e1.type = e2.type
+e1.polarity = e2.polarity
 
 /--
 

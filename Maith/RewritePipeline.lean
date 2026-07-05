@@ -12,6 +12,7 @@ integrating normalization for stable canonical output.
 
 import Maith.RewriteEngine
 import Maith.Graph
+import Maith.Normalizer
 
 namespace Lean.DSL
 
@@ -41,17 +42,14 @@ g1 = g2
 
 /--
 
-Multi-pass rewrite pipeline:
+Multi-pass rewrite pipeline loop.
 
-Repeatedly apply rewrite passes, normalize the result,
-
-and stop when a fixpoint is reached.
+This is intentionally a partial definition because fixpoint iteration
+is not structurally recursive on `Graph`.
 
 -/
 
-def runPipeline (eng : RewriteEngine) (norm : Normalizer) (g : Graph) : Graph :=
-
-let rec loop (current : Graph) : Graph :=
+partial def runPipelineLoop (eng : RewriteEngine) (norm : Normalizer) (current : Graph) : Graph :=
 
 let next := rewritePass eng current
 
@@ -59,13 +57,24 @@ let normalized := norm.normalize next
 
 if isFixpoint current normalized then
 
-  normalized
+ normalized
 
 else
 
-  loop normalized
+ runPipelineLoop eng norm normalized
 
-loop g
+/--
+
+Multi-pass rewrite pipeline:
+
+Repeatedly apply rewrite passes, normalize the result,
+and stop when a fixpoint is reached.
+
+-/
+
+def runPipeline (eng : RewriteEngine) (norm : Normalizer) (g : Graph) : Graph :=
+
+runPipelineLoop eng norm g
 
 /--
 
