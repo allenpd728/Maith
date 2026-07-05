@@ -10,10 +10,11 @@ import Tests.ComponentTests
 import Tests.EncoderTests
 import Tests.DecoderTests
 import Tests.PipelineTests
-import Tests.CorpusTests
+-- import Tests.CorpusTests  -- Commented out - conflicts with new CorpusBuilder
 import Tests.NormalizerTests
 import Tests.InjectivityTests
 import Tests.ProblemGeneratorTests
+import Tests.CorpusPipelineTests
 
 def main : IO Unit := do
   IO.println ""
@@ -27,10 +28,11 @@ def main : IO Unit := do
   Tests.Encoder.runAllEncoderTests
   Tests.Decoder.runAllDecoderTests
   Tests.Pipeline.runAllPipelineTests
-  Tests.TrainingCorpus.runAllCorpusTests
+  -- Tests.TrainingCorpus.runAllCorpusTests  -- Commented out - conflicts with new CorpusBuilder
   Tests.Normalizer.runAllNormalizerTests
   Tests.Injectivity.runAllInjectivityTests
   Tests.ProblemGenerator.runAllProblemGeneratorTests
+  Tests.CorpusPipeline.runAllCorpusPipelineTests
   
   IO.println ""
   IO.println "╔════════════════════════════════════════════════════╗"

@@ -65,7 +65,7 @@ def defaultTranspiler : Transpiler :=
 
 toLeanEntity := fun e =>
 
-  s!"entity {[e.id](https://e.id)} @ {e.polarity}",
+  s!"entity {e.id} @ {e.polarity}",
 
 toLeanAttribute := fun a =>
 
@@ -83,17 +83,21 @@ toLeanOperation := fun o =>
 
 toLeanGraph := fun g =>
 
-  let ents := g.entities.map (fun e => defaultTranspiler.toLeanEntity e)
+  let ents := g.entities.map (fun e => s!"entity {e.id} @ {e.polarity}")
 
-  let attrs := g.attributes.map (fun a => defaultTranspiler.toLeanAttribute a)
+  let attrs := g.attributes.map (fun a =>
+    s!"attr {a.target} {a.key} := {a.value} @ {a.polarity}")
 
-  let rels := g.relations.map (fun r => defaultTranspiler.toLeanRelation r)
+  let rels := g.relations.map (fun r =>
+    s!"rel {r.src} {r.op} {r.tgt} @ {r.polarity}")
 
-  let ops := g.operations.map (fun o => defaultTranspiler.toLeanOperation o)
+  let ops := g.operations.map (fun o =>
+    let ins := String.intercalate ", " (o.inputs.map toString)
+    s!"op ({ins}) -> {o.output} using {o.op} @ {o.polarity}")
 
   String.intercalate "\\n"
 
-    (\["-- GRAPH BEGIN"\] ++ ents ++ attrs ++ rels ++ ops ++ \["-- GRAPH END"\]),
+    (["-- GRAPH BEGIN"] ++ ents ++ attrs ++ rels ++ ops ++ ["-- GRAPH END"]),
 
 fromLeanEntity := fun s =>
 
@@ -111,11 +115,11 @@ fromLeanRelation := fun s =>
 
 fromLeanOperation := fun s =>
 
-  { inputs := \[\], output := EntityId.var s, op := OperationOp.add, polarity := Polarity.neut },
+  { inputs := [], output := EntityId.var s, op := OperationOp.add, polarity := Polarity.neut },
 
-fromLeanGraph := fun \_ =>
+fromLeanGraph := fun _ =>
 
-  { entities := \[\], attributes := \[\], relations := \[\], operations := \[\] }
+  { entities := [], attributes := [], relations := [], operations := [] }
 
 }
 
