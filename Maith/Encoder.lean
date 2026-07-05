@@ -31,7 +31,7 @@ Copilot can begin extending the encoder automatically.
 
 -/
 
-structure Encoder :=
+structure Encoder where
 
 (encodeEntity    : Entity → List Token)
 

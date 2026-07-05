@@ -25,7 +25,7 @@ Fields:
 - `graph`: The resulting IR Graph
 - `tokens`: Token sequence from the Encoder
 -/
-structure TrainingExample :=
+structure TrainingExample where
   (name : String)
   (module : String)
   (leanExpr : String)
@@ -37,7 +37,7 @@ deriving Repr
 /--
 Per-stage failure tracking for corpus statistics.
 -/
-structure FailureStats :=
+structure FailureStats where
   (transpilationFailed : Nat := 0)  -- Lean → DSL conversion
   (irConstructionFailed : Nat := 0)  -- DSL → IR Graph
   (normalizationFailed : Nat := 0)   -- IR normalization
@@ -51,7 +51,7 @@ deriving Repr, DecidableEq
 /--
 Token length statistics for the corpus.
 -/
-structure TokenDistribution :=
+structure TokenDistribution where
   (minLength : Nat := 0)
   (maxLength : Nat := 0)
   (avgLength : Float := 0.0)
@@ -62,7 +62,7 @@ deriving Repr
 /--
 IR graph complexity statistics.
 -/
-structure GraphStats :=
+structure GraphStats where
   (avgEntities : Float := 0.0)
   (avgAttributes : Float := 0.0)
   (avgRelations : Float := 0.0)
@@ -84,7 +84,7 @@ Fields:
 - `encoderVersion`: Encoder version used
 - `irVersion`: IR version used
 -/
-structure CorpusStats :=
+structure CorpusStats where
   (totalDeclarations : Nat := 0)
   (successfulExamples : Nat := 0)
   (failureStats : FailureStats := {})
@@ -103,7 +103,7 @@ Fields:
 - `examples`: List of TrainingExample records
 - `stats`: Aggregate statistics across all examples
 -/
-structure TrainingCorpus :=
+structure TrainingCorpus where
   (examples : List TrainingExample)
   (stats : CorpusStats)
 
@@ -149,7 +149,7 @@ instance : ToString PipelineStage :=
 /--
 A log entry capturing what happened during pipeline execution.
 -/
-structure LogEntry :=
+structure LogEntry where
   (stage : PipelineStage)
   (declarationName : String)
   (message : String)
@@ -160,7 +160,7 @@ deriving Repr
 /--
 Pipeline context: configuration and logging infrastructure.
 -/
-structure PipelineContext :=
+structure PipelineContext where
   (modules : List String)
   (sizeThresholdKB : Nat := 100)
   (maxTacticDensity : Float := 0.8)

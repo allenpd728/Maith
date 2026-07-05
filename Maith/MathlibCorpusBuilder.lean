@@ -133,7 +133,7 @@ Detailed execution trace for debugging and metrics.
 
 Logs each stage's input/output for troubleshooting.
 -/
-structure ExecutionTrace :=
+structure ExecutionTrace where
   (stage : PipelineStage)
   (inputCount : Nat)
   (outputCount : Nat)
@@ -203,7 +203,7 @@ def buildMathlibIRCorpusWithTrace
 /--
 Summary report of corpus building results.
 -/
-structure CorpusBuildReport :=
+structure CorpusBuildReport where
   (totalDeclarationsEnumerated : Nat)
   (successfulExamples : Nat)
   (successRate : Float)

@@ -84,7 +84,7 @@ Provides a single `run` function that rewrites a graph to fixpoint.
 
 -/
 
-structure RewritePipeline :=
+structure RewritePipeline where
 
 (run : Graph → Graph)
 

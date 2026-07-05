@@ -27,7 +27,7 @@ Attributes, relations, and operations reference entities by their IDs.
 
 -/
 
-structure Entity :=
+structure Entity where
 
 (id       : EntityId)
 

@@ -46,7 +46,7 @@ def testDataStructuresCompile : Bool :=
     }
   }
 
-  let corpus : TrainingCorpus := {
+  let _corpus : TrainingCorpus := {
     examples := [ex]
     stats := stats
   }

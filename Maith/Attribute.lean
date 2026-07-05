@@ -39,7 +39,7 @@ Attributes allow the IR to encode:
 
 -/
 
-structure Attribute :=
+structure Attribute where
 
 (target   : EntityId)
 

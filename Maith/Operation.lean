@@ -14,7 +14,7 @@ import Maith.Polarity
 
 namespace Lean.DSL
 
-structure Operation :=
+structure Operation where
 
 (inputs   : List EntityId)
 

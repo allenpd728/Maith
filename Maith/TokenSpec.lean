@@ -32,7 +32,7 @@ abbrev TokenId := Nat
 Payload for a token: small, structured, and reversible.
 This is what you’ll eventually map into embedding space.
 -/
-structure TokenPayload :=
+structure TokenPayload where
   (kind    : TokenKind)
   (label   : String)      -- e.g. "E", "A", "R", "O", "GRAPH_BEGIN"
   (value   : String)      -- e.g. variable name, key, op name
@@ -46,7 +46,7 @@ Canonical structured token type for the IR.
 Named `TokenRecord` (rather than `Token`) to avoid colliding with the
 simple `Token := String` abbreviation used by the Encoder/Decoder.
 -/
-structure TokenRecord :=
+structure TokenRecord where
   (id      : TokenId)
   (payload : TokenPayload)
   deriving Repr, DecidableEq
