@@ -147,3 +147,48 @@ The Maith IR pipeline is now **operationally functional** for:
 The infrastructure is solid and ready for scale-up. Remaining work is primarily on advanced features (normalization, equivalence checking, rewriting) rather than core functionality.
 
 **Status**: READY FOR TRAINING DATA GENERATION
+
+---
+
+## Additional Session Update - Normalizer Fixed
+
+### Fixed Normalizer Module ✓
+- Added `LT` instance for EntityId with canonical ordering
+  - Variables come before terms (vars: "a", "b", ... terms: t0, t1, ...)
+  - String comparison for variables, numeric for terms
+- Created `EntityId.compare` helper function for boolean comparisons
+- Fixed pattern matching syntax (removed backslash escapes)
+- Updated sorting functions to use proper comparison helpers
+- All 7 Normalizer tests passing
+  - Empty graph normalization
+  - Entity sorting (vars before terms)
+  - Attribute sorting (by target, then key)
+  - Relation sorting (by src, op, tgt)
+  - Operation sorting (by output, op, input count)
+
+### Test Suite Status
+- **Total: 40 passing tests** (up from 33)
+  - 3 Polarity
+  - 2 EntityId
+  - 1 Entity
+  - 1 Attribute
+  - 3 RelationOp
+  - 1 Relation
+  - 2 OperationOp
+  - 1 Operation
+  - 2 Graph
+  - 5 Encoder
+  - 6 Decoder
+  - 2 Graph Type
+  - 5 Training Corpus
+  - **7 Normalizer** ← NEW
+
+### Complete Pipeline Status
+
+```
+IR Graph → Normalizer → Encoder → Tokens → Training Corpus → SLM Training
+   ✓          ✓         ✓         ✓          ✓              Ready
+```
+
+Now includes graph normalization with canonical ordering!
+
