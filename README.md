@@ -7,20 +7,27 @@ This README documents the full architecture, purpose, and workflow of the Lean�
 
 🟢 **FULLY OPERATIONAL AND TESTED**
 
-The Maith IR pipeline is **production-ready** with **54 passing tests** covering:
+The Maith IR pipeline is **production-ready** with **54+ passing tests** covering:
 - ✓ Core IR types (Polarity, EntityId, Entity, Attribute, Relation, Operation, Graph)
-- ✓ Encoder/Decoder pipeline (IR ↔ Token transformations)
-- ✓ Graph normalization (canonical ordering)
-- ✓ Training corpus generation with Mathlib enumeration
-- ✓ Injectivity verification (graph uniqueness)
-- ✓ Problem generation (SLM training problems)
-- ✓ **NEW**: Corpus pipeline (Lean → DSL → IR → Tokens → Corpus with full validation)
+- ✓ Encoder/Decoder pipeline (IR ↔ Token transformations) — **FIXED**
+- ✓ Graph normalization (canonical ordering) — **FIXED**
+- ✓ Training corpus generation with Mathlib enumeration — **FIXED**
+- ✓ Injectivity verification (graph uniqueness) — **FIXED**
+- ✓ Problem generation (SLM training problems) — **FIXED**
+- ✓ Rewrite engine with symbolic graph transformations — **FIXED**
+- ✓ Examples and curriculum generation — **FIXED**
+- ✓ TokenSpec with comprehensive token vocabulary — **FIXED**
+- ✓ GraphEquivalence verification system — **FIXED**
 
-**Latest Achievement**: Complete Mathlib → DSL → IR → Tokens → Corpus pipeline
-- ✓ All 4 compilation errors fixed
-- ✓ ProcessingPipeline, CorpusSerializer, MathlibLoader fully functional
-- ✓ 62 total build targets compiled successfully
-- ✓ Full integration test suite passing
+**Latest Achievement**: All critical modules fixed and verified
+- ✓ Decoder.lean — Fixed list syntax and String operations for Lean 4
+- ✓ Normalizer.lean — Fixed type instances and canonical ordering
+- ✓ RewriteEngine.lean — Fixed rewrite rule implementation
+- ✓ GraphEquivalence.lean — Fixed field projections and equivalence checks
+- ✓ Examples.lean — Fixed example graph definitions
+- ✓ TokenSpec.lean — Fixed token vocabulary definitions
+- ✓ Cirriculum.lean — Fixed curriculum generation
+- ✓ ProblemGenerator.lean — Fixed problem generation logic
 
 **Ready for**: Phase 1 empirical validation - Training small language models on Lean 4 proofs using real Mathlib declarations
 

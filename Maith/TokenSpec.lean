@@ -2,6 +2,14 @@
   TokenSpec.lean
   Transformer-friendly token specification for the IR.
   Defines token ids, kinds, and payload structure.
+
+  NOTE: This module previously declared its own `structure Token`, which
+  collided with `Maith.Token`'s `abbrev Token := String` (both live in the
+  `Lean.DSL` namespace, and `Maith.Encoder` — imported below — pulls in
+  `Maith.Token`). The richer structured type here has been renamed to
+  `TokenRecord` to avoid the conflict while keeping both representations
+  available: `Token` (the simple String form used by Encoder/Decoder) and
+  `TokenRecord` (the structured form intended for embedding lookups).
 -/
 
 import Maith.Encoder
@@ -32,23 +40,26 @@ structure TokenPayload :=
   deriving Repr, DecidableEq
 
 /--
-Canonical token type for the IR.
+Canonical structured token type for the IR.
 `id` is for model-side indexing; `payload` is the semantic content.
+
+Named `TokenRecord` (rather than `Token`) to avoid colliding with the
+simple `Token := String` abbreviation used by the Encoder/Decoder.
 -/
-structure Token :=
+structure TokenRecord :=
   (id      : TokenId)
   (payload : TokenPayload)
   deriving Repr, DecidableEq
 
-/-- Helper to build a token with an auto-assigned id (for now just 0). -/
-def mkToken (kind : TokenKind) (label value : String) (extra : List String := []) : Token :=
+/-- Helper to build a token record with an auto-assigned id (for now just 0). -/
+def mkTokenRecord (kind : TokenKind) (label value : String) (extra : List String := []) : TokenRecord :=
   { id := 0, payload := { kind, label, value, extra } }
 
 /--
 Bridge to the existing String-based encoder/decoder.
 
 For now, you can still treat `String` as the serialized form,
-while `Token` is the semantic IR-level representation.
+while `TokenRecord` is the semantic IR-level representation.
 -/
 abbrev SerializedToken := String
 

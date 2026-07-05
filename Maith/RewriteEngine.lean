@@ -89,10 +89,12 @@ if isAddZero o then
 
 match o.inputs with
 | [xId, _] =>
+  -- Preserve the original operation's polarity rather than hardcoding
+  -- `Polarity.pos`, so the rewrite doesn't silently change semantics.
   { inputs := [xId],
     output := o.output,
     op := OperationOp.add,
-    polarity := Polarity.pos }
+    polarity := o.polarity }
 | _ => o
 
 else

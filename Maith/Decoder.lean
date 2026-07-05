@@ -103,8 +103,10 @@ def decodeOperation (toks : List Token) : Operation :=
   match toks with
   | ["O", inputsStr, outputStr, opStr, polStr] =>
       let trimmed := if inputsStr.startsWith "inputs:" then inputsStr.drop 7 else inputsStr
-      let inputs := (trimmed.split (· = ',')).toList.map (fun s => EntityId.var s.toString)
-      let output := EntityId.var (if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr)
+      -- `String.split` already returns `List String`; the previous `.toList`
+      -- call had nothing valid to resolve against and was removed.
+      let inputs := (trimmed.split (· = ',')).map (fun s => EntityId.var s)
+      let output := EntityId.var (if outputStr.startsWith "output:" then (outputStr.drop 7) else outputStr)
       let op :=
         if opStr = "add" then OperationOp.add
         else if opStr = "sub" then OperationOp.sub
