@@ -1,7 +1,7 @@
 {"synthetic": false,
  "schemaVersion": "2025-09-10",
  "outputs":
- {"o": ["908c7356231b4a0c.olean"],
+ {"o": ["fe8db3f4764b740c.olean"],
   "m": false,
   "i": "34cb1b1b5889f672.ilean",
   "c": "e9a7fb0773ccd8ca.c"},
@@ -17,7 +17,7 @@
        [["Tests.Harness transitive imports (legacy)", "00000000000006bb"],
         ["Tests.Harness:importAllArts", "5d240d09428f618d"],
         ["Maith.Normalizer transitive imports (legacy)", "b4841599fc441daf"],
-        ["Maith.Normalizer:importAllArts", "80e922857bddd547"]]]]],
+        ["Maith.Normalizer:importAllArts", "63d9d8916d145303"]]]]],
     ["libs",
      [["import dynlibs", "00000000000006bb"],
       ["package external libraries", "00000000000006bb"],
@@ -32,4 +32,4 @@
   ["Module.name: Tests.NormalizerTests", "5e5d8ae3b574836a"],
   ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
   ["Module.leanArgs: #[]", "00000000000006bb"]],
- "depHash": "e85ded3af355d60f"}
+ "depHash": "b9319049effedeaa"}

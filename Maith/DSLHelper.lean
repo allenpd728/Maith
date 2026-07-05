@@ -40,18 +40,6 @@ def mkRel (pol : Polarity) (src tgt : EntityId) (op : RelationOp) : Relation :=
 
 /-- Construct an `Operation` from input and output `EntityId`s with a given operator. -/
 
-structure Operation where
-
-inputs   : List EntityId
-
-output   : EntityId
-
-op       : OperationOp
-
-polarity : Polarity
-
-deriving Repr, DecidableEq
-
 def mkOp (pol : Polarity) (inputs : List EntityId) (output : EntityId) (op : OperationOp) : Operation :=
 
 { inputs := inputs, output := output, op := op, polarity := pol }

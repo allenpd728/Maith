@@ -20,6 +20,7 @@ import Maith.Graph
 import Maith.Encoder
 import Maith.Decoder
 import Maith.TrainingCorpus
+import Maith.ProblemGenerator
 import Maith.DSLHelper
 import Maith.Transpiler
 import Maith.RewriteEngine
