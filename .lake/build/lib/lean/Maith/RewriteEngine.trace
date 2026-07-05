@@ -1,0 +1,48 @@
+{"synthetic": false,
+ "schemaVersion": "2025-09-10",
+ "outputs":
+ {"o": ["ac8a998f32b304b3.olean"],
+  "m": false,
+  "i": "31502797c5a13d2d.ilean",
+  "c": "c9f9bfee91e05104.c"},
+ "log":
+ [{"message":
+   ".> LEAN_PATH=/Users/philipallen/Desktop/Maith/.lake/build/lib/lean /Users/philipallen/.elan/toolchains/leanprover--lean4---v4.31.0/bin/lean /Users/philipallen/Desktop/Maith/Maith/RewriteEngine.lean -o /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RewriteEngine.olean -i /Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RewriteEngine.ilean -c /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/RewriteEngine.c --setup /Users/philipallen/Desktop/Maith/.lake/build/ir/Maith/RewriteEngine.setup.json --json",
+   "level": "trace"},
+  {"message":
+   "Maith/RewriteEngine.lean:28:22: `structure ... :=` has been deprecated in favor of `structure ... where`.\n\nNote: This linter can be disabled with `set_option linter.deprecated false`",
+   "level": "warning"},
+  {"message":
+   "Maith/RewriteEngine.lean:42:24: `structure ... :=` has been deprecated in favor of `structure ... where`.\n\nNote: This linter can be disabled with `set_option linter.deprecated false`",
+   "level": "warning"},
+  {"message":
+   "Maith/RewriteEngine.lean:68:3: Variable name `xId` is not explicitly referenced.\n\nThe binding can be removed (if unused) or named `_` (if used implicitly).\n\nNote: This linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"}],
+ "inputs":
+ [["Maith.RewriteEngine:deps",
+   [["deps",
+     [["maith/Maith:extraDep", [["@maith:extraDep", "00000000000006bb"]]],
+      ["imports",
+       [["Maith.Graph transitive imports (legacy)", "295dd36e49a1cc52"],
+        ["Maith.Graph:importAllArts", "c5d33959bd97b7d6"],
+        ["Maith.Entity transitive imports (legacy)", "8e88799e089d04d8"],
+        ["Maith.Entity:importAllArts", "7b9cd1ac2767f280"],
+        ["Maith.Relation transitive imports (legacy)", "7bd039d7c7af17fb"],
+        ["Maith.Relation:importAllArts", "a53f8e02fe981406"],
+        ["Maith.Operation transitive imports (legacy)", "6634b633c795a371"],
+        ["Maith.Operation:importAllArts", "81262a5902773249"]]]]],
+    ["libs",
+     [["import dynlibs", "00000000000006bb"],
+      ["package external libraries", "00000000000006bb"],
+      ["module dynlibs", "00000000000006bb"],
+      ["module plugins", "00000000000006bb"]]]]],
+  ["Lean 4.31.0, commit 68218e876d2a38b1985b8590fff244a83c321783",
+   "fc45ac412f28501c"],
+  ["/Users/philipallen/Desktop/Maith/Maith/RewriteEngine.lean",
+   "de16e126a896c2ce"],
+  ["options", "00000000000006bb"],
+  ["isModule: false", "feefd2a0d3a1847e"],
+  ["Module.name: Maith.RewriteEngine", "52fcb692526f3df9"],
+  ["Package.id?: (some maith)", "dfa12329b6ef09d2"],
+  ["Module.leanArgs: #[]", "00000000000006bb"]],
+ "depHash": "2a7773c3183ecf98"}

@@ -4,7 +4,11 @@
  "name": "Maith.GraphEquivalence",
  "isModule": false,
  "importArts":
- {"Maith.RelationOp":
+ {"Maith.RewritePipeline":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RewritePipeline.olean"],
+  "Maith.RewriteEngine":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RewriteEngine.olean"],
+  "Maith.RelationOp":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/RelationOp.olean"],
   "Maith.Relation":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Relation.olean"],
@@ -14,6 +18,8 @@
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/OperationOp.olean"],
   "Maith.Operation":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Operation.olean"],
+  "Maith.Normalizer":
+  ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Normalizer.olean"],
   "Maith.Graph":
   ["/Users/philipallen/Desktop/Maith/.lake/build/lib/lean/Maith/Graph.olean"],
   "Maith.EntityId":

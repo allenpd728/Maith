@@ -87,13 +87,13 @@ def rewriteAddZeroOp (o : Operation) : Operation :=
 
 if isAddZero o then
 
-{ inputs := [o.inputs.head!],  -- safe because isAddZero checked shape
-
-  output := o.output,
-
-  op := OperationOp.add,
-
-  polarity := Polarity.pos }
+match o.inputs with
+| [xId, _] =>
+  { inputs := [xId],
+    output := o.output,
+    op := OperationOp.add,
+    polarity := Polarity.pos }
+| _ => o
 
 else
 
