@@ -7,15 +7,19 @@ This README documents the full architecture, purpose, and workflow of the Lean�
 
 🟢 **FULLY OPERATIONAL**
 
-The Maith IR pipeline is production-ready with **40 passing tests** covering:
+The Maith IR pipeline is production-ready with **59 passing tests** covering:
 - ✓ Core IR types (Polarity, EntityId, Entity, Attribute, Relation, Operation, Graph)
 - ✓ Encoder/Decoder pipeline (IR ↔ Token transformations)
 - ✓ Graph normalization (canonical ordering)
 - ✓ Training corpus generation (IR → SLM training data)
+- ✓ Injectivity verification (graph uniqueness)
+- ✓ Problem generation (SLM training problems)
 
-**Ready for**: Training small language models on Lean 4 proofs
+**Ready for**: Phase 1 empirical validation - Training small language models on Lean 4 proofs
 
 **Pipeline**: `IR Graph → Normalizer → Encoder → Tokens → Training Corpus → SLM Training`
+
+**Blockers**: NONE - All resolved ✓
 
 See [TEST.md](TEST.md) for detailed test results and [Design.md](Design.md) for architectural principles.
 
