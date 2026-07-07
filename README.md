@@ -100,6 +100,8 @@ Non-trivial extracted examples:
 
 Important caveat: this has been validated against exactly one module (`Mathlib.Algebra.Group.Defs`). Broader module coverage will likely surface additional failure categories.
 
+Evidence artifact committed intentionally: [`Corpus/corpus.jsonl`](Corpus/corpus.jsonl) (current 7.2MB extraction output for the module above).
+
 ### Binder scoping design (`EntityId.bound`)
 
 Lean uses De Bruijn indices for bound variables, so index-only IDs can collide across declarations. Maith addresses this with scoped IDs:
@@ -179,6 +181,8 @@ Outputs are written under `Corpus/`:
 - `Corpus/stats.json`
 - `Corpus/logs.txt`
 
+This repository currently tracks these corpus artifacts intentionally so readers can inspect real output directly.
+
 ## 12) Repository Structure
 
 ```text
@@ -202,7 +206,12 @@ Tests/
 python/
   corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
   build_dataset.py         # CLI entry point that loads corpus and builds train/eval datasets
+docs/
+  LATEST_FIXES.md
+  SESSION_PROGRESS.md
+  CORPUS_PIPELINE_STATUS.md
+  TESTING_SUMMARY.md
+  Design.md
+  TEST.md
 CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
-LATEST_FIXES.md
-SESSION_PROGRESS.md
 ```
