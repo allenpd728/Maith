@@ -3,6 +3,8 @@
 **Date**: July 5, 2026  
 **Status**: ✅ **WORKING FOR SUPPLIED SOURCES**
 
+Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+
 ## Overview
 
 The Mathlib → DSL → IR → Tokens → Corpus pipeline now round-trips real graphs, normalizes through `Maith.Normalizer`, and writes JSON/JSONL output to disk.
