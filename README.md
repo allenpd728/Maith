@@ -215,3 +215,7 @@ docs/
   TEST.md
 CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
 ```
+
+## 13) License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
