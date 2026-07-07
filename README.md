@@ -149,7 +149,8 @@ These comparative experiments have **not yet been run**. The current evidence is
 ## 11) Building the Project
 
 ```bash
-cd /Users/philipallen/Desktop/Maith
+git clone <repo-url>
+cd Maith
 lake build tests
 ./.lake/build/bin/tests
 ```
@@ -157,7 +158,7 @@ lake build tests
 To run the current corpus build entry point:
 
 ```bash
-cd /Users/philipallen/Desktop/Maith
+cd Maith
 cat > /tmp/run-corpus.lean << 'EOF'
 import Maith.MathlibCorpusBuilder
 open Lean.DSL
@@ -191,9 +192,8 @@ Tests/
   DecoderTests.lean
   ...
 python/
-  loader.py                # corpus JSONL loading/validation
-  vocab.py                 # vocabulary construction
-  dataset.py               # train/eval split + dataset wrappers
+  corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
+  build_dataset.py         # CLI entry point that loads corpus and builds train/eval datasets
 CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
 LATEST_FIXES.md
 SESSION_PROGRESS.md
