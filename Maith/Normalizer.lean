@@ -25,9 +25,11 @@ Variables come before terms; alphabetical / numeric inside each class.
 
 def normalizeEntityId : EntityId → Int
 
-| EntityId.var _  => 0
+| EntityId.var _   => 0
 
-| EntityId.term _ => 1
+| EntityId.bound _ => 1
+
+| EntityId.term _  => 2
 
 /-- Canonical ordering for Entity. -/
 
@@ -35,9 +37,11 @@ def normalizeEntity (e : Entity) : Int :=
 
 match e.id with
 
-| EntityId.var _  => 0
+| EntityId.var _   => 0
 
-| EntityId.term _ => 1
+| EntityId.bound _ => 1
+
+| EntityId.term _  => 2
 
 /-- Sort entities canonically. -/
 
@@ -47,13 +51,23 @@ ents.mergeSort (fun a b =>
 
 match a.id, b.id with
 
-| EntityId.var s1, EntityId.var s2 => s1 < s2
+| EntityId.var s1,    EntityId.var s2    => s1 < s2
 
-| EntityId.var _,  EntityId.term _ => true
+| EntityId.var _,     EntityId.bound _   => true
 
-| EntityId.term _, EntityId.var _  => false
+| EntityId.var _,     EntityId.term _    => true
 
-| EntityId.term n1, EntityId.term n2 => n1 < n2
+| EntityId.bound _,   EntityId.var _     => false
+
+| EntityId.bound s1,  EntityId.bound s2  => s1 < s2
+
+| EntityId.bound _,   EntityId.term _    => true
+
+| EntityId.term _,    EntityId.var _     => false
+
+| EntityId.term _,    EntityId.bound _   => false
+
+| EntityId.term n1,   EntityId.term n2   => n1 < n2
 
 )
 
@@ -69,13 +83,23 @@ else
 
   match a.target, b.target with
 
-  | EntityId.var s1, EntityId.var s2 => s1 < s2
+  | EntityId.var s1,    EntityId.var s2    => s1 < s2
 
-  | EntityId.var _,  EntityId.term _ => true
+  | EntityId.var _,     EntityId.bound _   => true
 
-  | EntityId.term _, EntityId.var _  => false
+  | EntityId.var _,     EntityId.term _    => true
 
-  | EntityId.term n1, EntityId.term n2 => n1 < n2
+  | EntityId.bound _,   EntityId.var _     => false
+
+  | EntityId.bound s1,  EntityId.bound s2  => s1 < s2
+
+  | EntityId.bound _,   EntityId.term _    => true
+
+  | EntityId.term _,    EntityId.var _     => false
+
+  | EntityId.term _,    EntityId.bound _   => false
+
+  | EntityId.term n1,   EntityId.term n2   => n1 < n2
 
 )
 

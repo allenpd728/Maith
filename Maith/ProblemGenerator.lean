@@ -45,6 +45,8 @@ structure GeneratedProblem where
   leanSource : String
   /-- IR Graph representing the equation -/
   graph : Graph
+  /-- Witness x when the generator can prove the equation. -/
+  witness : Option Int
 
 deriving Repr, DecidableEq
 
@@ -109,11 +111,22 @@ def buildEquationGraph (a b c : Int) : Graph :=
   }
 
 /-- Generate Lean 4 source code for the problem statement and proof sketch. -/
-def generateLeanSource (a b c : Int) : String :=
-  let x := c / a  -- Simple solution (ignoring integer division issues for now)
-  s!"theorem solve_equation : ∃ x : ℤ, {a} * x + {b} = {c} := by
+def deriveWitness? (a b c : Int) : Option Int :=
+  if _h : a = 0 then
+    none
+  else
+    let candidate := (c - b) / a
+    if a * candidate + b = c then some candidate else none
+
+/-- Generate Lean 4 source code for the problem statement and proof sketch. -/
+def generateLeanSource (a b c : Int) (witness : Option Int) : String :=
+  match witness with
+  | some x =>
+      s!"theorem solve_equation : ∃ x : ℤ, {a} * x + {b} = {c} := by
   use {x}
   ring"
+  | none =>
+      s!"-- Skipped: generator could not prove {a} * x + {b} = {c}"
 
 /-- Generate a single problem with given coefficients. -/
 def generateProblem (a b c : Int) : GeneratedProblem :=
@@ -121,8 +134,9 @@ def generateProblem (a b c : Int) : GeneratedProblem :=
     a := a,
     b := b,
     c := c,
-    leanSource := generateLeanSource a b c,
-    graph := buildEquationGraph a b c
+    leanSource := generateLeanSource a b c (deriveWitness? a b c),
+    graph := buildEquationGraph a b c,
+    witness := deriveWitness? a b c
   }
 
 /-- Simple deterministic pseudo-random number generation. -/
@@ -131,14 +145,29 @@ def pseudoRandom (seed : Nat) (min max : Int) : Int :=
   let hash := (seed * 1664525 + 1013904223) % (range.natAbs : Nat)  -- Linear congruential generator
   min + (hash : Int)
 
+def pseudoRandomNonZero (seed : Nat) (min max : Int) : Int :=
+  let rangeSize := (max - min + 1).natAbs
+  let candidates := List.range rangeSize |>.map (fun off => pseudoRandom (seed + off) min max)
+  match candidates.find? (fun n => n ≠ 0) with
+  | some n => n
+  | none => if min ≠ 0 then min else if max ≠ 0 then max else 1
+
 /-- Generate a batch of problems with pseudo-random coefficients. -/
 def generateProblems (config : ProblemGenConfig) : List GeneratedProblem :=
   List.range config.problemCount |>.map (fun i =>
     let seed := i * 7  -- Deterministic pseudo-random seed
-    let a := pseudoRandom (seed) config.coeffMin config.coeffMax
+    let a := pseudoRandomNonZero seed config.coeffMin config.coeffMax
     let b := pseudoRandom (seed + 1) config.coeffMin config.coeffMax
-    let c := pseudoRandom (seed + 2) config.coeffMin config.coeffMax
-    generateProblem a b c
+    let x : Int := Int.ofNat i
+    let c := a * x + b
+    {
+      a := a,
+      b := b,
+      c := c,
+      leanSource := generateLeanSource a b c (some x),
+      graph := buildEquationGraph a b c,
+      witness := some x
+    }
   )
 
 /-- Convert a GeneratedProblem to a TrainingExample for corpus. -/
@@ -168,12 +197,17 @@ def generateCorpusFromProblems (config : ProblemGenConfig) : ProblemCorpusStats 
   let graphCount := examples.length
   let totalTokens := examples.foldl (fun acc ex => acc + ex.tokens.length) 0
   let avgTokensPerGraph := if graphCount > 0 then totalTokens / graphCount else 0
+  let tokenSequences := examples.map (fun ex => ex.tokens)
+  let uniqueTokenCount :=
+    tokenSequences.foldl (fun acc tokens =>
+      if acc.any (fun seen => seen = tokens) then acc else acc ++ [tokens]
+    ) [] |>.length
   {
     graphCount := graphCount,
-    uniqueTokenCount := graphCount,  -- Assume all distinct (verified by injectivity tests)
+    uniqueTokenCount := uniqueTokenCount,
     totalTokens := totalTokens,
     avgTokensPerGraph := avgTokensPerGraph,
-    collisionRate := if graphCount > 0 then (graphCount - graphCount) * 100 / graphCount else 0
+    collisionRate := if graphCount > 0 then (graphCount - uniqueTokenCount) * 100 / graphCount else 0
   }
 
 /-- Report statistics about generated problems. -/

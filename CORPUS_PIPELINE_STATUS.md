@@ -1,11 +1,11 @@
 # Corpus Pipeline Implementation Status
 
 **Date**: July 5, 2026  
-**Status**: ✅ **COMPLETE AND TESTED**
+**Status**: ✅ **WORKING FOR SUPPLIED SOURCES**
 
 ## Overview
 
-The complete Mathlib → DSL → IR → Tokens → Corpus pipeline has been implemented, debugged, and fully integrated into the Maith IR system.
+The Mathlib → DSL → IR → Tokens → Corpus pipeline now round-trips real graphs, normalizes through `Maith.Normalizer`, and writes JSON/JSONL output to disk.
 
 ## Implementation Summary
 
@@ -14,9 +14,9 @@ The complete Mathlib → DSL → IR → Tokens → Corpus pipeline has been impl
 | Module | Lines | Status | Purpose |
 |--------|-------|--------|---------|
 | `CorpusBuilder.lean` | 328 | ✅ Complete | Core data structures for pipeline |
-| `ProcessingPipeline.lean` | 112 | ✅ Complete | All 9 processing stages |
-| `MathlibLoader.lean` | 176 | ✅ Complete | Mathlib enumeration & filtering |
-| `CorpusSerializer.lean` | 78 | ✅ Complete | JSONL serialization to disk |
+| `ProcessingPipeline.lean` | 112 | ✅ Complete | Real normalization wiring |
+| `MathlibLoader.lean` | 176 | ✅ Complete | Mathlib enumeration & source preservation |
+| `CorpusSerializer.lean` | 78 | ✅ Complete | JSON/JSONL serialization to disk |
 | `MathlibCorpusBuilder.lean` | 230 | ✅ Complete | Top-level orchestration |
 | `Tests/CorpusPipelineTests.lean` | 127 | ✅ Complete | Validation test suite |
 
@@ -25,7 +25,7 @@ The complete Mathlib → DSL → IR → Tokens → Corpus pipeline has been impl
 ### Pipeline Architecture
 
 ```
-1. Enumeration       → Load Mathlib declarations from 5 standard modules
+1. Enumeration       → Load declarations from supplied module-source lists
 2. Extraction       → Parse Lean expressions and metadata
 3. Transpilation    → Convert Lean → DSL using Transpiler
 4. IR Construction  → Build IR Graph from DSL
@@ -71,33 +71,25 @@ structure TrainingCorpus where
 
 ## Error Fixes Applied
 
-### 1. MathlibLoader.lean - String.Slice Type Mismatch
-**Issue**: `String.split` returns `List String.Slice`, not `List String`  
-**Fix**: Convert slices to strings using `toString` before comparisons  
-**Line**: 82 (now corrected)
+### 1. MathlibLoader.lean - Source text preservation
+**Issue**: Declaration extraction discarded the original source text  
+**Fix**: Added a `source : String` field to `DeclarationMetadata` and threaded it through extraction
 
-### 2. ProcessingPipeline.lean - Syntax and Naming
-**Issues**:
-- Record construction syntax incompatible with type inference
-- Function name conflicts (e.g., `normalizeGraph` duplicated in Normalizer)
-- Pattern matching requiring explicit `ProcessingResult` constructors
+### 2. ProcessingPipeline.lean - Normalization wiring
+**Issue**: The pipeline had identity canonicalization functions  
+**Fix**: `pipelineNormalizeGraph` now delegates directly to `Maith.Normalizer.normalizeGraph`
 
-**Fixes**:
-- Used tuple construction `⟨a, b, c, d⟩` instead of record literals
-- Renamed to `pipelineNormalizeGraph` to avoid conflicts
-- Explicit full paths: `ProcessingResult.ok` / `ProcessingResult.fail`
-
-### 3. CorpusSerializer.lean - String Escaping
-**Issue**: Complex JSON escaping in string interpolations causing parse errors  
-**Fix**: Simplified to basic string concatenation for robustness
+### 3. CorpusSerializer.lean - Real serialization
+**Issue**: Serialization only printed log messages and discarded training data  
+**Fix**: Implemented JSON/JSONL encoding and real `IO.FS.writeFile` persistence
 
 ### 4. MathlibCorpusBuilder.lean - IO Monad Binding
 **Issue**: `← ` operator with non-IO return values  
 **Fix**: Used `_ ← ` to discard IO Unit, then continued with pure operations
 
-### 5. ProblemGenerator.lean - TrainingExample Integration
-**Issue**: Old `TrainingExample` definition (only graph + tokens) incompatible with new one  
-**Fix**: Updated to use all 5 fields from new structure definition in CorpusBuilder
+### 5. ProblemGenerator.lean - Solvable batch generation
+**Issue**: Zero coefficients and arbitrary witnesses could produce false theorems  
+**Fix**: Reject `a = 0`, generate solvable batches, and verify each witness
 
 ### 6. TrainingCorpus.lean - Definition Conflicts
 **Issue**: Duplicate `TrainingExample` and `CorpusStats` definitions across modules  
@@ -107,8 +99,8 @@ structure TrainingCorpus where
 
 ```
 Build Summary:
-  Total targets: 62
-  Successful: 62 ✅
+  Total targets: 64
+  Successful: 64 ✅
   Failed: 0
   
 Compilation time: ~8 seconds
@@ -125,15 +117,16 @@ Test Suite: CorpusPipelineTests
   ✓ testInjectivityCheck              - Duplicate detection works
   ✓ testEnumerationConfig             - Default config valid
   ✓ testSerializationConfig           - Serialization settings valid
+  ✓ testExtractAllDeclarationsPreservesSource - Source text preserved
 
-Total Corpus Pipeline Tests: 6/6 PASSING
-Total Test Suite: 47/47 PASSING
+Total Corpus Pipeline Tests: 7/7 PASSING
+Total Test Suite: 54/54 PASSING
 ```
 
 ## Key Features Implemented
 
 ### ✅ Complete Pipeline
-- Lean declaration enumeration from 5 Mathlib modules
+- Lean declaration enumeration from supplied module sources
 - Full AST → DSL → IR → Tokens conversion chain
 - Per-stage error handling with descriptive messages
 - Streaming-friendly one-declaration-at-a-time processing
@@ -149,9 +142,9 @@ Total Test Suite: 47/47 PASSING
 - Version metadata for reproducibility across runs
 - JSONL format with human-readable logs
 
-### ✅ Production Ready
+### ✅ Validated
 - Zero compiler errors
-- 100% test coverage for core pipeline
+- Counted tests passing: 54/54
 - Comprehensive error messages
 - Modular design for future extensions
 
@@ -176,14 +169,13 @@ Init.lean (imports all)
 ## Next Steps
 
 ### Immediate (Ready Now)
-1. ✅ Run full pipeline on real Mathlib subset
-2. ✅ Generate training corpus from Mathlib declarations
+1. ✅ Run the pipeline on supplied module-source lists
+2. ✅ Generate training corpus from those declarations
 3. ✅ Export to JSONL for ML pipeline
 
 ### Short-term
-- Integrate with actual Lean environment API for real declaration enumeration
-- Add file I/O using System.File for persistent corpus storage
-- Implement batched processing with memory efficiency
+- Integrate with actual Lean environment API for automatic declaration enumeration
+- Add batched processing with memory efficiency improvements
 - Add progress reporting and checkpointing
 
 ### Medium-term
@@ -194,6 +186,6 @@ Init.lean (imports all)
 
 ## Conclusion
 
-The Mathlib corpus pipeline is **feature-complete, tested, and ready for production use**. All compilation errors have been resolved, the full pipeline compiles cleanly, and test coverage validates all major functionality.
+The Mathlib corpus pipeline is **working for supplied inputs and validated by tests**. Automatic live-environment enumeration is still manual, but the transpiler, decoder, serializer, and batch generator now behave on real data.
 
-**Recommendation**: Proceed to Phase 1 empirical validation with real Mathlib corpus generation.
+**Recommendation**: Use supplied module sources for empirical validation and extend automatic enumeration next.

@@ -44,7 +44,7 @@ inductive RelationOp
 
 | gt     -- >
 
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 instance : ToString RelationOp :=
   ⟨fun op => match op with

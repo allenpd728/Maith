@@ -7,6 +7,7 @@ Tests for the Decoder module.
 
 import Tests.Harness
 import Maith.Decoder
+import Maith.Encoder
 
 namespace Tests.Decoder
 
@@ -35,9 +36,28 @@ def decoderTests : List TestResult := [
     ((defaultDecoder.decodeOperation ["O", "inputs:x,y", "output:z", "add", "pos"]).op = OperationOp.add)
     "Should decode operation from tokens correctly",
   
+  runTest "Decoder round-trips a non-empty Graph"
+    (let graph : Graph := {
+      entities := [
+        { id := EntityId.var "x", polarity := Polarity.pos },
+        { id := EntityId.term 1, polarity := Polarity.neut }
+      ]
+      attributes := [
+        { target := EntityId.var "x", key := "value", value := "42", polarity := Polarity.pos }
+      ]
+      relations := [
+        { src := EntityId.var "x", tgt := EntityId.term 1, op := RelationOp.eq, polarity := Polarity.neg }
+      ]
+      operations := [
+        { inputs := [EntityId.var "x", EntityId.term 1], output := EntityId.var "y", op := OperationOp.add, polarity := Polarity.pos }
+      ]
+    }
+    defaultDecoder.decodeGraph (encodeGraph graph) = graph)
+    "Should decode encoded graph back to the original graph",
+
   runTest "Decoder decodes empty Graph correctly"
-    ((defaultDecoder.decodeGraph ["GRAPH_BEGIN", "GRAPH_END"]).entities = [])
-    "Should decode empty graph placeholder correctly"
+    (defaultDecoder.decodeGraph ["GRAPH_BEGIN", "GRAPH_END"] = { entities := [], attributes := [], relations := [], operations := [] })
+    "Should decode an empty graph"
 ]
 
 def runAllDecoderTests : IO Unit := do

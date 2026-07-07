@@ -2,15 +2,16 @@
 
 ## Verified build
 
-- `lake clean && lake build tests` completed successfully on 2026-07-05.
-- Build completed with **62 jobs** and **0 failures**.
+- `lake build tests` completed successfully on 2026-07-05.
+- Build completed with **64 jobs** and **0 failures**.
 - `./.lake/build/bin/tests` completed successfully.
 
 ## Verified results
 
 - **54/54 counted tests passed**
-- **6 corpus pipeline validation checks passed**
-- Lean emitted deprecation warnings from existing `structure :=` declarations.
+- Corpus pipeline validation checks passed
+- Serializer IO integration passed
+- Lean emitted deprecation warnings from the existing string-trim helpers.
 
 ## Files updated during verification
 
@@ -19,16 +20,21 @@
 - `Maith/Transpiler.lean`
 - `Maith/Decoder.lean`
 - `Maith/ProblemGenerator.lean`
-- `Maith/GraphEquivalence.lean` (verified as building with the current imports)
+- `Maith/CorpusSerializer.lean`
+- `Maith/MathlibLoader.lean`
+- `Maith/ProcessingPipeline.lean`
+- `Tests/CorpusTests.lean` removed
 
 ## Issues resolved on 2026-07-05
 
 - Lean 3 list syntax in `Examples.lean`
 - Missing imports in `Cirriculum.lean`
 - Corrupted field-access / escaped syntax in `Transpiler.lean`
-- String slice handling in `Decoder.lean`
-- TrainingExample field mismatch in `ProblemGenerator.lean`
-- Boolean structural equality verification in `GraphEquivalence.lean`
+- Graph reconstruction in `Decoder.lean`
+- Solvable batch generation in `ProblemGenerator.lean`
+- Real file persistence in `CorpusSerializer.lean`
+- Source preservation in `MathlibLoader.lean`
+- Normalization wiring in `ProcessingPipeline.lean`
 
 ## Current status
 

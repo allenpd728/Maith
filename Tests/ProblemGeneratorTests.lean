@@ -25,7 +25,7 @@ def testSingleProblemGeneration : TestResult :=
   let problem := generateProblem 2 3 11  -- 2*x + 3 = 11
   let hasLeanSource := problem.leanSource.length > 0
   let hasGraph := problem.graph.entities.length > 0
-  let passed := hasLeanSource ∧ hasGraph
+  let passed := hasLeanSource ∧ hasGraph ∧ problem.witness.isSome
   runTest "Single problem generates Lean and IR" passed
     s!"Lean source: {problem.leanSource.length} chars, Graph entities: {problem.graph.entities.length}"
 
@@ -51,7 +51,8 @@ def testProblemBatchGeneration : TestResult :=
   let problems := generateProblems config
   let expectedCount := 20
   let actualCount := problems.length
-  runTest "Generate batch of problems" (actualCount = expectedCount)
+  let noZeroCoefficients := problems.all (fun p => p.a ≠ 0)
+  runTest "Generate batch of problems" (actualCount = expectedCount ∧ noZeroCoefficients)
     s!"Expected {expectedCount} problems, got {actualCount}"
 
 /-- Test that generated corpus integrates with pipeline -/
@@ -75,7 +76,6 @@ def testLargeScaleGeneration : TestResult :=
 def testGeneratedProblemUniqueness : TestResult :=
   let config := { coeffMin := -5, coeffMax := 5, problemCount := 30 }
   let stats := generateCorpusFromProblems config
-  -- With injectivity proven, token sequences should be unique for distinct graphs
   let allUnique := stats.graphCount = stats.uniqueTokenCount
   runTest "Generated problems encode uniquely" allUnique
     s!"Generated {stats.graphCount} unique token sequences"
@@ -85,9 +85,20 @@ def testCorpusStatistics : TestResult :=
   let config := { coeffMin := -2, coeffMax := 2, problemCount := 15 }
   let stats := generateCorpusFromProblems config
   let graphCountCorrect := stats.graphCount = 15
-  let avgTokensCorrect := if stats.graphCount > 0 then stats.avgTokensPerGraph > 0 else true
+  let avgTokensCorrect := stats.avgTokensPerGraph > 0
   runTest "Corpus statistics computed correctly" (graphCountCorrect ∧ avgTokensCorrect)
     s!"Graphs: {stats.graphCount}, Avg tokens: {stats.avgTokensPerGraph}"
+
+def testGeneratedEquationSolutions : TestResult :=
+  let config := { coeffMin := -7, coeffMax := 7, problemCount := 25 }
+  let problems := generateProblems config
+  let solutionsValid := problems.all (fun p =>
+    match p.witness with
+    | some x => p.a * x + p.b = p.c
+    | none => false
+  )
+  runTest "Generated equations are actually solvable" solutionsValid
+    "Every generated problem should satisfy its claimed witness"
 
 def problemGeneratorTests : List TestResult := [
   testSingleProblemGeneration,
@@ -97,7 +108,8 @@ def problemGeneratorTests : List TestResult := [
   testCorpusGeneration,
   testLargeScaleGeneration,
   testGeneratedProblemUniqueness,
-  testCorpusStatistics
+  testCorpusStatistics,
+  testGeneratedEquationSolutions
 ]
 
 def runAllProblemGeneratorTests : IO Unit := do
