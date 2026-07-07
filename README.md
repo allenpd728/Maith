@@ -25,9 +25,11 @@ High-level flow:
 - Extract declaration semantics from elaborated `Expr` trees (`MetaExtractor.lean`)
 - Build IR Graph (`Entity`, `Attribute`, `Relation`, `Operation`)
 - Canonicalize graph ordering (`Normalizer.lean`)
-- Encode canonical graph to tokens (`Encoder.lean`)
+- Encode canonical graph to tokens (`Encoder.lean`) — **currently a scaffold, see Limitations**
 - Serialize examples to JSONL (`CorpusSerializer.lean`)
 - Consume JSONL in `python/` for vocab/tokenizer, splits, and dataset objects
+
+The extraction stage (`MetaExtractor.lean` → IR Graph → `Normalizer.lean`) is the part that has been run against real Mathlib code and produced the results in section 7. The encode/decode/transpile stage is not yet at that level of maturity — see Limitations below before assuming the full pipeline is end-to-end functional.
 
 ## 5) Why Not Train Directly on Lean Source?
 
@@ -57,6 +59,8 @@ flowchart LR
 Concrete pipeline in this repo:
 
 `Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
+
+The extraction and normalization stages (up through the canonical graph) are implemented and validated against real Mathlib input (see section 7). The encoder/decoder stage past that point is currently a placeholder implementation — see Limitations.
 
 ## 7) Current Status / Results
 
@@ -108,6 +112,7 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 ## 8) Limitations
 
 - Validation so far is on one Mathlib module.
+- **`Encoder.lean`, `Decoder.lean`, and `Transpiler.lean` are currently minimal scaffolds, not full implementations.** Each function compiles and passes its own unit tests against simple hand-constructed inputs, but the modules' own doc comments describe them as placeholder logic put in place to keep the project structurally complete while the real encode/decode/transpile logic is built out. `Decoder.lean` explicitly notes it is "NOT a full reversible codec." Treat the extraction and normalization stages (sections 4, 6, 7) as the validated part of the pipeline, and the encode/decode/transpile stage as not yet production-quality.
 - No language model has been trained yet on Maith corpora.
 - No comparative study against Lean-source tokenization or AST serialization has been run yet.
 - Current extraction still has unresolved failure categories (see sections 7 and 9).
@@ -116,10 +121,11 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 
 1. **Phase 1: Build semantic IR** — done (this repo)
 2. **Phase 2: Extract large portions of Mathlib** — started (one module completed)
-3. **Phase 3: Build token vocabulary** — in progress via `python/`
-4. **Phase 4: Train transformer models** — not started
-5. **Phase 5: Compare against raw Lean tokenization** — not started
-6. **Phase 6: Measure theorem-proving performance** — not started
+3. **Phase 2.5: Complete Encoder/Decoder/Transpiler implementations** — not started (currently scaffolds, see Limitations)
+4. **Phase 3: Build token vocabulary** — in progress via `python/`
+5. **Phase 4: Train transformer models** — not started
+6. **Phase 5: Compare against raw Lean tokenization** — not started
+7. **Phase 6: Measure theorem-proving performance** — not started
 
 Remaining IR milestones with current size estimates:
 
@@ -144,7 +150,7 @@ Candidate metrics (planned):
 - Proof-search efficiency (time/steps)
 - Embedding quality for mathematical similarity/retrieval
 
-These comparative experiments have **not yet been run**. The current evidence is extraction feasibility and coverage (section 7), not theorem-proving performance.
+These comparative experiments have **not yet been run**, and depend on completing the encoder/decoder work noted in Limitations first. The current evidence is extraction feasibility and coverage (section 7), not theorem-proving performance.
 
 ## 11) Building the Project
 
@@ -180,8 +186,9 @@ Maith/
   MetaExtractor.lean       # elaborated Lean Expr -> IR graph
   EntityId.lean            # includes EntityId.bound for scoped binders
   Normalizer.lean          # canonical ordering/normalization
-  Encoder.lean             # graph -> token sequence
-  Decoder.lean             # token -> graph parser
+  Encoder.lean             # graph -> token sequence (scaffold, see Limitations)
+  Decoder.lean             # token -> graph parser (scaffold, not a full reversible codec)
+  Transpiler.lean          # Lean syntax <-> IR graph (scaffold, see Limitations)
   CorpusSerializer.lean    # JSONL/stat serialization
   ProcessingPipeline.lean  # extraction + normalize + encode flow
   MathlibCorpusBuilder.lean
@@ -190,6 +197,7 @@ Tests/
   CorpusPipelineTests.lean
   InjectivityTests.lean
   DecoderTests.lean
+  EncoderTests.lean
   ...
 python/
   corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
