@@ -1,21 +1,81 @@
-# Maith IR Pipeline
+# Maith: Semantic IR for Lean Mathematics
 
-A Lean 4 pipeline that extracts IR graphs from real Mathlib declarations using
-Lean's own metaprogramming APIs, then encodes them as token sequences for
-machine-learning training corpora.
+Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
-## Current status (2026-07-06)
+## 1) Research Question
 
-- **Build**: `lake build tests` — 66 jobs, 0 failures
-- **Tests**: all pass (54 unit tests + corpus-pipeline and serializer integration checks)
-- **Corpus extraction** against `Mathlib.Algebra.Group.Defs` (1,129 declarations):
+Can language models become better theorem provers if trained on a representation of mathematics that exposes semantic structure rather than source syntax?
+
+## 2) Hypothesis
+
+Our central hypothesis is that language models trained on a canonical semantic representation of formal mathematics — rather than raw proof assistant source code — will learn more useful mathematical representations, resulting in improved theorem prediction, proof search, and proof completion.
+
+Maith is a **candidate representation** for testing that hypothesis; effectiveness is not assumed and remains to be demonstrated empirically.
+
+## 3) Why This Matters
+
+Recent progress in automated theorem proving with language models has focused heavily on model scale and data quantity. We hypothesize that representation choice is also a major bottleneck: if training data exposes semantic structure more directly, models may need less capacity to learn equivalent mathematical patterns. Maith exists to make that hypothesis testable in a Lean/Mathlib setting.
+
+## 4) Approach
+
+Maith does **not** parse Lean source strings into IR. Instead, it runs inside Lean and extracts IR from the elaborated environment (`Environment`, `ConstantInfo`, `Expr`), where implicit arguments, notation expansion, and typing information are already resolved.
+
+High-level flow:
+
+- Extract declaration semantics from elaborated `Expr` trees (`MetaExtractor.lean`)
+- Build IR Graph (`Entity`, `Attribute`, `Relation`, `Operation`)
+- Canonicalize graph ordering (`Normalizer.lean`)
+- Encode canonical graph to tokens (`Encoder.lean`)
+- Serialize examples to JSONL (`CorpusSerializer.lean`)
+- Consume JSONL in `python/` for vocab/tokenizer, splits, and dataset objects
+
+## 5) Why Not Train Directly on Lean Source?
+
+This section is motivation, not a claim of proven superiority.
+
+We hypothesize that source-token training may be less sample-efficient because:
+
+- Lean notation can hide semantic equivalences that elaborate to similar terms.
+- Elaboration inserts implicit arguments that are absent in surface syntax.
+- Macros and coercions can map many textual forms to related elaborated structures.
+- Multiple syntactic encodings of the same idea may collapse into a smaller set of semantic patterns after elaboration.
+
+We expect a canonical semantic representation to be easier for sequence models to learn from than raw source in at least some theorem-prediction/proof-search settings, but this remains to be tested.
+
+## 6) Architecture
+
+```mermaid
+flowchart LR
+    A[Lean source] --> B[Lean elaborator]
+    B --> C[Expr]
+    C --> D[Maith graph IR]
+    D --> E[Canonical semantic graph]
+    E --> F[Token sequence / embeddings]
+    F --> G[Transformer training]
+```
+
+Concrete pipeline in this repo:
+
+`Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
+
+## 7) Current Status / Results
+
+### Build and tests
+
+- `lake build tests` passes (**66 jobs, 0 failures**).
+- All tests pass (**54 unit tests + corpus-pipeline/serializer integration checks**).
+
+### Corpus extraction result (real run)
+
+Target module: `Mathlib.Algebra.Group.Defs`  
+Total declarations: **1,129**
 
 | | Count | % |
 |---|---|---|
 | **Successful extractions** | **792** | **70%** |
 | Failed | 337 | 30% |
 
-**Failure breakdown (exhaustive, not rounded):**
+Failure breakdown (exhaustive):
 
 | Count | Reason |
 |---|---|
@@ -25,12 +85,7 @@ machine-learning training corpora.
 | 6 | value extraction failed: let expression |
 | 4 | value extraction failed: `Eq` arity (heterogeneous equality) |
 
-This breakdown is the honest measure of where the IR stands. A 70% success rate on
-one module is meaningful, but other modules will likely surface new failure categories.
-This has been validated against exactly one module; the failure taxonomy will likely
-grow with broader corpus coverage.
-
-**Example non-trivial successes:**
+Non-trivial extracted examples:
 
 | Declaration | Entities | Relations | Operations |
 |---|---|---|---|
@@ -39,165 +94,107 @@ grow with broader corpus coverage.
 | `mul_one` | 11 | 3 | 6 |
 | `DivisionMonoid.mk` | 34 | 14 | 21 |
 
----
+Important caveat: this has been validated against exactly one module (`Mathlib.Algebra.Group.Defs`). Broader module coverage will likely surface additional failure categories.
 
-## Architecture
+### Binder scoping design (`EntityId.bound`)
 
-### The pivot: why metaprogramming instead of string parsing
+Lean uses De Bruijn indices for bound variables, so index-only IDs can collide across declarations. Maith addresses this with scoped IDs:
 
-The original design attempted to re-derive IR structure from Lean source text
-(a `String → Graph` approach). This was fundamentally wrong: it would require
-reimplementing Lean's parser, macro expander, elaborator, implicit argument
-inference, and typeclass resolution from scratch — with none of Lean's actual
-type information available. That cannot reach real Mathlib content regardless
-of how much the string-parsing logic is improved.
+- `EntityId.bound : String -> EntityId`
+- current naming scheme: `"declName/depth/binderName"`
 
-**The fix is architectural**: extract IR structure directly from Lean's own
-elaborated representation using Lean 4's metaprogramming API (`Environment`,
-`ConstantInfo`, `Expr`). Lean already has the fully parsed, fully elaborated form
-in memory — use it instead of re-deriving it from text.
+This avoids cross-declaration collisions and is covered by `testScopedBinderInjectivity` in `Tests/CorpusPipelineTests.lean`.
 
-### Pipeline
+## 8) Limitations
 
-```
-Lean environment (real declarations, real Expr trees)
-        │
-        ▼   MetaExtractor.lean  ←── walks ConstantInfo / Expr directly
-   IR Graph (Entity / Attribute / Relation / Operation)
-        │
-        ▼   Normalizer.lean
-   Sorted, canonical Graph
-        │
-        ▼   Encoder.lean
-   Token sequence
-        │
-        ▼   CorpusSerializer.lean
-   corpus.jsonl  (one line per declaration, schema in CORPUS_SCHEMA.md)
-        │
-        ▼   python/  (separate from Lean code)
-   Vocab / tokenizer / train-eval split / dataset
-```
+- Validation so far is on one Mathlib module.
+- No language model has been trained yet on Maith corpora.
+- No comparative study against Lean-source tokenization or AST serialization has been run yet.
+- Current extraction still has unresolved failure categories (see sections 7 and 9).
 
-**Division of responsibility**: Lean owns extraction — only Lean understands
-Lean's elaborated terms. Python owns everything downstream of the JSONL: token
-ID assignment, vocabulary construction, data splits, and training. There is no
-Lean-source string parser anywhere in the codebase.
+## 9) Research Roadmap
 
-### Scoped entity IDs and De Bruijn safety
+1. **Phase 1: Build semantic IR** — done (this repo)
+2. **Phase 2: Extract large portions of Mathlib** — started (one module completed)
+3. **Phase 3: Build token vocabulary** — in progress via `python/`
+4. **Phase 4: Train transformer models** — not started
+5. **Phase 5: Compare against raw Lean tokenization** — not started
+6. **Phase 6: Measure theorem-proving performance** — not started
 
-A non-obvious but load-bearing design decision: Lean's elaborated terms use De
-Bruijn indices for bound variables (binders are nameless positions, 0 = innermost).
-Two different declarations can both have a bound variable at index 0 — they mean
-entirely different things. Naïvely assigning `EntityId` by De Bruijn index alone
-causes token collisions across declarations.
+Remaining IR milestones with current size estimates:
 
-The solution is `EntityId.bound : String → EntityId`, where the string is formed
-as `"declName/depth/binderName"`. This makes every scoped entity globally unique:
-the same binder name `x` in `mul_assoc` and `mul_comm` produces different entity
-IDs and thus different tokens. `testScopedBinderInjectivity` in
-`Tests/CorpusPipelineTests.lean` covers this property directly — two declarations
-both quantifying over a variable named `x` must produce non-colliding token streams.
+- **HOF application support** (`bvar`/`fvar` as function head): **265 failures** (217 type + 48 value)
+- **Projection expressions (`.proj`)**: **62 failures**
+- **`letE` support**: **6 failures**
+- **Heterogeneous `Eq` arity handling**: **4 failures**
 
----
+## 10) Evaluation Plan
 
-## Next milestones (prioritized by failure count)
+The core hypothesis will be tested by training and comparing models on:
 
-These are the three remaining IR gaps, each with a concrete failure count as a
-size estimate. They are listed in recommended implementation order.
+1. Lean source tokens
+2. Lean AST serialization
+3. Maith semantic IR tokens
 
-### 1. HOF application support — 265 failures (largest)
+Candidate metrics (planned):
 
-**What it is**: expressions of the form `f a b` where `f` is a bound or free
-variable (a `bvar` or `fvar` applied as a function), not a known constant.
-Examples: `Function.Injective f` expands to `∀ a b, f a = f b → a = b`, where
-`f a` has a `bvar` as the application head. The current IR can represent
-constant-headed operations (`HMul.hMul a b`) but not variable-headed ones.
+- Next-token prediction quality
+- Proof completion performance
+- Automated theorem-proving success rate
+- Proof-search efficiency (time/steps)
+- Embedding quality for mathematical similarity/retrieval
 
-**What it needs**: either a new `OperationOp.hof` constructor representing
-"apply the entity at position X to these arguments", or a relational encoding
-where `f a` becomes a `Relation` edge rather than an `Operation` node.
-This is likely the largest single lift because it touches the structural
-representation of function application — the most common thing in type theory.
+These comparative experiments have **not yet been run**. The current evidence is extraction feasibility and coverage (section 7), not theorem-proving performance.
 
-### 2. Projection expressions (`.proj`) — 62 failures
-
-**What it is**: structure field access, e.g. `s.field` encoded as `Expr.proj`.
-These appear in the values of definitions that destructure structures.
-
-**What it needs**: a new IR node or `RelationOp` variant representing
-"field access from entity X under field name Y". Relatively self-contained.
-
-### 3. `letE` (dependent let-binding) — 6 failures
-
-**What it is**: `let x := e₁; e₂`, encoded as `Expr.letE`. Low frequency now
-but will grow with more complex definitions.
-
-**What it needs**: an additional binder-context extension similar to `forallE`/`lam`,
-plus an IR representation for the bound value (an `Attribute` or new node type).
-Small scope, good warmup before tackling HOF.
-
-### 4. Heterogeneous `Eq` arity — 4 failures
-
-**What it is**: `HEq` / heterogeneous equality applied with unexpected arity.
-The current `extractRelation` for `Eq` assumes exactly two arguments; some
-elaborated forms supply type arguments too.
-
-**What it needs**: a guard or arity normalization step in the `Eq` case of
-`extractApplication`. Small and surgical.
-
----
-
-## Test suite
+## 11) Building the Project
 
 ```bash
+cd /Users/philipallen/Desktop/Maith
 lake build tests
 ./.lake/build/bin/tests
 ```
 
-Tests are organized by module in `Tests/`. Key tests:
+To run the current corpus build entry point:
 
-- `Tests/InjectivityTests.lean` — normalization does not collapse distinct graphs
-- `Tests/CorpusPipelineTests.lean` — end-to-end extraction including:
-  - `testScopedBinderInjectivity`: De Bruijn collision safety across declarations
-  - `testForallBodyWithOps`: non-trivial `∀ x y, x+y = y+x` extracts ≥2 ops
-  - `testCreateDeclarationMetadata`: real assertions on extracted metadata fields
-- `Tests/DecoderTests.lean` — token round-trips including `gen:` prefix
-- `Tests/NormalizerTests.lean`, `Tests/EncoderTests.lean` — component correctness
+```bash
+cd /Users/philipallen/Desktop/Maith
+cat > /tmp/run-corpus.lean << 'EOF'
+import Maith.MathlibCorpusBuilder
+open Lean.DSL
+#eval buildMathlibIRCorpusCustomModules ["Mathlib.Algebra.Group.Defs"]
+EOF
+lake env lean /tmp/run-corpus.lean
+```
 
----
+Outputs are written under `Corpus/`:
 
-## JSONL schema
+- `Corpus/corpus.jsonl`
+- `Corpus/stats.json`
+- `Corpus/logs.txt`
 
-See `CORPUS_SCHEMA.md`. The Python consumer (`python/`) reads that file as its
-stable contract and does not parse any Lean source text.
-
----
-
-## Directory structure
+## 12) Repository Structure
 
 ```text
 Maith/
-  EntityId.lean          ← EntityId.var | .bound | .term; scoped naming
-  MetaExtractor.lean     ← walks ConstantInfo/Expr; core extraction logic
-  ProcessingPipeline.lean
-  CorpusSerializer.lean
+  MetaExtractor.lean       # elaborated Lean Expr -> IR graph
+  EntityId.lean            # includes EntityId.bound for scoped binders
+  Normalizer.lean          # canonical ordering/normalization
+  Encoder.lean             # graph -> token sequence
+  Decoder.lean             # token -> graph parser
+  CorpusSerializer.lean    # JSONL/stat serialization
+  ProcessingPipeline.lean  # extraction + normalize + encode flow
   MathlibCorpusBuilder.lean
-  OperationOp.lean       ← includes generic : String → OperationOp fallback
-  Normalizer.lean
-  Encoder.lean
-  Decoder.lean
-  ... (other IR types: Entity, Attribute, Relation, Operation, Graph, Token)
+  ...
 Tests/
   CorpusPipelineTests.lean
   InjectivityTests.lean
   DecoderTests.lean
   ...
 python/
-  loader.py              ← validates corpus.jsonl against schema
-  vocab.py               ← vocab/token-ID construction
-  dataset.py             ← train/eval split, PyTorch Dataset
-Corpus/
-  corpus.jsonl           ← output; not committed
-  stats.json             ← extraction statistics; not committed
-CORPUS_SCHEMA.md         ← stable contract between Lean output and Python input
+  loader.py                # corpus JSONL loading/validation
+  vocab.py                 # vocabulary construction
+  dataset.py               # train/eval split + dataset wrappers
+CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
+LATEST_FIXES.md
+SESSION_PROGRESS.md
 ```
