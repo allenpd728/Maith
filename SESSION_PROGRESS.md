@@ -2,6 +2,8 @@
 
 ## 2026-07-06 (sessions 2–3: metaprogramming extraction + corpus run)
 
+Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+
 ### What was done
 
 **Architecture pivot** — replaced `Transpiler.fromLean*` string parsers with
