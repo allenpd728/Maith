@@ -213,6 +213,7 @@ docs/
   TESTING_SUMMARY.md
   Design.md
   TEST.md
+README.md
 CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
 ```
 
