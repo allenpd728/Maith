@@ -1,5 +1,7 @@
 # Maith IR Pipeline - Testing Summary
 
+Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+
 ## Verified build
 
 - `lake build tests` completed successfully (latest verification: 2026-07-06).
