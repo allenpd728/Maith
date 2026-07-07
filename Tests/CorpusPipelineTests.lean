@@ -163,10 +163,43 @@ def testSerializationConfig : Bool :=
   config.corpusFile = "corpus.jsonl"
 
 /--
+Test that a `∀ x y : Nat, x + y = y + x` Expr produces a non-trivial graph
+with ≥ 2 operations (HAdd.hAdd) and ≥ 1 relation (Eq) — confirming that
+forallE recursion reaches a real arithmetic body and produces structural IR,
+not just a resolved binder chain.
+This is the "lam/forall body is non-trivial" acceptance check.
+-/
+def testForallBodyWithOps : Bool :=
+  -- Build the Expr for ∀ (x : Nat) (y : Nat), x + y = y + x manually.
+  -- Indices in the body: bvar(0)=y, bvar(1)=x (De Bruijn order, innermost first).
+  let natConst  := Lean.Expr.const `Nat []
+  let hAdd      := Lean.Expr.const `HAdd.hAdd []
+  let eqConst   := Lean.Expr.const `Eq []
+  let xBvar     := Lean.Expr.bvar 1   -- x after pushing both binders
+  let yBvar     := Lean.Expr.bvar 0   -- y is innermost
+  -- x + y  =  app(app(HAdd.hAdd, x), y)  ; takeLast 2 args = [x, y] ✓
+  let addXY := Lean.Expr.app (Lean.Expr.app hAdd xBvar) yBvar
+  -- y + x
+  let addYX := Lean.Expr.app (Lean.Expr.app hAdd yBvar) xBvar
+  -- Eq Nat (x+y) (y+x) — getAppArgs.length=3, Eq branch takes last 2 = [addXY, addYX] ✓
+  let eqExpr    := Lean.Expr.app (Lean.Expr.app (Lean.Expr.app eqConst natConst) addXY) addYX
+  let forallY   := Lean.Expr.forallE `y natConst eqExpr .default
+  let forallX   := Lean.Expr.forallE `x natConst forallY .default
+
+  match graphFromExpr "testDecl" forallX with
+  | .fail msg => dbg_trace "testForallBodyWithOps FAIL: {msg}"; false
+  | .ok g =>
+    -- Must have at least 2 operations (addXY and addYX) and 1 relation (Eq).
+    g.operations.length ≥ 2 &&
+    g.relations.length  ≥ 1 &&
+    -- The entity IDs for x and y must be distinct scoped bound entities.
+    g.entities.any (fun e => match e.id with | .bound s => s.contains "/x" | _ => false) &&
+    g.entities.any (fun e => match e.id with | .bound s => s.contains "/y" | _ => false)
+
+/--
 Test metadata extraction on a real inline `ConstantInfo`.
 -/
 def testCreateDeclarationMetadata : Bool :=
-  -- Build a minimal DefinitionVal for `myTestDecl : Nat := Nat` inline.
   let natType := Lean.Expr.const `Nat []
   let defnVal : Lean.DefinitionVal := {
     name        := `myTestDecl
@@ -184,9 +217,9 @@ def testCreateDeclarationMetadata : Bool :=
   let metadata := createDeclarationMetadata decl
   metadata.name   = "myTestDecl"   &&
   metadata.module = "Test.Module"  &&
-  metadata.sizeBytes > 0           &&   -- type `Nat` has non-zero byte size
-  !metadata.isProof                &&   -- defnInfo is not a proof
-  !metadata.isInductive                 -- not an inductive
+  metadata.sizeBytes > 0           &&
+  !metadata.isProof                &&
+  !metadata.isInductive
 
 /--
 Two declarations that both introduce a binder named `x` must produce
@@ -254,6 +287,11 @@ def runAllCorpusPipelineTests : IO Unit := do
     IO.println "    ✓ Serialization configuration"
   else
     IO.println "    ✗ Serialization configuration FAILED"
+
+  if testForallBodyWithOps then
+    IO.println "    ✓ Forall body with arithmetic ops (non-trivial graph)"
+  else
+    IO.println "    ✗ Forall body with arithmetic ops FAILED"
 
   if testCreateDeclarationMetadata then
     IO.println "    ✓ Metadata extraction (real assertions)"
