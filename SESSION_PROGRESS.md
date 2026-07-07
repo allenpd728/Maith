@@ -81,5 +81,4 @@ Non-trivial successes confirm real content is being extracted:
 - Made `CorpusSerializer` write real files to disk
 - Fixed `ProblemGenerator` to reject `a = 0`
 - Delegated normalization to `Maith.Normalizer` in `ProcessingPipeline`
-- Build: 64 jobs, 0 failures; 54/54 tests passing
-
+- Build: 66 jobs, 0 failures; 54/54 tests passing

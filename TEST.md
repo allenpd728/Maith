@@ -3,7 +3,7 @@
 ## Verified run
 
 ```bash
-cd /Users/philipallen/Desktop/Maith
+cd Maith
 lake build tests
 ./.lake/build/bin/tests
 ```
@@ -11,7 +11,7 @@ lake build tests
 ## Result
 
 - `lake build tests` completed successfully.
-- Build completed with **64 jobs** and **0 failures**.
+- Build completed with **66 jobs** and **0 failures** (clean build and incremental build).
 - The main suite reported **54/54 counted tests passing**.
 - Additional corpus pipeline checks passed.
 - Serializer integration verified real file output.

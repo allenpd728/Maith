@@ -2,8 +2,8 @@
 
 ## Verified build
 
-- `lake build tests` completed successfully on 2026-07-05.
-- Build completed with **64 jobs** and **0 failures**.
+- `lake build tests` completed successfully (latest verification: 2026-07-06).
+- Build completed with **66 jobs** and **0 failures** (clean build and incremental build).
 - `./.lake/build/bin/tests` completed successfully.
 
 ## Verified results
