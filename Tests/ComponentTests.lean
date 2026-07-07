@@ -34,9 +34,8 @@ open Tests
 -- ============================================
 
 def polarityTests : List TestResult := [
-  runTest "Polarity.pos is defined" true,
-  runTest "Polarity.neut is defined" true,
-  runTest "Polarity.neg is defined" true,
+  runTest "Polarity constructors are distinct" (Polarity.pos ≠ Polarity.neg),
+  runTest "Polarity.toString is stable" (toString Polarity.neut = "neut"),
 ]
 
 -- ============================================
@@ -44,8 +43,8 @@ def polarityTests : List TestResult := [
 -- ============================================
 
 def entityIdTests : List TestResult := [
-  runTest "EntityId.var is defined" true,
-  runTest "EntityId.term is defined" true,
+  runTest "EntityId.var and term are distinct" (EntityId.var "x" ≠ EntityId.term 0),
+  runTest "EntityId.term renders with prefix" (toString (EntityId.term 3) = "t3"),
 ]
 
 -- ============================================
@@ -53,7 +52,10 @@ def entityIdTests : List TestResult := [
 -- ============================================
 
 def entityTests : List TestResult := [
-  runTest "Entity type is defined" true,
+  runTest "Entity preserves id and polarity" (
+    let e : Entity := { id := EntityId.var "x", polarity := Polarity.pos }
+    e.id = EntityId.var "x" && e.polarity = Polarity.pos
+  ),
 ]
 
 -- ============================================
@@ -61,7 +63,15 @@ def entityTests : List TestResult := [
 -- ============================================
 
 def attributeTests : List TestResult := [
-  runTest "Attribute type is defined" true,
+  runTest "Attribute preserves fields" (
+    let a : Attribute := {
+      target := EntityId.var "x"
+      key := "value"
+      value := "42"
+      polarity := Polarity.neut
+    }
+    a.target = EntityId.var "x" && a.key = "value" && a.value = "42"
+  ),
 ]
 
 -- ============================================
@@ -69,9 +79,8 @@ def attributeTests : List TestResult := [
 -- ============================================
 
 def relationOpTests : List TestResult := [
-  runTest "RelationOp.eq is defined" true,
-  runTest "RelationOp.add is defined" true,
-  runTest "RelationOp.sub is defined" true,
+  runTest "Relation operators are distinct" (RelationOp.eq ≠ RelationOp.add),
+  runTest "RelationOp.toString is stable" (toString RelationOp.mul = "mul"),
 ]
 
 -- ============================================
@@ -79,7 +88,15 @@ def relationOpTests : List TestResult := [
 -- ============================================
 
 def relationTests : List TestResult := [
-  runTest "Relation type is defined" true,
+  runTest "Relation preserves fields" (
+    let r : Relation := {
+      src := EntityId.var "a"
+      tgt := EntityId.var "b"
+      op := RelationOp.eq
+      polarity := Polarity.pos
+    }
+    r.src = EntityId.var "a" && r.tgt = EntityId.var "b"
+  ),
 ]
 
 -- ============================================
@@ -87,8 +104,8 @@ def relationTests : List TestResult := [
 -- ============================================
 
 def operationOpTests : List TestResult := [
-  runTest "OperationOp.add is defined" true,
-  runTest "OperationOp.mul is defined" true,
+  runTest "Operation operators are distinct" (OperationOp.add ≠ OperationOp.mul),
+  runTest "OperationOp.toString is stable" (toString OperationOp.pow = "pow"),
 ]
 
 -- ============================================
@@ -96,7 +113,15 @@ def operationOpTests : List TestResult := [
 -- ============================================
 
 def operationTests : List TestResult := [
-  runTest "Operation type is defined" true,
+  runTest "Operation preserves fields" (
+    let o : Operation := {
+      inputs := [EntityId.var "a", EntityId.var "b"]
+      output := EntityId.var "c"
+      op := OperationOp.add
+      polarity := Polarity.pos
+    }
+    o.inputs.length = 2 && o.output = EntityId.var "c"
+  ),
 ]
 
 -- ============================================
@@ -104,8 +129,24 @@ def operationTests : List TestResult := [
 -- ============================================
 
 def graphTests : List TestResult := [
-  runTest "Graph type is defined" true,
-  runTest "Empty graph can be constructed" true,
+  runTest "Graph can hold one entity" (
+    let g : Graph := {
+      entities := [{ id := EntityId.var "x", polarity := Polarity.pos }]
+      attributes := []
+      relations := []
+      operations := []
+    }
+    g.entities.length = 1 && g.entities.head?.isSome
+  ),
+  runTest "Graph preserves component counts" (
+    let g : Graph := {
+      entities := []
+      attributes := [{ target := EntityId.var "x", key := "k", value := "v", polarity := Polarity.neut }]
+      relations := []
+      operations := []
+    }
+    g.attributes.length = 1 && g.relations.isEmpty
+  ),
 ]
 
 -- ============================================

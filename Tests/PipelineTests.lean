@@ -19,8 +19,27 @@ open Tests
 -- ============================================
 
 def graphTypeTests : List TestResult := [
-  runTest "Graph type can be instantiated" true,
-  runTest "Graph module is accessible" true,
+  runTest "Graph type can be instantiated" (
+    let g : Graph := {
+      entities := []
+      attributes := []
+      relations := []
+      operations := []
+    }
+    g.entities.isEmpty && g.attributes.isEmpty && g.relations.isEmpty && g.operations.isEmpty
+  ),
+  runTest "Graph module preserves a constructed graph" (
+    let g : Graph := {
+      entities := [{ id := EntityId.var "n", polarity := Polarity.neut }]
+      attributes := []
+      relations := []
+      operations := []
+    }
+    g.entities.length = 1 &&
+    match g.entities.head? with
+    | some e => e.id = EntityId.var "n"
+    | none => false
+  ),
 ]
 
 -- ============================================

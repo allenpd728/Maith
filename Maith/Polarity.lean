@@ -30,7 +30,7 @@ inductive Polarity
 
 | neg   -- reductive (-)
 
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 instance : ToString Polarity :=
   ⟨fun pol => match pol with

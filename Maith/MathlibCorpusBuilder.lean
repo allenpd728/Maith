@@ -12,6 +12,7 @@ import Maith.CorpusBuilder
 import Maith.ProcessingPipeline
 import Maith.MathlibLoader
 import Maith.CorpusSerializer
+import Maith.MetaExtractor
 
 namespace Lean.DSL
 
@@ -40,17 +41,17 @@ def buildMathlibIRCorpus
     (modules : List String)
     (enumerationConfig : EnumerationConfig := defaultEnumerationConfig)
     (serializationConfig : SerializationConfig := defaultSerializationConfig)
-    (transpiler : Transpiler := Lean.DSL.defaultTranspiler)
-    (encoder : Encoder := Lean.DSL.defaultEncoder)
-    (moduleSources : List (String × List (String × String)) := []) :
+    (encoder : Encoder := Lean.DSL.defaultEncoder) :
     IO Unit := do
   IO.println "=== Mathlib IR Training Corpus Builder ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
   IO.println ""
 
+  let env ← loadEnvironment modules
+
   -- Stage 1: Enumerate declarations from modules
   IO.println "[Stage 1] Enumerating Mathlib declarations..."
-  let enumerationResults := enumerateModules modules enumerationConfig moduleSources
+  let enumerationResults := enumerateModules env modules enumerationConfig
   let enumerationStats := buildEnumerationStats enumerationResults
   IO.println s!"Enumerated {enumerationStats.totalEnumerated} declarations"
   IO.println s!"Filtered {enumerationStats.totalFiltered} declarations (size/tactics)"
@@ -63,7 +64,7 @@ def buildMathlibIRCorpus
 
   -- Stage 2-9: Process all declarations through the pipeline
   IO.println "[Stage 2-9] Running processing pipeline..."
-  let processingResult := processBatch allDeclarations transpiler encoder
+  let processingResult := processBatch allDeclarations encoder
   match processingResult with
   | .fail msg =>
     IO.println s!"[ERROR] Pipeline failed: {msg}"
@@ -100,33 +101,26 @@ Convenient overload for building corpus with standard Mathlib modules.
 Uses default enumeration and serialization configs.
 -/
 def buildMathlibIRCorpusStandard
-    (transpiler : Transpiler := Lean.DSL.defaultTranspiler)
-    (encoder : Encoder := Lean.DSL.defaultEncoder)
-    (moduleSources : List (String × List (String × String)) := []) :
+    (encoder : Encoder := Lean.DSL.defaultEncoder) :
     IO Unit :=
   buildMathlibIRCorpus
     standardMathlibModules
     defaultEnumerationConfig
     defaultSerializationConfig
-    transpiler
     encoder
-    moduleSources
 
 /--
 Build corpus with custom modules and default settings.
 -/
 def buildMathlibIRCorpusCustomModules
     (modules : List String)
-    (transpiler : Transpiler := Lean.DSL.defaultTranspiler)
     (encoder : Encoder := Lean.DSL.defaultEncoder) :
     IO Unit :=
   buildMathlibIRCorpus
     modules
     defaultEnumerationConfig
     defaultSerializationConfig
-    transpiler
     encoder
-    []
 
 /--
 Detailed execution trace for debugging and metrics.
@@ -151,16 +145,17 @@ def buildMathlibIRCorpusWithTrace
     (modules : List String)
     (enumerationConfig : EnumerationConfig := defaultEnumerationConfig)
     (serializationConfig : SerializationConfig := defaultSerializationConfig)
-    (transpiler : Transpiler := Lean.DSL.defaultTranspiler)
     (encoder : Encoder := Lean.DSL.defaultEncoder) :
     IO Unit := do
   IO.println "=== Mathlib IR Training Corpus Builder (with Trace) ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
   IO.println ""
 
+  let env ← loadEnvironment modules
+
   -- Trace: Enumeration
   IO.println "[TRACE] Stage 1: Enumeration"
-  let enumerationResults := enumerateModules modules enumerationConfig []
+  let enumerationResults := enumerateModules env modules enumerationConfig
   let enumerationStats := buildEnumerationStats enumerationResults
   IO.println s!"  Input:  0 (enumerate from environment)"
   IO.println s!"  Output: {enumerationStats.totalEnumerated}"
@@ -172,7 +167,7 @@ def buildMathlibIRCorpusWithTrace
 
   -- Trace: Full pipeline
   IO.println "[TRACE] Stages 2-9: Processing Pipeline"
-  let processingResult := processBatch allDeclarations transpiler encoder
+  let processingResult := processBatch allDeclarations encoder
   match processingResult with
   | .fail msg =>
     IO.println s!"  ERROR: {msg}"

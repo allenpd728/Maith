@@ -32,6 +32,7 @@ import Maith.GraphEquivalence
 import Maith.CorpusBuilder
 import Maith.ProcessingPipeline
 import Maith.MathlibLoader
+import Maith.MetaExtractor
 import Maith.CorpusSerializer
 import Maith.MathlibCorpusBuilder
 

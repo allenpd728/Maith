@@ -15,6 +15,7 @@ import Maith.CorpusSerializer
 import Maith.MathlibCorpusBuilder
 import Maith.Transpiler
 import Maith.Encoder
+import Maith.MetaExtractor
 
 namespace Tests.CorpusPipeline
 
@@ -27,7 +28,7 @@ def testDataStructuresCompile : Bool :=
   let ex : TrainingExample := {
     name := "test.decl"
     module := "test.module"
-    leanExpr := "λ x => x"
+    leanExpr := "Nat"
     graph := { entities := [], attributes := [], relations := [], operations := [] }
     tokens := ["token1", "token2"]
   }
@@ -51,7 +52,29 @@ def testDataStructuresCompile : Bool :=
     stats := stats
   }
 
-  true
+  ex.tokens.length = 2 && _corpus.stats.successfulExamples = 8
+
+/--
+Test that the transpiler rendering still emits graph markers.
+-/
+def testTranspilerFormatting : Bool :=
+  let graph : Graph := {
+    entities := [
+      { id := EntityId.var "x", polarity := Polarity.pos },
+      { id := EntityId.term 2, polarity := Polarity.neut }
+    ]
+    attributes := [
+      { target := EntityId.var "x", key := "value", value := "42", polarity := Polarity.pos }
+    ]
+    relations := [
+      { src := EntityId.var "x", tgt := EntityId.term 2, op := RelationOp.eq, polarity := Polarity.neg }
+    ]
+    operations := [
+      { inputs := [EntityId.var "x", EntityId.term 2], output := EntityId.var "y", op := OperationOp.add, polarity := Polarity.pos }
+    ]
+  }
+  let rendered := defaultTranspiler.toLeanGraph graph
+  rendered.contains "-- GRAPH BEGIN" && rendered.contains "-- GRAPH END"
 
 /--
 Test pipeline result type works correctly.
@@ -76,16 +99,34 @@ Test graph normalization functions.
 def testGraphNormalization : Bool :=
   let graph : Graph := {
     entities := [
-      { id := EntityId.var "x", polarity := Polarity.pos },
-      { id := EntityId.var "y", polarity := Polarity.neut }
+      { id := EntityId.term 2, polarity := Polarity.neg },
+      { id := EntityId.var "a", polarity := Polarity.pos },
+      { id := EntityId.var "a", polarity := Polarity.neut }
     ]
-    attributes := []
-    relations := []
-    operations := []
+    attributes := [
+      { target := EntityId.term 1, key := "z", value := "2", polarity := Polarity.neg },
+      { target := EntityId.var "a", key := "a", value := "1", polarity := Polarity.pos }
+    ]
+    relations := [
+      { src := EntityId.term 3, tgt := EntityId.var "b", op := RelationOp.gt, polarity := Polarity.neg },
+      { src := EntityId.var "a", tgt := EntityId.var "c", op := RelationOp.eq, polarity := Polarity.pos }
+    ]
+    operations := [
+      { inputs := [EntityId.var "b", EntityId.var "a"], output := EntityId.term 0, op := OperationOp.add, polarity := Polarity.neg }
+    ]
   }
 
   let normalized := pipelineNormalizeGraph graph
-  normalized.entities.length = 2
+  normalized.entities.map (·.id) = [EntityId.var "a", EntityId.var "a", EntityId.term 2] &&
+  (match normalized.attributes.head? with
+   | some a => a.target = EntityId.var "a"
+   | none => false) &&
+  (match normalized.relations.head? with
+   | some r => r.src = EntityId.var "a"
+   | none => false) &&
+  (match normalized.operations.head? with
+   | some o => o.inputs = [EntityId.var "a", EntityId.var "b"]
+   | none => false)
 
 /--
 Test injectivity checking.
@@ -122,6 +163,57 @@ def testSerializationConfig : Bool :=
   config.corpusFile = "corpus.jsonl"
 
 /--
+Test metadata extraction on a real inline `ConstantInfo`.
+-/
+def testCreateDeclarationMetadata : Bool :=
+  -- Build a minimal DefinitionVal for `myTestDecl : Nat := Nat` inline.
+  let natType := Lean.Expr.const `Nat []
+  let defnVal : Lean.DefinitionVal := {
+    name        := `myTestDecl
+    levelParams := []
+    type        := natType
+    value       := natType
+    hints       := .abbrev
+    safety      := .safe
+  }
+  let decl : ExtractedDeclaration := {
+    name   := `myTestDecl
+    module := "Test.Module"
+    info   := .defnInfo defnVal
+  }
+  let metadata := createDeclarationMetadata decl
+  metadata.name   = "myTestDecl"   &&
+  metadata.module = "Test.Module"  &&
+  metadata.sizeBytes > 0           &&   -- type `Nat` has non-zero byte size
+  !metadata.isProof                &&   -- defnInfo is not a proof
+  !metadata.isInductive                 -- not an inductive
+
+/--
+Two declarations that both introduce a binder named `x` must produce
+different encoded token sequences — the scoped `EntityId.bound` encoding
+must embed the declaration name so De Bruijn-0 from `DeclA` never collides
+with De Bruijn-0 from `DeclB`.
+-/
+def testScopedBinderInjectivity : Bool :=
+  -- ∀ (x : Prop), x  — same Expr for both declarations
+  let propType  := Lean.Expr.sort Lean.Level.zero
+  let xBody     := Lean.Expr.bvar 0
+  let forallExpr := Lean.Expr.forallE `x propType xBody .default
+
+  match graphFromExpr "DeclA" forallExpr, graphFromExpr "DeclB" forallExpr with
+  | .ok gA, .ok gB =>
+    let eidsA := gA.entities.map (·.id)
+    let eidsB := gB.entities.map (·.id)
+    -- Entity ID lists must differ (different scoped binder names).
+    eidsA ≠ eidsB &&
+    -- Both graphs must be non-empty (extraction succeeded).
+    gA.entities.length ≥ 1 &&
+    gB.entities.length ≥ 1 &&
+    -- Encoded token sequences must differ.
+    encodeGraph gA ≠ encodeGraph gB
+  | _, _ => false
+
+/--
 Run all corpus pipeline tests.
 -/
 def runAllCorpusPipelineTests : IO Unit := do
@@ -132,6 +224,11 @@ def runAllCorpusPipelineTests : IO Unit := do
     IO.println "    ✓ Data structures compile"
   else
     IO.println "    ✗ Data structures FAILED"
+
+  if testTranspilerFormatting then
+    IO.println "    ✓ Transpiler formatting"
+  else
+    IO.println "    ✗ Transpiler formatting FAILED"
 
   if testProcessingResult then
     IO.println "    ✓ ProcessingResult type works"
@@ -157,5 +254,15 @@ def runAllCorpusPipelineTests : IO Unit := do
     IO.println "    ✓ Serialization configuration"
   else
     IO.println "    ✗ Serialization configuration FAILED"
+
+  if testCreateDeclarationMetadata then
+    IO.println "    ✓ Metadata extraction (real assertions)"
+  else
+    IO.println "    ✗ Metadata extraction FAILED"
+
+  if testScopedBinderInjectivity then
+    IO.println "    ✓ Scoped binder injectivity"
+  else
+    IO.println "    ✗ Scoped binder injectivity FAILED"
 
 end Tests.CorpusPipeline

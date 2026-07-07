@@ -33,6 +33,6 @@ structure Entity where
 
 (polarity : Polarity)
 
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 end Lean.DSL

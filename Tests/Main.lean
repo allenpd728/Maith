@@ -15,6 +15,7 @@ import Tests.NormalizerTests
 import Tests.InjectivityTests
 import Tests.ProblemGeneratorTests
 import Tests.CorpusPipelineTests
+import Tests.CorpusSerializerTests
 
 def main : IO Unit := do
   IO.println ""
@@ -33,10 +34,10 @@ def main : IO Unit := do
   Tests.Injectivity.runAllInjectivityTests
   Tests.ProblemGenerator.runAllProblemGeneratorTests
   Tests.CorpusPipeline.runAllCorpusPipelineTests
+  Tests.CorpusSerializer.runAllCorpusSerializerTests
   
   IO.println ""
   IO.println "╔════════════════════════════════════════════════════╗"
   IO.println "║         Test suite complete                        ║"
   IO.println "╚════════════════════════════════════════════════════╝"
   IO.println ""
-

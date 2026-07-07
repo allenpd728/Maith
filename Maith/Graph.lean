@@ -53,6 +53,6 @@ structure Graph where
 
 (operations  : List Operation)
 
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 end Lean.DSL

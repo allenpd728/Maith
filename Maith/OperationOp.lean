@@ -38,7 +38,7 @@ inductive OperationOp
 
 | pow    -- exponentiation (^)
 
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, Inhabited
 
 instance : ToString OperationOp :=
   ⟨fun op => match op with

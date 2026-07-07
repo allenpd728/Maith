@@ -45,6 +45,7 @@ structure FailureStats where
   (encodingFailed : Nat := 0)        -- IR → Tokens
   (skippedTooLarge : Nat := 0)       -- Exceeded size threshold
   (skippedTacticHeavy : Nat := 0)    -- Too many tactics
+  (failureReasons : List (String × Nat) := [])
 
 deriving Repr, DecidableEq
 
