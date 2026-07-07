@@ -49,6 +49,9 @@ private def parseOperationOpToken (s : String) : OperationOp :=
   else if s = "mul" then .mul
   else if s = "div" then .div
   else if s = "neg" then .neg
+  else if s = "pow" then .pow
+  else if s.startsWith "gen:" then
+    .generic (s.drop 4).toString
   else .pow
 
 /--

@@ -38,15 +38,21 @@ inductive OperationOp
 
 | pow    -- exponentiation (^)
 
+| generic : String → OperationOp
+  -- opaque fallback for any constant-headed application not in the semantic core;
+  -- the string carries the head constant's name (e.g. "Iff", "Function.Injective").
+  -- Token form: "gen:<name>". Vocabulary grows dynamically on the Python side.
+
 deriving Repr, DecidableEq, Inhabited
 
 instance : ToString OperationOp :=
   ⟨fun op => match op with
-    | OperationOp.add => "add"
-    | OperationOp.sub => "sub"
-    | OperationOp.mul => "mul"
-    | OperationOp.div => "div"
-    | OperationOp.neg => "neg"
-    | OperationOp.pow => "pow"⟩
+    | OperationOp.add       => "add"
+    | OperationOp.sub       => "sub"
+    | OperationOp.mul       => "mul"
+    | OperationOp.div       => "div"
+    | OperationOp.neg       => "neg"
+    | OperationOp.pow       => "pow"
+    | OperationOp.generic s => s!"gen:{s}"⟩
 
 end Lean.DSL

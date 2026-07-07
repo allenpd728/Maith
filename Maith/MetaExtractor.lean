@@ -187,9 +187,18 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
           addOperation inputIds outputId op
           pure outputId
       | _, _ =>
-        failUnsupported s!"application head `{fnName}`"
+        -- Generic fallback: represent as an Operation tagged with the head's name.
+        -- This keeps the IR vocabulary stable regardless of how many Mathlib operators
+        -- exist. The Python-side vocab builder assigns IDs to "gen:<name>" tokens.
+        -- Non-constant application heads (bvar/fvar applied as functions, projections)
+        -- are NOT covered here and still fail explicitly — those require HOF/projection
+        -- representation which is a separate IR extension.
+        let argIds ← args.mapM extractExprEntityId
+        let outputId ← freshTerm
+        addOperation argIds outputId (.generic fnName.toString)
+        pure outputId
     | _ =>
-      failUnsupported s!"non-constant application head"
+      failUnsupported "HOF application (non-constant head)"
   | .forallE binderName binderType body binderInfo =>
     -- 1. Try extracting the binder's type in the current (unextended) context.
     let typeIdOpt ← tryExtractId binderType
@@ -216,13 +225,34 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
       | none        => addAttribute binderId "param" "(opaque)"
     -- 4. Recurse into the body with this binder as De Bruijn 0.
     withBinder binderId (extractExprEntityId body)
+  | .lam binderName binderType body binderInfo =>
+    -- Lambda binders are handled symmetrically to forallE: push a scoped entity,
+    -- recurse into the body, pop. For theorem proof terms the caller skips value
+    -- extraction entirely, so this handler is used primarily for definition bodies.
+    let typeIdOpt ← tryExtractId binderType
+    let st ← get
+    let depth      := st.binderCtx.length
+    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let binderId   := EntityId.bound scopedName
+    addEntity binderId
+    match binderInfo with
+    | .instImplicit =>
+      addAttribute binderId "typeclass" (getTypeclassName binderType)
+    | .implicit | .strictImplicit =>
+      match typeIdOpt with
+      | some typeId => addRelation binderId typeId .eq
+      | none        => addAttribute binderId "implicit" "(opaque)"
+    | .default =>
+      match typeIdOpt with
+      | some typeId => addRelation binderId typeId .eq
+      | none        => addAttribute binderId "param" "(opaque)"
+    withBinder binderId (extractExprEntityId body)
   | .bvar n =>
     -- Resolve De Bruijn index: head of binderCtx = index 0 (innermost).
     let st := (← get)
     match st.binderCtx[n]? with
     | some id => pure id
     | none    => failUnsupported s!"bvar {n} out of scope (depth {st.binderCtx.length})"
-  | .lam ..  => failUnsupported "binder lambda"
   | .letE .. => failUnsupported "let expression"
   | .proj ..  => failUnsupported "projection expression"
   | .mdata _ body => extractExprEntityId body
@@ -237,18 +267,26 @@ def graphFromExpr (declName : String) (expr : Lean.Expr) : ProcessingResult Grap
   | .ok (_, state) => .ok state.toGraph
   | .error msg => .fail msg
 
+-- When merging type and value graphs, entity IDs are shared (a bound variable
+-- `x` from ∀ (x : T) in the type and from λ (x : T) in the body are the same
+-- semantic entity). Deduplicate by ID, keeping the first occurrence.
 private def mergeGraphs (g1 g2 : Graph) : Graph :=
+  let seenIds := g1.entities.map (·.id)
+  let newEntities := g2.entities.filter (fun e => !seenIds.contains e.id)
   {
-    entities := g1.entities ++ g2.entities
+    entities := g1.entities ++ newEntities
     attributes := g1.attributes ++ g2.attributes
     relations := g1.relations ++ g2.relations
     operations := g1.operations ++ g2.operations
   }
 
 private def constantValueExpr? : ConstantInfo → Option Expr
-  | .defnInfo info => some info.value
-  | .thmInfo info => some info.value
+  | .defnInfo info   => some info.value
   | .opaqueInfo info => some info.value
+  -- .thmInfo: proof terms (values) are proof witnesses, not semantic content.
+  -- The type (the statement) is what matters for training. Skipping proof term
+  -- extraction avoids the 267 "binder lambda" failures from theorem proof terms
+  -- and produces cleaner signal: the statement is what should be learned.
   | _ => none
 
 def extractGraphFromConstantInfo (info : ConstantInfo) : ProcessingResult Graph :=
