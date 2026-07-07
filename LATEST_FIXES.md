@@ -6,6 +6,8 @@ This session completed the architectural pivot from string-based Lean parsing
 to real Lean 4 metaprogramming extraction, and drove corpus success on
 `Mathlib.Algebra.Group.Defs` from **0/1,129** to **792/1,129 (70%)**.
 
+Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+
 ## What changed
 
 ### Architecture pivot (sessions 1–3, cumulative)
