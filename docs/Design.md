@@ -3,6 +3,25 @@ Design Notes
 
 These notes document the architectural reasoning behind the Lean‑based transformer‑centric IR. They explain why each layer exists, how the components interact, and what constraints shaped the design.
 
+## Extraction Architecture
+
+Maith extracts IR directly from Lean's elaborated environment — not from source strings.
+`MetaExtractor.lean` walks `ConstantInfo`/`Expr` trees from the live `Environment`, where
+implicit arguments, notation expansion, typeclass resolution, and macro expansion are already
+resolved. This is the only extraction path; no string-based Lean parser exists in the codebase.
+
+The high-level flow is:
+
+```
+Lean Environment → MetaExtractor.lean → IR Graph → Normalizer.lean → canonical graph
+  → Encoder.lean (scaffold) → token sequence → CorpusSerializer.lean → corpus.jsonl
+```
+
+The DSL/Transpiler path described in earlier design notes has been superseded. `Transpiler.lean`
+remains in the codebase as a scaffold but is not part of the validated extraction pipeline.
+
+---
+
 Core Principles
 ---------------
 
