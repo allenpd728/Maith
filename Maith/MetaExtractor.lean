@@ -262,8 +262,30 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     match st.binderCtx[n]? with
     | some id => pure id
     | none    => failUnsupported s!"bvar {n} out of scope (depth {st.binderCtx.length})"
-  | .letE .. => failUnsupported "let expression"
-  | .proj ..  => failUnsupported "projection expression"
+  | .letE binderName _type value body =>
+    -- let x := value; body
+    -- 1. Extract the value expression to get an entity for the bound name.
+    -- 2. Register a named entity for the let-binding so the body can reference it.
+    -- 3. Recurse into the body with that entity pushed as the De Bruijn 0 binding.
+    let valueId ← extractExprEntityId value
+    let st ← get
+    let depth      := st.binderCtx.length
+    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let letId      := EntityId.bound scopedName
+    addEntity letId
+    addAttribute letId "let-binding" "true"
+    addRelation letId valueId .eq
+    withBinder letId (extractExprEntityId body)
+  | .proj typeName idx struct =>
+    -- e.field — struct projection
+    -- Represent as an Operation: proj:<TypeName>/<fieldIdx> applied to the struct entity,
+    -- producing a fresh term for the projected value.  This keeps the IR vocabulary
+    -- stable: "proj:Semigroup.toMul/0" is a distinct, deterministic op token.
+    let structId  ← extractExprEntityId struct
+    let outputId  ← freshTerm
+    let opLabel   := s!"proj:{typeName}/{idx}"
+    addOperation [structId] outputId (.generic opLabel)
+    pure outputId
   | .mdata _ body => extractExprEntityId body
 
 end
