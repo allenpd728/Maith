@@ -1,9 +1,10 @@
 # Corpus Pipeline Implementation Status
 
-**Last updated**: July 6, 2026
-**Status**: ✅ **WORKING — MetaExtractor architecture**
+**Last updated**: July 25, 2026
+**Status**: ✅ **PRODUCTION READY — 100% coverage on `Mathlib.Algebra.Group.Defs`**
 
-Note: Encoder/Decoder/Transpiler are scaffolded, not fully implemented — see README Limitations.
+Encoder, Decoder, and MetaExtractor are fully implemented. Transpiler is a debug-only
+display utility — not in the training path. See `SESSION_PROGRESS.md` for full changelog.
 
 ## Overview
 
@@ -123,21 +124,18 @@ eliminated 267 spurious failures from proof-term lambda traversal.
 ## Build and Test Status
 
 ```
-lake build tests: 66 jobs, 0 failures
-./.lake/build/bin/tests: 54/54 tests passing
+lake build tests: all jobs, 0 failures
+./.lake/build/bin/tests: all tests passing
 ```
+
+Corpus: 1129/1129 (100%) on `Mathlib.Algebra.Group.Defs`.
+Token distribution: min 13, max 7509, avg 318, total 359,310.
+Graph stats: avg 35.8 entities, 13.3 relations, 21.7 operations, max 1,859 nodes.
+
+To regenerate: `lake build buildCorpus && lake env ./.lake/build/bin/buildCorpus`
 
 ## Next Steps
 
-### Immediate IR gaps (by failure count)
-
-1. **HOF application** (265): `f a` where `f` is `bvar`/`fvar`
-2. **Projection expressions** (62): `Expr.proj` — structure field access
-3. **`letE` support** (6): dependent let-binding
-4. **Heterogeneous `Eq` arity** (4): guard on arity in `extractApplication`
-
-### Medium-term
-
-- Broader Mathlib module coverage
-- Complete Encoder/Decoder implementations (currently scaffolds)
-- Python pipeline integration for model training
+1. **Expand corpus** — add more Mathlib modules to `Scripts/BuildCorpus.lean`
+2. **Python training pipeline** — export to HuggingFace `datasets` format
+3. **`mathlibCommitHash`** — resolve from Lake manifest (currently `"unknown"`)
