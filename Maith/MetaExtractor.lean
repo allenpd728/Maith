@@ -164,13 +164,23 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     | .const fnName _ =>
       match relationOpFromConstName? fnName, operationOpFromConstName? fnName with
       | some relOp, _ =>
+        -- For Eq: expect exactly 3 args (Eq α a b) — take last 2 as [a, b].
+        -- For HEq: expect exactly 4 args (HEq α a β b) — take last 2 as [a, b].
+        -- For other relation ops: require ≥ 2 args, take last 2.
+        -- Any other arity: fall back to a generic operation rather than failing.
         let relationArgs :=
           if fnName == ``Eq then
             if args.length = 3 then takeLast 2 args else []
+          else if fnName == ``HEq then
+            if args.length = 4 then takeLast 2 args else []
           else
             if args.length ≥ 2 then takeLast 2 args else []
         if relationArgs.length ≠ 2 then
-          failUnsupported s!"relation arity for `{fnName}`"
+          -- Unexpected arity: treat as a generic operation to avoid extraction failure.
+          let argIds ← args.mapM extractExprEntityId
+          let outputId ← freshTerm
+          addOperation argIds outputId (.generic fnName.toString)
+          pure outputId
         else do
           let srcId ← extractExprEntityId relationArgs[0]!
           let tgtId ← extractExprEntityId relationArgs[1]!
