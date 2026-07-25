@@ -23,11 +23,14 @@ namespace Lean.DSL
 
 Encoder transforms IR structures into linear token sequences.
 
-This is a minimal scaffold: each function is implemented with
+The implementation is complete. Token format per component:
+- Entity:    `["E", <id>, <polarity>]`
+- Attribute: `["A", <target>, <key>, <value>, <polarity>]`
+- Relation:  `["R", <src>, <tgt>, <op>, <polarity>]`
+- Operation: `["O", "inputs:<id,...>", "output:<id>", <op>, <polarity>]`
+- Graph:     `["GRAPH_BEGIN", ...components..., "GRAPH_END"]`
 
-simple placeholder logic so the project compiles cleanly and
-
-Copilot can begin extending the encoder automatically.
+`EntityId.bound` serialises as `b(<declName>/<depth>/<binderName>)`.
 
 -/
 
@@ -45,11 +48,9 @@ structure Encoder where
 
 /--
 
-A default encoder implementation that produces simple,
-
-human-readable tokens. This keeps the project compiling
-
-and provides a foundation for future SLM‑ready encoding.
+The default encoder. Produces the token format consumed by `defaultDecoder`
+and the Python corpus loader. Token sequences are written to `corpus.jsonl`
+as the `tokens` field of each training example.
 
 -/
 
