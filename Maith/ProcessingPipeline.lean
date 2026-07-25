@@ -117,9 +117,9 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
       let totalTokens   : Nat      := tokenLengths.foldl (· + ·) 0
       let minLength     : Nat      := tokenLengths.foldl Nat.min (tokenLengths.headD 0)
       let maxLength     : Nat      := tokenLengths.foldl Nat.max 0
-      let n             : Float    := (examples.length : Float)
+      let n             : Float    := Float.ofNat examples.length
       let avgLength     : Float    :=
-        if examples.isEmpty then 0.0 else (totalTokens : Float) / n
+        if examples.isEmpty then 0.0 else Float.ofNat totalTokens / n
       let entityCounts  : List Nat := examples.map (·.graph.entities.length)
       let attrCounts    : List Nat := examples.map (·.graph.attributes.length)
       let relCounts     : List Nat := examples.map (·.graph.relations.length)
@@ -131,7 +131,7 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
       let maxGraphSize  : Nat      := graphSizes.foldl Nat.max 0
       let sumNat (counts : List Nat) : Nat := counts.foldl (· + ·) 0
       let avgOf (counts : List Nat) : Float :=
-        if examples.isEmpty then 0.0 else (sumNat counts : Float) / n
+        if examples.isEmpty then 0.0 else Float.ofNat (sumNat counts) / n
       let finalStats := { stats with
         tokenDistribution := {
           minLength  := minLength
