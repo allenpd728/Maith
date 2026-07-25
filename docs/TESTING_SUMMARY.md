@@ -18,7 +18,7 @@ Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of t
 ## Files updated during verification
 
 - `Maith/Examples.lean`
-- `Maith/Cirriculum.lean`
+- `Maith/Curriculum.lean`
 - `Maith/Transpiler.lean`
 - `Maith/Decoder.lean`
 - `Maith/ProblemGenerator.lean`
