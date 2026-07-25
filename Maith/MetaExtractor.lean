@@ -262,7 +262,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     match st.binderCtx[n]? with
     | some id => pure id
     | none    => failUnsupported s!"bvar {n} out of scope (depth {st.binderCtx.length})"
-  | .letE binderName _type value body =>
+  | .letE binderName _type value body _ =>
     -- let x := value; body
     -- 1. Extract the value expression to get an entity for the bound name.
     -- 2. Register a named entity for the let-binding so the body can reference it.
