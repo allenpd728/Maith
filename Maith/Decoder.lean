@@ -22,10 +22,16 @@ import Maith.Token
 namespace Lean.DSL
 
 private def parseEntityIdToken (s : String) : EntityId :=
+  -- EntityId.term serialises as "t<n>" (e.g. "t0", "t12")
   if s.startsWith "t" then
-    match s.drop 1 |>.toNat? with
+    match (s.drop 1).toString.toNat? with
     | some n => .term n
-    | none => .var s
+    | none   => .var s
+  -- EntityId.bound serialises as "b(<scope>)" where scope = "declName/depth/binderName"
+  else if s.startsWith "b(" && s.endsWith ")" then
+    let inner := ((s.drop 2).toString.dropRight 1)
+    .bound inner
+  -- EntityId.var serialises as the name string directly
   else
     .var s
 
@@ -33,15 +39,16 @@ private def parsePolarityToken (s : String) : Polarity :=
   if s = "pos" then .pos else if s = "neut" then .neut else .neg
 
 private def parseRelationOpToken (s : String) : RelationOp :=
-  if s = "eq" then .eq
+  if s = "eq"  then .eq
   else if s = "add" then .add
   else if s = "sub" then .sub
   else if s = "mul" then .mul
   else if s = "div" then .div
-  else if s = "le" then .le
-  else if s = "ge" then .ge
-  else if s = "lt" then .lt
-  else .gt
+  else if s = "le"  then .le
+  else if s = "ge"  then .ge
+  else if s = "lt"  then .lt
+  else if s = "gt"  then .gt
+  else .eq  -- fallback: unknown token → eq (avoids silent wrong-case in .gt default)
 
 private def parseOperationOpToken (s : String) : OperationOp :=
   if s = "add" then .add
