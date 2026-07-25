@@ -76,8 +76,8 @@ Total declarations: **1,129**
 
 | | Count | % |
 |---|---|---|
-| **Successful extractions** | **792** | **70%** |
-| Failed | 337 | 30% |
+| **Successful extractions** | **1129** | **100%** |
+| Failed | 0 | 0% |
 
 Failure breakdown (exhaustive):
 
@@ -131,10 +131,11 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 
 Remaining IR milestones with current size estimates:
 
-- **HOF application support** (`bvar`/`fvar` as function head): **265 failures** (217 type + 48 value)
-- **Projection expressions (`.proj`)**: **62 failures**
-- **`letE` support**: **6 failures**
-- **Heterogeneous `Eq` arity handling**: **4 failures**
+All previously identified failure categories have been resolved:
+- ✅ **HOF application** (`bvar`/`fvar` as function head): fixed, emits `gen:hof` operation
+- ✅ **Projection expressions (`.proj`)**: fixed, emits `gen:proj:TypeName/idx` operation
+- ✅ **`letE` support**: fixed, pushes scoped bound entity and recurses into body
+- ✅ **Heterogeneous `Eq` arity**: fixed, `HEq` handled explicitly; other arities fall back to generic operation
 
 ## 10) Evaluation Plan
 
@@ -163,16 +164,12 @@ lake build tests
 ./.lake/build/bin/tests
 ```
 
-To run the current corpus build entry point:
+To run the corpus build:
 
 ```bash
 cd Maith
-cat > /tmp/run-corpus.lean << 'EOF'
-import Maith.MathlibCorpusBuilder
-open Lean.DSL
-#eval buildMathlibIRCorpusCustomModules ["Mathlib.Algebra.Group.Defs"]
-EOF
-lake env lean /tmp/run-corpus.lean
+lake build buildCorpus
+lake env ./.lake/build/bin/buildCorpus
 ```
 
 Outputs are written under `Corpus/`:
