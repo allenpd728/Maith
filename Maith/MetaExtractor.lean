@@ -198,7 +198,16 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
         addOperation argIds outputId (.generic fnName.toString)
         pure outputId
     | _ =>
-      failUnsupported "HOF application (non-constant head)"
+      -- HOF application: the function head is a bvar, fvar, or other non-constant
+      -- (e.g. `f a` where `f` is a universally-quantified variable).
+      -- Represent as an Operation with op=.generic "hof", taking the head entity
+      -- as the first input followed by all argument entities.  This preserves the
+      -- dependency structure without requiring a named constant.
+      let headId ← extractExprEntityId fn
+      let argIds ← args.mapM extractExprEntityId
+      let outputId ← freshTerm
+      addOperation (headId :: argIds) outputId (.generic "hof")
+      pure outputId
   | .forallE binderName binderType body binderInfo =>
     -- 1. Try extracting the binder's type in the current (unextended) context.
     let typeIdOpt ← tryExtractId binderType
