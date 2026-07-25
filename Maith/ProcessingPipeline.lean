@@ -111,7 +111,38 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
       (examples : List TrainingExample) (stats : CorpusStats) :
       ProcessingResult (List TrainingExample × CorpusStats) :=
     match remaining with
-    | [] => ProcessingResult.ok (examples, stats)
+    | [] =>
+      -- Compute token and graph statistics from the collected examples.
+      let tokenLengths := examples.map (·.tokens.length)
+      let totalTokens  := tokenLengths.foldl (· + ·) 0
+      let minLength    := tokenLengths.foldl Nat.min (tokenLengths.headD 0)
+      let maxLength    := tokenLengths.foldl Nat.max 0
+      let avgLength    : Float :=
+        if examples.isEmpty then 0.0
+        else (totalTokens : Float) / (examples.length : Float)
+      let entityCounts := examples.map (·.graph.entities.length)
+      let attrCounts   := examples.map (·.graph.attributes.length)
+      let relCounts    := examples.map (·.graph.relations.length)
+      let opCounts     := examples.map (·.graph.operations.length)
+      let graphSizes   := (entityCounts.zipWith attrCounts (· + ·)).zipWith
+                            (relCounts.zipWith opCounts (· + ·)) (· + ·)
+      let maxGraphSize := graphSizes.foldl Nat.max 0
+      let avgOf (counts : List Nat) : Float :=
+        if examples.isEmpty then 0.0
+        else (counts.foldl (· + ·) 0 : Float) / (examples.length : Float)
+      let finalStats := { stats with
+        tokenDistribution := {
+          minLength, maxLength, avgLength, totalTokens
+        }
+        graphStats := {
+          avgEntities   := avgOf entityCounts
+          avgAttributes := avgOf attrCounts
+          avgRelations  := avgOf relCounts
+          avgOperations := avgOf opCounts
+          maxGraphSize
+        }
+      }
+      ProcessingResult.ok (examples, finalStats)
     | decl :: rest =>
       let result := processDeclaration decl encoder
       let updatedExamples := match result with
