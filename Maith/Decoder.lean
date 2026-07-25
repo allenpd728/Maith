@@ -29,7 +29,7 @@ private def parseEntityIdToken (s : String) : EntityId :=
     | none   => .var s
   -- EntityId.bound serialises as "b(<scope>)" where scope = "declName/depth/binderName"
   else if s.startsWith "b(" && s.endsWith ")" then
-    let inner := ((s.drop 2).toString.dropRight 1)
+    let inner := (s.drop 2).toString.dropEnd 1
     .bound inner
   -- EntityId.var serialises as the name string directly
   else
@@ -129,11 +129,11 @@ def decodeOperation (toks : List Token) : Operation :=
   | ["O", inputsStr, outputStr, opStr, polStr] =>
       let trimmed : String :=
         if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
-      let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken s.trim)
+      let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken s.trimAscii.toString)
       let outputText : String :=
         if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr
       let output :=
-        parseEntityIdToken outputText.trim
+        parseEntityIdToken outputText.trimAscii.toString
       let op := parseOperationOpToken opStr
       let pol := parsePolarityToken polStr
       { inputs := inputs, output := output, op := op, polarity := pol }
