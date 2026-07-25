@@ -222,6 +222,45 @@ def testCreateDeclarationMetadata : Bool :=
   !metadata.isInductive
 
 /--
+Test that `.proj` (struct field projection) extracts successfully and
+produces an Operation tagged "proj:<TypeName>/<idx>".
+-/
+def testProjectionExtracts : Bool :=
+  -- Build `∀ (s : Semigroup Nat), s.toMul` — proj Semigroup 0 (bvar 0)
+  let natConst  := Lean.Expr.const `Nat []
+  let semigroupApp := Lean.Expr.app (Lean.Expr.const `Semigroup []) natConst
+  -- proj typeName=`Semigroup idx=0 struct=bvar(0)
+  let projExpr  := Lean.Expr.proj `Semigroup 0 (Lean.Expr.bvar 0)
+  let forallS   := Lean.Expr.forallE `s semigroupApp projExpr .default
+
+  match graphFromExpr "projTestDecl" forallS with
+  | .fail msg => dbg_trace "testProjectionExtracts FAIL: {msg}"; false
+  | .ok g =>
+    -- Must have at least one operation tagged "proj:Semigroup/0"
+    g.operations.any (fun o => o.op = OperationOp.generic "proj:Semigroup/0")
+
+/--
+Test that `.letE` (let expression) extracts successfully and
+pushes the bound name into the binder context for the body.
+-/
+def testLetExpressionExtracts : Bool :=
+  -- Build `∀ (x : Nat), let y := x; y`
+  -- After forall binder: bvar(0)=x. Let pushes y=bvar(0), body=bvar(0).
+  let natConst  := Lean.Expr.const `Nat []
+  let xBvar     := Lean.Expr.bvar 0
+  -- let y := x; y  — body references the let-bound y which is bvar(0) after push
+  let letExpr   := Lean.Expr.letE `y natConst xBvar (Lean.Expr.bvar 0) false
+  let forallX   := Lean.Expr.forallE `x natConst letExpr .default
+
+  match graphFromExpr "letTestDecl" forallX with
+  | .fail msg => dbg_trace "testLetExpressionExtracts FAIL: {msg}"; false
+  | .ok g =>
+    -- Must have extracted without failure; graph must be non-empty
+    g.entities.length ≥ 1 &&
+    -- The let-binding entity must appear with a "let-binding" attribute
+    g.attributes.any (fun a => a.key = "let-binding")
+
+/--
 Test that HOF application (variable-headed `f a`) extracts successfully and
 produces an Operation with op=.generic "hof".
 Before the fix, `f a` where `f` is a bvar would hit `failUnsupported` and be
@@ -324,6 +363,16 @@ def runAllCorpusPipelineTests : IO Unit := do
     IO.println "    ✓ Metadata extraction (real assertions)"
   else
     IO.println "    ✗ Metadata extraction FAILED"
+
+  if testProjectionExtracts then
+    IO.println "    ✓ Projection extraction (struct field proj)"
+  else
+    IO.println "    ✗ Projection extraction FAILED"
+
+  if testLetExpressionExtracts then
+    IO.println "    ✓ Let expression extraction"
+  else
+    IO.println "    ✗ Let expression extraction FAILED"
 
   if testHOFApplicationExtracts then
     IO.println "    ✓ HOF application extraction (variable-headed f x)"
