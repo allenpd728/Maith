@@ -57,7 +57,33 @@ def decoderTests : List TestResult := [
 
   runTest "Decoder decodes empty Graph correctly"
     (defaultDecoder.decodeGraph ["GRAPH_BEGIN", "GRAPH_END"] = { entities := [], attributes := [], relations := [], operations := [] })
-    "Should decode an empty graph"
+    "Should decode an empty graph",
+
+  -- EntityId.bound serialises as "b(<scope>)" — verify the decoder round-trips it.
+  runTest "Decoder round-trips EntityId.bound"
+    (let boundId := EntityId.bound "mul_assoc/0/a"
+     let entity : Entity := { id := boundId, polarity := Polarity.neut }
+     let encoded := encodeEntity entity   -- ["E", "b(mul_assoc/0/a)", "neut"]
+     let decoded := defaultDecoder.decodeEntity encoded
+     decoded.id = boundId && decoded.polarity = Polarity.neut)
+    "Should decode b(<scope>) tokens back to EntityId.bound",
+
+  -- Verify the full graph round-trip works when bound IDs are present.
+  runTest "Decoder round-trips Graph with bound entity"
+    (let graph : Graph := {
+      entities := [
+        { id := EntityId.bound "mul_assoc/0/a", polarity := Polarity.neut },
+        { id := EntityId.var "HMul.hMul",       polarity := Polarity.neut }
+      ]
+      attributes := []
+      relations  := [{ src := EntityId.bound "mul_assoc/0/a"
+                       tgt := EntityId.var "HMul.hMul"
+                       op  := RelationOp.eq
+                       polarity := Polarity.neut }]
+      operations := []
+    }
+    defaultDecoder.decodeGraph (encodeGraph graph) = graph)
+    "Should round-trip a graph containing EntityId.bound nodes"
 ]
 
 def runAllDecoderTests : IO Unit := do

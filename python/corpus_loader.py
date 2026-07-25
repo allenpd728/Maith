@@ -28,11 +28,19 @@ def _expect(condition: bool, message: str) -> None:
 def _validate_entity_id(entity_id: Any, path: str) -> None:
     _expect(isinstance(entity_id, dict), f"{path} must be an object")
     kind = entity_id.get("kind")
-    _expect(kind in {"var", "term"}, f"{path}.kind must be 'var' or 'term'")
+    _expect(kind in {"var", "term", "bound"}, f"{path}.kind must be 'var', 'term', or 'bound'")
     if kind == "var":
         _expect(isinstance(entity_id.get("name"), str), f"{path}.name must be a string")
-    else:
+    elif kind == "term":
         _expect(isinstance(entity_id.get("index"), int), f"{path}.index must be an integer")
+    else:  # bound
+        scope = entity_id.get("scope")
+        _expect(isinstance(scope, str), f"{path}.scope must be a string")
+        parts = scope.split("/")
+        _expect(
+            len(parts) == 3 and all(isinstance(p, str) and p for p in parts),
+            f"{path}.scope must have format 'declName/depth/binderName', got {scope!r}",
+        )
 
 
 def _validate_graph(graph: Any, path: str) -> None:
