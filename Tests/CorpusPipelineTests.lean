@@ -222,6 +222,33 @@ def testCreateDeclarationMetadata : Bool :=
   !metadata.isInductive
 
 /--
+Test that HOF application (variable-headed `f a`) extracts successfully and
+produces an Operation with op=.generic "hof".
+Before the fix, `f a` where `f` is a bvar would hit `failUnsupported` and be
+counted as a type-extraction failure.
+-/
+def testHOFApplicationExtracts : Bool :=
+  -- Build `∀ (f : Nat → Nat) (x : Nat), f x`
+  -- After both binders are pushed: bvar(1)=f, bvar(0)=x
+  let natConst  := Lean.Expr.const `Nat []
+  let natToNat  := Lean.Expr.forallE `_ natConst natConst .default
+  -- f x : app(bvar(1), bvar(0)) — variable-headed application
+  let fApp      := Lean.Expr.app (Lean.Expr.bvar 1) (Lean.Expr.bvar 0)
+  -- ∀ (x : Nat), f x
+  let forallX   := Lean.Expr.forallE `x natConst fApp .default
+  -- ∀ (f : Nat → Nat), ∀ (x : Nat), f x
+  let forallF   := Lean.Expr.forallE `f natToNat forallX .default
+
+  match graphFromExpr "hofTestDecl" forallF with
+  | .fail msg => dbg_trace "testHOFApplicationExtracts FAIL: {msg}"; false
+  | .ok g =>
+    -- Must have produced at least one operation tagged "hof"
+    g.operations.any (fun o => o.op = OperationOp.generic "hof") &&
+    -- f and x should appear as bound entities
+    g.entities.any (fun e => match e.id with | .bound s => s.contains "/f" | _ => false) &&
+    g.entities.any (fun e => match e.id with | .bound s => s.contains "/x" | _ => false)
+
+/--
 Two declarations that both introduce a binder named `x` must produce
 different encoded token sequences — the scoped `EntityId.bound` encoding
 must embed the declaration name so De Bruijn-0 from `DeclA` never collides
@@ -297,6 +324,11 @@ def runAllCorpusPipelineTests : IO Unit := do
     IO.println "    ✓ Metadata extraction (real assertions)"
   else
     IO.println "    ✗ Metadata extraction FAILED"
+
+  if testHOFApplicationExtracts then
+    IO.println "    ✓ HOF application extraction (variable-headed f x)"
+  else
+    IO.println "    ✗ HOF application extraction FAILED"
 
   if testScopedBinderInjectivity then
     IO.println "    ✓ Scoped binder injectivity"
