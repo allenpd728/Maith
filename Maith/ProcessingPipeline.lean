@@ -113,33 +113,38 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
     match remaining with
     | [] =>
       -- Compute token and graph statistics from the collected examples.
-      let tokenLengths := examples.map (·.tokens.length)
-      let totalTokens  := tokenLengths.foldl (· + ·) 0
-      let minLength    := tokenLengths.foldl Nat.min (tokenLengths.headD 0)
-      let maxLength    := tokenLengths.foldl Nat.max 0
-      let avgLength    : Float :=
-        if examples.isEmpty then 0.0
-        else (totalTokens : Float) / (examples.length : Float)
-      let entityCounts := examples.map (·.graph.entities.length)
-      let attrCounts   := examples.map (·.graph.attributes.length)
-      let relCounts    := examples.map (·.graph.relations.length)
-      let opCounts     := examples.map (·.graph.operations.length)
-      let graphSizes   := (entityCounts.zipWith attrCounts (· + ·)).zipWith
-                            (relCounts.zipWith opCounts (· + ·)) (· + ·)
-      let maxGraphSize := graphSizes.foldl Nat.max 0
+      let tokenLengths  : List Nat := examples.map (·.tokens.length)
+      let totalTokens   : Nat      := tokenLengths.foldl (· + ·) 0
+      let minLength     : Nat      := tokenLengths.foldl Nat.min (tokenLengths.headD 0)
+      let maxLength     : Nat      := tokenLengths.foldl Nat.max 0
+      let n             : Float    := (examples.length : Float)
+      let avgLength     : Float    :=
+        if examples.isEmpty then 0.0 else (totalTokens : Float) / n
+      let entityCounts  : List Nat := examples.map (·.graph.entities.length)
+      let attrCounts    : List Nat := examples.map (·.graph.attributes.length)
+      let relCounts     : List Nat := examples.map (·.graph.relations.length)
+      let opCounts      : List Nat := examples.map (·.graph.operations.length)
+      let graphSizes    : List Nat :=
+        List.zipWith (· + ·)
+          (List.zipWith (· + ·) entityCounts attrCounts)
+          (List.zipWith (· + ·) relCounts opCounts)
+      let maxGraphSize  : Nat      := graphSizes.foldl Nat.max 0
+      let sumNat (counts : List Nat) : Nat := counts.foldl (· + ·) 0
       let avgOf (counts : List Nat) : Float :=
-        if examples.isEmpty then 0.0
-        else (counts.foldl (· + ·) 0 : Float) / (examples.length : Float)
+        if examples.isEmpty then 0.0 else (sumNat counts : Float) / n
       let finalStats := { stats with
         tokenDistribution := {
-          minLength, maxLength, avgLength, totalTokens
+          minLength  := minLength
+          maxLength  := maxLength
+          avgLength  := avgLength
+          totalTokens := totalTokens
         }
         graphStats := {
           avgEntities   := avgOf entityCounts
           avgAttributes := avgOf attrCounts
           avgRelations  := avgOf relCounts
           avgOperations := avgOf opCounts
-          maxGraphSize
+          maxGraphSize  := maxGraphSize
         }
       }
       ProcessingResult.ok (examples, finalStats)
