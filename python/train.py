@@ -77,7 +77,7 @@ GRAD_ACCUM      = 4
 LEARNING_RATE   = 2e-4
 EPOCHS          = 3
 WEIGHT_DECAY    = 0.01
-WARMUP_RATIO    = 0.05
+WARMUP_RATIO    = 0.05  # converted to warmup_steps at runtime
 SEED            = 42
 
 
@@ -243,6 +243,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
 
     os.makedirs(out_dir, exist_ok=True)
     epochs = 1 if smoke_test else EPOCHS
+    total_steps = max(1, (len(train_dataset) // (BATCH_SIZE * GRAD_ACCUM)) * epochs)
+    warmup_steps = max(1, int(WARMUP_RATIO * total_steps))
 
     training_args = TrainingArguments(
         output_dir=out_dir,
@@ -252,7 +254,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         gradient_accumulation_steps=GRAD_ACCUM,
         learning_rate=LEARNING_RATE,
         weight_decay=WEIGHT_DECAY,
-        warmup_ratio=WARMUP_RATIO,
+        warmup_steps=warmup_steps,
         lr_scheduler_type="cosine",
         eval_strategy="epoch",
         save_strategy="epoch",
