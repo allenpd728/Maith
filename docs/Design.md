@@ -36,14 +36,14 @@ flowchart TD
   end
 
   subgraph PythonData[Dataset and experiment prep]
-    B1[python/build_dataset.py] --> B2[datasets/train_A|B|C.jsonl]
-    B1 --> B3[datasets/eval_A|B|C.jsonl]
+    B1[python/build_dataset.py] --> B2[datasets/train_A_train_B_train_C.jsonl]
+    B1 --> B3[datasets/eval_A_eval_B_eval_C.jsonl]
     B1 --> B4[datasets/train_manifest.json + eval_manifest.json]
     B1 --> B5[datasets/representation_manifest.json]
   end
 
   subgraph TrainingEval[Training and evaluation]
-    C1[python/train.py --variant A|B|C] --> C2[runs/variant_*/results.json]
+    C1[python/train.py --variant A_or_B_or_C] --> C2[runs/variant_*/results.json]
     C1 --> C3[runs/variant_*/loss_curve.json]
     C4[python/compare_results.py] --> C5[runs/loss_curves.json]
     C6[python/check_results_gate.py] --> C7[runs/full_results_gate.json]
