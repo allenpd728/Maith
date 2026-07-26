@@ -63,3 +63,21 @@ This allows separating:
 - Comparison scripts print `representation_id`.
 
 These hooks let us compare multiple IR candidates without changing existing run mechanics.
+
+## Operational commands
+
+Audit current metadata consistency:
+
+```bash
+python3 python/representation_audit.py
+```
+
+Register a new candidate in the family registry:
+
+```bash
+python3 python/register_representation.py \
+  --family-id semantic_graph_ir \
+  --representation-id semantic_graph_ir_v2_candidate_1 \
+  --status planned \
+  --notes "First v2 candidate"
+```

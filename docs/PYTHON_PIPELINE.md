@@ -19,6 +19,8 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
+| `representation_audit.py` | Audits representation metadata consistency across datasets/runs |
+| `register_representation.py` | Registers new representation candidates in the family registry |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -159,6 +161,22 @@ To scaffold Phase 6 theorem-proving evaluation artifacts:
 
 ```bash
 python3 python/scaffold_theorem_eval.py
+```
+
+To audit representation metadata consistency:
+
+```bash
+python3 python/representation_audit.py
+```
+
+To register a new representation candidate:
+
+```bash
+python3 python/register_representation.py \
+  --family-id semantic_graph_ir \
+  --representation-id semantic_graph_ir_v2_candidate_1 \
+  --status planned \
+  --notes "First v2 candidate"
 ```
 
 ## Coverage expansion protocol (low-risk scaffold)
