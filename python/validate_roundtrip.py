@@ -22,23 +22,27 @@ from typing import Optional
 
 
 # ---------------------------------------------------------------------------
-# Minimal Python decoder matching Lean Decoder.lean v1.0.0
+# Minimal Python decoder matching Lean Decoder.lean v1.2.0
 # ---------------------------------------------------------------------------
 
 def parse_entity_id(s: str) -> dict:
     """Parse a token string into an EntityId dict."""
     if s == "TERM_MANY":
-        return {"kind": "term", "value": 64}  # sentinel > maxPositional (63 in v1.1.0)
+        return {"kind": "term", "value": 64}  # sentinel > maxPositional (63 in v1.1.0+)
+    elif s == "FVAR_MANY":
+        return {"kind": "bound", "scope": "∀:FVAR_MANY"}  # v1.2.0 forall sentinel
     elif s == "BVAR_MANY":
-        return {"kind": "bound", "scope": "BVAR_MANY"}
+        return {"kind": "bound", "scope": "λ:BVAR_MANY"}  # v1.2.0 lambda sentinel
     elif s.startswith("TERM_"):
         suffix = s[5:]
         try:
             return {"kind": "term", "value": int(suffix)}
         except ValueError:
-            return {"kind": "term", "value": 64}  # fallback
+            return {"kind": "term", "value": 64}
+    elif s.startswith("FVAR_"):
+        return {"kind": "bound", "scope": f"∀:{s}"}  # v1.2.0 forall binder
     elif s.startswith("BVAR_"):
-        return {"kind": "bound", "scope": s}  # synthetic stable scope
+        return {"kind": "bound", "scope": f"λ:{s}"}  # v1.2.0 lambda binder (also handles legacy)
     elif s.startswith("t") and s[1:].isdigit():
         return {"kind": "term", "value": int(s[1:])}  # v0.1.0 legacy
     elif s.startswith("b(") and s.endswith(")"):
@@ -48,15 +52,20 @@ def parse_entity_id(s: str) -> dict:
 
 
 def entity_id_to_token(eid: dict) -> str:
-    """Re-encode an EntityId dict back to a token string (v1.1.0)."""
+    """Re-encode an EntityId dict back to a token string (v1.2.0)."""
     kind = eid.get("kind")
     if kind == "term":
         n = eid.get("value", 0)
         return f"TERM_{n}" if n <= 63 else "TERM_MANY"
     elif kind == "bound":
-        scope = eid.get("scope", "BVAR_MANY")
-        # BVAR_N and BVAR_MANY scopes are already the canonical token string
-        return scope
+        scope = eid.get("scope", "λ:BVAR_MANY")
+        # v1.2.0: scope encodes binder kind as "∀:FVAR_N" or "λ:BVAR_N"
+        if scope.startswith("∀:"):
+            return scope[2:]   # strip prefix → "FVAR_N"
+        elif scope.startswith("λ:"):
+            return scope[2:]   # strip prefix → "BVAR_N"
+        else:
+            return scope       # legacy untagged — already the token string
     else:
         return eid.get("name", "")
 
@@ -220,9 +229,11 @@ def run(corpus_path: str, sample_size: Optional[int], run_all: bool) -> None:
     term = [t for t in vocab if t.startswith("TERM_")]
     legacy_b = [t for t in vocab if t.startswith("b(")]
     legacy_t = [t for t in vocab if t.startswith("t") and t[1:].isdigit()]
+    fvar = [t for t in vocab if t.startswith("FVAR_")]
     print()
     print(f"Vocab snapshot ({len(targets)} examples):")
-    print(f"  BVAR_* tokens:  {len(bvar)}  (positional bound IDs)")
+    print(f"  FVAR_* tokens:  {len(fvar)}  (forall binder IDs — v1.2.0)")
+    print(f"  BVAR_* tokens:  {len(bvar)}  (lambda binder IDs)")
     print(f"  TERM_* tokens:  {len(term)}  (positional term IDs)")
     print(f"  Legacy b():     {len(legacy_b)}  (should be 0)")
     print(f"  Legacy t<n>:    {len(legacy_t)}  (should be 0)")
