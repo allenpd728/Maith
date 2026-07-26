@@ -110,6 +110,13 @@ whether cross-graph identity is the missing signal.
 
 ## Version history
 
+### v1.2.0
+- Forall binders (`∀:` scoped) → `FVAR_N` tokens (separate positional counter per graph, starts at 0)
+- Lambda binders (`λ:` scoped) → `BVAR_N` tokens (unchanged)
+- Legacy untagged bound scopes → `BVAR_N` (backward compat)
+- `FVAR_MANY` sentinel added (mirrors `BVAR_MANY`)
+- `MetaExtractor.lean` tags scope strings with `∀:` / `λ:` prefix at extraction time
+
 | Version | Change |
 |---|---|
 | 0.1.0 | Initial format: raw scoped IDs (`b(...)`), raw term IDs (`t<n>`) |

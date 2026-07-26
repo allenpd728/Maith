@@ -29,9 +29,12 @@ private def parseEntityIdToken (s : String) : EntityId :=
     match suffix.toNat? with
     | some n => .term n
     | none   => .term 64  -- malformed → sentinel
-  -- v1.0.0: BVAR_N positional token → EntityId.bound "BVAR_N" (synthetic stable scope)
-  else if s.startsWith "BVAR_" then
-    .bound s
+  -- v1.2.0: FVAR_N positional token → EntityId.bound "∀:FVAR_N" (forall binder)
+  else if s == "FVAR_MANY" then .bound "∀:FVAR_MANY"
+  else if s.startsWith "FVAR_" then .bound s!"∀:{s}"
+  -- v1.0.0/v1.1.0: BVAR_N positional token → EntityId.bound "λ:BVAR_N" (lambda binder)
+  else if s == "BVAR_MANY" then .bound "λ:BVAR_MANY"
+  else if s.startsWith "BVAR_" then .bound s!"λ:{s}"
   -- v0.1.0 legacy: EntityId.term serialised as "t<n>" (e.g. "t0", "t12")
   else if s.startsWith "t" then
     match (s.drop 1).toString.toNat? with

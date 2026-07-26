@@ -101,7 +101,7 @@ def buildMathlibIRCorpus
         stats with
         totalDeclarations := enumerationStats.totalEnumerated
         mathlibCommitHash := mathlibHash
-        encoderVersion := "1.1.0"
+        encoderVersion := "1.2.0"
         irVersion := "0.1.0"
       }
     }
