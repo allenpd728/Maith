@@ -120,12 +120,13 @@ def example_id(ex: dict) -> str:
     return f"{ex.get('module', '')}::{ex.get('name', '')}"
 
 
-def build_variant_A(examples: list[dict], vocab: dict[str, int]) -> list[dict]:
+def build_variant_A(examples: list[dict], vocab: dict[str, int], representation_id: str) -> list[dict]:
     rows = []
     for ex in examples:
         ids = encode_ir(ex.get("tokens", []), vocab)
         rows.append({
             "source": "A",
+            "representation_id": representation_id,
             "example_id": example_id(ex),
             "name": ex.get("name", ""),
             "module": ex.get("module", ""),
@@ -136,13 +137,14 @@ def build_variant_A(examples: list[dict], vocab: dict[str, int]) -> list[dict]:
     return rows
 
 
-def build_variant_B(examples: list[dict], tokenizer) -> list[dict]:
+def build_variant_B(examples: list[dict], tokenizer, representation_id: str) -> list[dict]:
     rows = []
     for ex in examples:
         text = ex.get("leanExpr", "")
         ids = tokenizer.encode(text)
         rows.append({
             "source": "B",
+            "representation_id": representation_id,
             "example_id": example_id(ex),
             "name": ex.get("name", ""),
             "module": ex.get("module", ""),
@@ -153,7 +155,7 @@ def build_variant_B(examples: list[dict], tokenizer) -> list[dict]:
     return rows
 
 
-def build_variant_C(examples: list[dict], tokenizer) -> list[dict]:
+def build_variant_C(examples: list[dict], tokenizer, representation_id: str) -> list[dict]:
     rows = []
     for ex in examples:
         text = ex.get("leanExpr", "")
@@ -164,6 +166,7 @@ def build_variant_C(examples: list[dict], tokenizer) -> list[dict]:
             ids.extend(tokenizer.encode(piece, add_special_tokens=False))
         rows.append({
             "source": "C",
+            "representation_id": representation_id,
             "example_id": example_id(ex),
             "name": ex.get("name", ""),
             "module": ex.get("module", ""),
@@ -215,7 +218,7 @@ def filter_examples(examples: list[dict], threshold: int, drop_log_path: Optiona
     return kept
 
 
-def run(corpus_path: str, out_dir: str, seed: int = 42) -> None:
+def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v1_2_0") -> None:
     print(f"Loading corpus from {corpus_path} ...")
     with open(corpus_path) as f:
         examples = [json.loads(line) for line in f]
@@ -261,17 +264,17 @@ def run(corpus_path: str, out_dir: str, seed: int = 42) -> None:
 
     # Build datasets
     print("Building variant A (IR tokens) ...")
-    train_A = build_variant_A(train_examples, vocab)
-    eval_A  = build_variant_A(eval_examples,  vocab)
+    train_A = build_variant_A(train_examples, vocab, representation_id)
+    eval_A  = build_variant_A(eval_examples,  vocab, representation_id)
 
     if tokenizer:
         print("Building variant B (Lean source → BPE) ...")
-        train_B = build_variant_B(train_examples, tokenizer)
-        eval_B  = build_variant_B(eval_examples,  tokenizer)
+        train_B = build_variant_B(train_examples, tokenizer, representation_id)
+        eval_B  = build_variant_B(eval_examples,  tokenizer, representation_id)
 
         print("Building variant C (AST-style → BPE) ...")
-        train_C = build_variant_C(train_examples, tokenizer)
-        eval_C  = build_variant_C(eval_examples,  tokenizer)
+        train_C = build_variant_C(train_examples, tokenizer, representation_id)
+        eval_C  = build_variant_C(eval_examples,  tokenizer, representation_id)
     else:
         train_B = eval_B = train_C = eval_C = []
 
@@ -293,6 +296,20 @@ def run(corpus_path: str, out_dir: str, seed: int = 42) -> None:
     with open(eval_manifest_path, "w") as f:
         json.dump([example_id(ex) for ex in eval_examples], f, indent=2)
     print(f"  Wrote train/eval manifests → {train_manifest_path}, {eval_manifest_path}")
+
+    representation_manifest_path = os.path.join(out_dir, "representation_manifest.json")
+    with open(representation_manifest_path, "w") as f:
+        json.dump(
+            {
+                "representation_id": representation_id,
+                "seed": seed,
+                "train_examples": len(train_examples),
+                "eval_examples": len(eval_examples),
+            },
+            f,
+            indent=2,
+        )
+    print(f"  Wrote representation manifest → {representation_manifest_path}")
 
     # Summary stats
     print()
@@ -318,5 +335,6 @@ if __name__ == "__main__":
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
     parser.add_argument("--out", default="datasets/")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--representation-id", default="semantic_graph_ir_v1_2_0")
     args = parser.parse_args()
-    run(args.corpus, args.out, args.seed)
+    run(args.corpus, args.out, args.seed, args.representation_id)

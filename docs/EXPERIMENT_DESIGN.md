@@ -117,6 +117,9 @@ comparison.
    - `python3 python/scaffold_theorem_eval.py`
 7. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
 
+Representation IDs are recorded in dataset rows and `runs/variant_*/results.json` so future IR
+candidate families can be compared without changing the reporting pipeline.
+
 ## Finalization checklist (publishability gate)
 
 Run these after full A/B/C training completes:

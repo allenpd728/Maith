@@ -95,9 +95,9 @@ def main() -> int:
     print()
     print(
         f"  {'Variant':<10} {'Perplexity':>12} {'Vocab':>8} {'Params':>10} "
-        f"{'Minutes':>9} {'Quality':>8} {'Tokenizer':>17} {'Caps(T/E)':>10}"
+        f"{'Minutes':>9} {'Quality':>8} {'Tokenizer':>17} {'Caps(T/E)':>10} {'Repr':>24}"
     )
-    print(f"  {'-'*10} {'-'*12} {'-'*8} {'-'*10} {'-'*9} {'-'*8} {'-'*17} {'-'*10}")
+    print(f"  {'-'*10} {'-'*12} {'-'*8} {'-'*10} {'-'*9} {'-'*8} {'-'*17} {'-'*10} {'-'*24}")
 
     present_results = [r for r in results.values() if r is not None]
     has_mixed_quality = (
@@ -125,6 +125,7 @@ def main() -> int:
         tokenizer_mode = r.get("tokenizer_mode", "unknown")
         train_cap = r.get("train_seq_len_cap", "?")
         eval_cap = r.get("eval_seq_len_cap", "?")
+        representation_id = r.get("representation_id", "unknown")
         print(
             f"  {'Variant ' + variant:<10}"
             f" {ppl:>12.2f}{flag}"
@@ -134,6 +135,7 @@ def main() -> int:
             f" {quality:>8}"
             f" {tokenizer_mode:>17}"
             f" {str(train_cap) + '/' + str(eval_cap):>10}"
+            f" {representation_id:>24}"
         )
 
     print()

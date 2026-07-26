@@ -44,6 +44,8 @@ Builds three dataset variants for the controlled A/B/C experiment:
 ```bash
 cd ~/Projects/Maith
 python3 python/build_dataset.py [--corpus Corpus/corpus.jsonl] [--out datasets/] [--seed 42]
+# Optional: tag the dataset with an explicit representation candidate ID
+python3 python/build_dataset.py --representation-id semantic_graph_ir_v1_2_0
 ```
 
 Outputs under `datasets/`:
@@ -52,9 +54,12 @@ Outputs under `datasets/`:
 - `train_B.jsonl`, `eval_B.jsonl` — Lean source BPE variant
 - `train_C.jsonl`, `eval_C.jsonl` — AST-style BPE variant
 - `train_manifest.json`, `eval_manifest.json` — ordered declaration IDs shared across A/B/C
+- `representation_manifest.json` — representation metadata (`representation_id`, split sizes, seed)
 
 Each row: `{ "source", "example_id", "name", "module", "input_ids", "labels", "seq_len" }`.
 `labels` = `input_ids` shifted left by 1 (standard causal LM format, last position = −100).
+Rows now also include `representation_id` so future representation variants can share the same
+dataset/training tooling without ambiguity.
 
 Split: 90% train / 10% eval, fixed seed for reproducibility across all three variants.
 
