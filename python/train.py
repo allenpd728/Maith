@@ -254,7 +254,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         weight_decay=WEIGHT_DECAY,
         warmup_ratio=WARMUP_RATIO,
         lr_scheduler_type="cosine",
-        evaluation_strategy="epoch",
+        eval_strategy="epoch",
         save_strategy="epoch",
         logging_steps=10,
         seed=SEED,
