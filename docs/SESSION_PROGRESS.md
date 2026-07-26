@@ -1,86 +1,136 @@
 # Maith IR Pipeline — Session Progress
 
-## 2026-07-06 (sessions 2–3: metaprogramming extraction + corpus run)
-
-Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+## 2026-07-25 (session 4: 100% corpus coverage + pipeline hardening)
 
 ### What was done
 
-**Architecture pivot** — replaced `Transpiler.fromLean*` string parsers with
-`Maith/MetaExtractor.lean`, a real Lean 4 metaprogram that walks
-`ConstantInfo`/`Expr` trees from the live `Environment`. The motivation: Lean's
-elaborated representation already contains the fully-resolved type information;
-re-deriving it from source text is impossible in the general case (macros,
-notation, implicit arguments, typeclass resolution all disappear from source).
+**`EntityId.bound` round-trip fix** — `Decoder.lean` was silently falling through
+`b(<scope>)` tokens to `.var`, corrupting decoded graphs. Fixed `parseEntityIdToken`
+to strip the `b(...)` wrapper and reconstruct `.bound`. Python `corpus_loader.py`
+`_validate_entity_id` also rejected `bound` as an unknown kind — fixed to accept
+and validate the `declName/depth/binderName` scope format. 776 of 792 corpus entries
+contain bound IDs; all now pass the validator and token round-trip.
 
-**Scoped entity IDs** — added `EntityId.bound : String → EntityId` using the
-format `"declName/depth/binderName"`. This prevents De Bruijn index collisions
-across declarations. Covered by `testScopedBinderInjectivity`.
+**HOF application extraction** — `extractExprEntityId` was calling
+`failUnsupported "HOF application"` for any non-constant function head (`bvar`,
+`fvar` applied as a function). Fixed: variable-headed applications now emit an
+`Operation` with `op = .generic "hof"`, head entity as first input, arg entities
+following. Coverage jump: **70% → 93%** (792 → 1055 declarations).
 
-**`forallE`/`lam`/`bvar` handling** — both binder forms push a scoped entity
-onto `binderCtx`, optionally emit a type-annotation attribute (or `"typeclass"`
-for `instImplicit`), recurse into the body, then pop. `bvar n` resolves via
-list indexing.
+**Projection extraction** — `.proj typeName idx struct` now emits
+`Operation (.generic "proj:TypeName/idx")` applied to the struct entity.
 
-**`OperationOp.generic` fallback** — any constant-headed application not in
-the semantic core (add/sub/mul/div/neg/pow/eq/lt/le) emits
-`Operation (.generic "FullName")` with token `gen:FullName`. This keeps the IR
-vocabulary stable as Mathlib coverage grows.
+**Let-expression extraction** — `.letE name type value body` now pushes a scoped
+`bound` entity for the binding, emits a `let-binding` attribute and equality
+relation to the value entity, then recurses into the body.
 
-**`.thmInfo` skip** — proof terms are skipped; only the type (the statement)
-is extracted for theorems. This eliminated 267 spurious failures.
+**HEq arity fallback** — `HEq` has 4 args (`HEq α a β b`), not 3 like `Eq`.
+Added explicit branch; any other unexpected arity falls back to a generic operation
+rather than `failUnsupported`. Coverage: **99.6% → 100%** (1125 → 1129).
 
-**`mergeGraphs` dedup** — type-graph and value-graph entities are deduplicated
-by ID on merge. Forall/lambda binders for the same declaration at the same depth
-produce identical scoped IDs and are the same entity; naive concatenation was
-causing 280 injectivity failures.
+**Stats aggregation fix** — `processBatch` was leaving `tokenDistribution` and
+`graphStats` at zero defaults. Fixed: both are computed from the collected examples
+at the end of the loop using `Float.ofNat` for explicit Nat→Float coercions.
 
-**Decoder `gen:` fix** — `String.drop 4` returns `Substring` in Lean 4.31.0;
-fixed with `.toString`.
+**`buildCorpus` executable** — added `Scripts/BuildCorpus.lean` and a `lean_exe`
+entry to `lakefile.lean` so the corpus can be re-generated with:
+```
+lake build buildCorpus
+lake env ./.lake/build/bin/buildCorpus
+```
 
-**Added Mathlib dependency** — `mathlib4` v4.31.0 via Lake manifest.
+**`decodeGraph` panics removed** — both `panic!` calls replaced with graceful
+fallbacks: missing `GRAPH_BEGIN` returns an empty graph; unknown tokens are skipped.
+`decodeGraph` is now total.
+
+**Stale comments updated** — `Encoder.lean`, `Decoder.lean`, and `Transpiler.lean`
+all carried "minimal scaffold / placeholder" doc comments that no longer reflected
+the actual implementations. Updated to document what the code actually does, and
+added an explicit warning that `Transpiler` is debug-only with a different ID format
+than `Encoder`.
+
+**Deprecated API fixes** — `String.dropRight` → `dropEnd().toString`,
+`String.trim` → `trimAscii().toString`.
+
+**`parseRelationOpToken` fallback fixed** — previously defaulted to `.gt` for
+unknown tokens, making `.gt` unreachable. Now all nine `RelationOp` values are
+explicit branches; fallback is `.eq`.
+
+**Python spot-check script** — `python/spot_check.py` validates the full corpus
+through `corpus_loader.py` and verifies token round-trips for all bound entries.
 
 ### Corpus results — `Mathlib.Algebra.Group.Defs` (1,129 declarations)
 
 | | Count | % |
 |---|---|---|
-| **Success** | **792** | **70%** |
-| Failure | 337 | 30% |
+| **Success** | **1129** | **100%** |
+| Failure | 0 | 0% |
 
-| Count | Failure reason |
-|---|---|
-| 217 | type: HOF application (non-constant head) |
-| 62 | value: projection expression |
-| 48 | value: HOF application |
-| 6 | value: let expression |
-| 4 | value: `Eq` arity (heterogeneous equality) |
-
-Validated against one module. The failure taxonomy will grow with broader coverage.
-
-Non-trivial successes confirm real content is being extracted:
-`mul_assoc` → 11 ents, 5 rels, 5 ops; `DivisionMonoid.mk` → 34 ents, 14 rels, 21 ops.
+Token distribution: min 13, max 7509, avg 318 tokens/graph, total 359,310 tokens.
+Graph structure: avg 35.8 entities, 6.8 attributes, 13.3 relations, 21.7 operations; max graph size 1,859 nodes.
 
 ### Tests
 
-- `lake build tests`: 66 jobs, 0 failures
-- All tests pass
-- New: `testScopedBinderInjectivity`, `testForallBodyWithOps`, `testCreateDeclarationMetadata` (real assertions)
+- `lake build tests`: all jobs, 0 failures
+- All tests pass (including new: `testProjectionExtracts`, `testLetExpressionExtracts`,
+  `testHOFApplicationExtracts`, `Decoder round-trips EntityId.bound`,
+  `Decoder round-trips Graph with bound entity`)
 
-### Remaining IR gaps (next milestones, by failure count)
+### Commits on `kit/dev` this session
 
-1. **HOF application** (265): `f a` where `f` is `bvar`/`fvar` — variable-headed application has no IR representation yet
-2. **Projection** (62): `Expr.proj` — structure field access
-3. **`letE`** (6): dependent let-binding
-4. **Heterogeneous `Eq` arity** (4): guard on arity in `extractApplication`
+| Hash | Description |
+|---|---|
+| `fb44d6d` | fix: replace decodeGraph panics with graceful fallbacks; update stale placeholder comments |
+| `b6ec4f8` | fix: use Float.ofNat for explicit Nat→Float coercions in processBatch |
+| `43a3730` | fix: correct Nat/Float casts and zipWith usage in processBatch stats |
+| `6a31c5e` | fix: populate tokenDistribution and graphStats in processBatch |
+| `0e96f5e` | fix: handle HEq arity and unexpected relation arity as generic operations |
+| `19ead0a` | fix: match letE 5th Bool argument in MetaExtractor |
+| `0fbb7e9` | fix: implement projection and let-expression extraction in MetaExtractor |
+| `3505874` | fix: open Lean.DSL namespace in BuildCorpus script |
+| `7e88935` | feat: add buildCorpus executable for re-running corpus generation |
+| `e633b86` | fix: add .toString to String.Slice results from dropEnd and trimAscii |
+| `0e94b83` | fix: replace deprecated String.dropRight/trim with dropEnd/trimAscii in Decoder |
+| `f515285` | fix: HOF application extraction in MetaExtractor; add tests and corpus spot-check script |
+| `b1e4404` | fix: bound EntityId round-trip in Decoder, Python validator, and schema docs |
+| `55ff7c0` | docs: update pipeline status, design notes, fix typo, add Python pipeline doc |
+
+### Next milestones (completed in session 5)
+
+1. ✅ **Expand corpus** — 4 modules, 2,554/2,554 (100%)
+2. ✅ **Python training pipeline** — `train.py`, `compare_results.py`, A/B/C splits built
+3. ✅ **`mathlibCommitHash`** — resolved via `jq` from `lake-manifest.json` (`fabf563a`)
+4. ✅ **Encoder v1.2.0** — FVAR_N/BVAR_N split, 7,867 unique tokens, 2,554/2,554 round-trip
+
+---
+
+## 2026-07-06 (session 3: metaprogramming extraction + corpus run)
+
+**Architecture pivot** — replaced `Transpiler.fromLean*` string parsers with
+`Maith/MetaExtractor.lean`, a real Lean 4 metaprogram that walks
+`ConstantInfo`/`Expr` trees from the live `Environment`.
+
+**Scoped entity IDs** — added `EntityId.bound : String → EntityId` using the
+format `"declName/depth/binderName"`.
+
+**`forallE`/`lam`/`bvar` handling** — binder forms push a scoped entity onto
+`binderCtx`, recurse into the body, then pop. `bvar n` resolves via list indexing.
+
+**`OperationOp.generic` fallback** — any constant-headed application not in the
+semantic core emits `Operation (.generic "FullName")`.
+
+**`.thmInfo` skip** — proof terms skipped; only the statement type extracted for
+theorems.
+
+**Corpus results at session end**: 792/1129 (70%). Failure taxonomy documented above.
 
 ---
 
 ## 2026-07-05 (session 1: baseline fixes)
 
-- Fixed Lean 3-style syntax in `Examples.lean`, `Cirriculum.lean`
-- Implemented `Transpiler` round-trip (Lean-like graph text → parse → Graph)
+- Fixed Lean 3-style syntax in `Examples.lean`, `Curriculum.lean`
+- Implemented `Transpiler` round-trip
 - Implemented `Decoder` token round-trip
 - Made `CorpusSerializer` write real files to disk
 - Fixed `ProblemGenerator` to reject `a = 0`
-- Delegated normalization to `Maith.Normalizer` in `ProcessingPipeline`
 - Build: 66 jobs, 0 failures; 54/54 tests passing

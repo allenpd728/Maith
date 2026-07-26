@@ -111,7 +111,51 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
       (examples : List TrainingExample) (stats : CorpusStats) :
       ProcessingResult (List TrainingExample × CorpusStats) :=
     match remaining with
-    | [] => ProcessingResult.ok (examples, stats)
+    | [] =>
+      -- Compute token and graph statistics from the collected examples.
+      let tokenLengths  : List Nat := examples.map (·.tokens.length)
+      let totalTokens   : Nat      := tokenLengths.foldl (· + ·) 0
+      let minLength     : Nat      := tokenLengths.foldl Nat.min (tokenLengths.headD 0)
+      let maxLength     : Nat      := tokenLengths.foldl Nat.max 0
+      let n             : Float    := Float.ofNat examples.length
+      let avgLength     : Float    :=
+        if examples.isEmpty then 0.0 else Float.ofNat totalTokens / n
+      let entityCounts  : List Nat := examples.map (·.graph.entities.length)
+      let attrCounts    : List Nat := examples.map (·.graph.attributes.length)
+      let relCounts     : List Nat := examples.map (·.graph.relations.length)
+      let opCounts      : List Nat := examples.map (·.graph.operations.length)
+      let graphSizes    : List Nat :=
+        List.zipWith (· + ·)
+          (List.zipWith (· + ·) entityCounts attrCounts)
+          (List.zipWith (· + ·) relCounts opCounts)
+      let maxGraphSize  : Nat      := graphSizes.foldl Nat.max 0
+      let sumNat (counts : List Nat) : Nat := counts.foldl (· + ·) 0
+      let avgOf (counts : List Nat) : Float :=
+        if examples.isEmpty then 0.0 else Float.ofNat (sumNat counts) / n
+      let finalStats := { stats with
+        tokenDistribution := {
+          minLength  := minLength
+          maxLength  := maxLength
+          avgLength  := avgLength
+          totalTokens := totalTokens
+        }
+        graphStats := {
+          avgEntities   := avgOf entityCounts
+          avgAttributes := avgOf attrCounts
+          avgRelations  := avgOf relCounts
+          avgOperations := avgOf opCounts
+          maxGraphSize  := maxGraphSize
+        }
+        -- Per-module success counts derived from example metadata.
+        moduleStats :=
+          let modules := (examples.map (·.module)).eraseDups
+          modules.map fun m =>
+            let modExamples := examples.filter (·.module == m)
+            { moduleName := m
+              totalDeclarations := modExamples.length  -- approximation: only counts successes
+              successfulExamples := modExamples.length }
+      }
+      ProcessingResult.ok (examples, finalStats)
     | decl :: rest =>
       let result := processDeclaration decl encoder
       let updatedExamples := match result with
