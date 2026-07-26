@@ -128,19 +128,23 @@ candidate families can be compared without changing the reporting pipeline.
 
 Run these after full A/B/C training completes:
 
-1. Enforce full-run-only comparison:
+1. Run the full post-run pipeline:
+   - `python3 python/run_postrun_pipeline.py --runs-dir runs/`
+2. Enforce full-run-only comparison:
    - `python3 python/compare_results.py --runs-dir runs/ --strict-full`
-2. Re-check decision-grade gate:
+3. Re-check decision-grade gate:
    - `python3 python/check_results_gate.py --runs-dir runs/`
-3. Build publish summary artifact:
+4. Build publish summary artifact:
    - `python3 python/publish_results_summary.py --runs-dir runs/`
-4. Check publish readiness:
+5. Check publish readiness:
    - `python3 python/check_publish_readiness.py --runs-dir runs/`
-5. Confirm required artifacts exist:
+6. Validate artifact schemas:
+   - `python3 python/validate_experiment_artifacts.py --runs-dir runs/`
+7. Confirm required artifacts exist:
    - `runs/variant_A/results.json`
    - `runs/variant_B/results.json`
    - `runs/variant_C/results.json`
    - `runs/loss_curves.json`
    - `runs/full_results_gate.json` (`decision_grade=true`)
    - `runs/publish_results_summary.json`
-6. Only after all checks pass, update the Results table and interpretation in this document as final.
+8. Only after all checks pass, update the Results table and interpretation in this document as final.
