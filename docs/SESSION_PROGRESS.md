@@ -95,13 +95,12 @@ Graph structure: avg 35.8 entities, 6.8 attributes, 13.3 relations, 21.7 operati
 | `b1e4404` | fix: bound EntityId round-trip in Decoder, Python validator, and schema docs |
 | `55ff7c0` | docs: update pipeline status, design notes, fix typo, add Python pipeline doc |
 
-### Next milestones
+### Next milestones (completed in session 5)
 
-1. **Expand corpus** — add more Mathlib modules to `Scripts/BuildCorpus.lean`
-   (`Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`)
-2. **Python training pipeline** — export `corpus.jsonl` tokens to HuggingFace
-   `datasets` format for fine-tuning a small base model (Llama 3.2 1B or Qwen2.5-Coder 1.5B)
-3. **`mathlibCommitHash`** — currently hardcoded `"unknown"`; resolve from Lake manifest
+1. ✅ **Expand corpus** — 4 modules, 2,554/2,554 (100%)
+2. ✅ **Python training pipeline** — `train.py`, `compare_results.py`, A/B/C splits built
+3. ✅ **`mathlibCommitHash`** — resolved via `jq` from `lake-manifest.json` (`fabf563a`)
+4. ✅ **Encoder v1.2.0** — FVAR_N/BVAR_N split, 7,867 unique tokens, 2,554/2,554 round-trip
 
 ---
 

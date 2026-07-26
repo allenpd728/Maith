@@ -25,19 +25,20 @@ GRAPH_END
 
 ---
 
-## Entity ID encoding (v1.0.0)
+## Entity ID encoding (v1.2.0)
 
 Entity IDs are the main vocabulary stability problem. Raw scoped names
 (`b(mul_assoc/0/a)`) embed declaration names and produce ~21k unique tokens
 that each appear ~3 times — useless for a model.
 
-**v1.0.0 replaces scoped IDs with positional references within each graph:**
+**v1.2.0 uses positional references within each graph, with separate counters for binder kinds:**
 
 | Kind | Raw form | Encoded token |
 |---|---|---|
-| `EntityId.var "HMul.hMul"` | `HMul.hMul` | `HMul.hMul` (unchanged — these are semantically stable constant names) |
-| `EntityId.term 3` | `t3` | `TERM_3` (capped at `TERM_63`; above that → `TERM_MANY`) |
-| `EntityId.bound "mul_assoc/0/a"` | `b(mul_assoc/0/a)` | `BVAR_0`, `BVAR_1`, ... (positional within graph, assigned in order of first appearance; capped at `BVAR_63` → `BVAR_MANY`) |
+| `EntityId.var "HMul.hMul"` | `HMul.hMul` | `HMul.hMul` (unchanged — semantically stable constant names) |
+| `EntityId.term 3` | `t3` | `TERM_3` (capped at `TERM_63`; above → `TERM_MANY`) |
+| `EntityId.bound "∀:mul_assoc/0/a"` | forall binder | `FVAR_0`, `FVAR_1`, ... (capped at `FVAR_63` → `FVAR_MANY`) |
+| `EntityId.bound "λ:mul_assoc/0/a"` | lambda binder | `BVAR_0`, `BVAR_1`, ... (capped at `BVAR_63` → `BVAR_MANY`) |
 
 **Rationale for bound → positional:**
 The declaration name in a bound scope (`mul_assoc` in `mul_assoc/0/a`) is not
@@ -77,6 +78,7 @@ GRAPH_BEGIN  GRAPH_END
 E  A  R  O
 pos  neg  neut
 eq  add  sub  mul  div  le  ge  lt  gt  neg  pow
+FVAR_0 ... FVAR_63  FVAR_MANY
 BVAR_0 ... BVAR_63  BVAR_MANY
 TERM_0 ... TERM_63  TERM_MANY
 GEN_UNK
@@ -121,4 +123,5 @@ whether cross-graph identity is the missing signal.
 |---|---|
 | 0.1.0 | Initial format: raw scoped IDs (`b(...)`), raw term IDs (`t<n>`) |
 | 1.0.0 | Positional bound IDs (`BVAR_N`), capped term IDs (`TERM_N`), `GEN_UNK` for rare ops. Cap = 31. |
-| 1.1.0 | Raised positional cap from 31 → 63. Covers p95+ of Mathlib graphs; 386 graphs (15.1%) hit `TERM_MANY` at cap 31, mostly `._f` auto-generated flat constructors. |
+| 1.1.0 | Raised positional cap from 31 → 63. Covers p95+ of Mathlib graphs. |
+| 1.2.0 | Split bound IDs: forall binders → `FVAR_N`, lambda binders → `BVAR_N`. Separate counters per graph, both start at 0. `MetaExtractor` tags scope strings with `∀:`/`λ:` prefix. |

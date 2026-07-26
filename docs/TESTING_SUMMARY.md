@@ -41,7 +41,22 @@ Additional pipeline checks run via `Tests/CorpusPipelineTests.lean` (not counted
 - `Decoder round-trips TERM_N token (v1.0.0)` — positional term IDs
 - `Decoder round-trips Graph with bound entity (v1.0.0 positional)` — full graph round-trip
 
-## Files modified in most recent test update (2026-07-25)
+## Decoder tests (v1.2.0 additions — needed)
 
-- `Tests/DecoderTests.lean` — BVAR/TERM v1.0.0 tests
-- `Tests/CorpusPipelineTests.lean` — scoped binder injectivity updated for v1.0.0 behavior
+The following tests should be added to `Tests/DecoderTests.lean` to cover the FVAR_N split:
+
+- `Decoder round-trips FVAR_N token (v1.2.0)` — forall binder positional IDs
+- `Decoder round-trips BVAR_N token (v1.2.0)` — lambda binder positional IDs (verify `λ:` prefix)
+- `Decoder round-trips graph with mixed FVAR/BVAR (v1.2.0)` — graph with both binder kinds
+
+## Python corpus validation
+
+`python/validate_roundtrip.py --all` — 2,554/2,554 passed (v1.2.0 corpus).
+Reports FVAR_*/BVAR_*/TERM_* token counts in vocab snapshot.
+
+## Files modified in most recent test update (2026-07-25 session 2)
+
+- `Maith/Encoder.lean` — v1.2.0 FVAR/BVAR split
+- `Maith/Decoder.lean` — v1.2.0 FVAR_N/BVAR_N parsing, `∀:`/`λ:` scope prefix
+- `Maith/MetaExtractor.lean` — `∀:`/`λ:` scope tagging
+- `python/validate_roundtrip.py` — FVAR_* token reporting
