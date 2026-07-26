@@ -120,7 +120,10 @@ comparison.
 6. Scaffold theorem-proving evaluation artifacts for Phase 6:
    - `python3 python/scaffold_theorem_eval.py`
    - `python3 python/validate_theorem_eval_artifacts.py`
-7. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
+7. Scaffold proof-context sidecar protocol artifacts:
+   - `python3 python/scaffold_context_artifacts.py`
+   - `python3 python/build_dependency_manifest.py`
+8. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
 
 Representation IDs are recorded in dataset rows and `runs/variant_*/results.json` so future IR
 candidate families can be compared without changing the reporting pipeline.
