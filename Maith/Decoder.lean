@@ -22,16 +22,25 @@ import Maith.Token
 namespace Lean.DSL
 
 private def parseEntityIdToken (s : String) : EntityId :=
-  -- EntityId.term serialises as "t<n>" (e.g. "t0", "t12")
-  if s.startsWith "t" then
+  -- v1.0.0: TERM_N positional token → EntityId.term N
+  if s.startsWith "TERM_" then
+    let suffix := (s.drop 5).toString
+    match suffix.toNat? with
+    | some n => .term n
+    | none   => .term 0  -- TERM_MANY or malformed → term 0
+  -- v1.0.0: BVAR_N positional token → EntityId.bound "BVAR_N" (synthetic stable scope)
+  else if s.startsWith "BVAR_" then
+    .bound s
+  -- v0.1.0 legacy: EntityId.term serialised as "t<n>" (e.g. "t0", "t12")
+  else if s.startsWith "t" then
     match (s.drop 1).toString.toNat? with
     | some n => .term n
     | none   => .var s
-  -- EntityId.bound serialises as "b(<scope>)" where scope = "declName/depth/binderName"
+  -- v0.1.0 legacy: EntityId.bound serialised as "b(<scope>)"
   else if s.startsWith "b(" && s.endsWith ")" then
     let inner := (s.drop 2).toString.dropEnd 1 |>.toString
     .bound inner
-  -- EntityId.var serialises as the name string directly
+  -- EntityId.var: bare constant name
   else
     .var s
 
@@ -65,10 +74,12 @@ private def parseOperationOpToken (s : String) : OperationOp :=
 
 Decoder transforms linear token sequences back into IR structures.
 
-The implementation is complete and round-trips all IR types including
-`EntityId.bound` (serialised as `b(<scope>)`). `decodeGraph` is total:
-missing markers and unknown tokens produce an empty or partial graph
-rather than a panic.
+Supports both encoder format versions:
+- v1.0.0: `TERM_N` → `.term N`, `BVAR_N` → `.bound "BVAR_N"` (positional)
+- v0.1.0: `t<n>` → `.term N`, `b(<scope>)` → `.bound scope` (legacy)
+
+`decodeGraph` is total: missing markers and unknown tokens produce an
+empty or partial graph rather than a panic.
 
 -/
 
