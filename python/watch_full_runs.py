@@ -22,6 +22,11 @@ VARIANTS = ("A", "B", "C")
 
 def parse_status(log_text: str) -> dict:
     normalized = log_text.replace("\r", "\n")
+
+    restart_idx = normalized.rfind("=== RESTART:")
+    if restart_idx != -1:
+        normalized = normalized[restart_idx:]
+
     lines = normalized.splitlines()
 
     done_variants: list[str] = []
