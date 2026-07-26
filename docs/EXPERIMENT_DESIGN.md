@@ -38,7 +38,7 @@ letting the embedding table reflect the actual vocab is the cleanest test.
 
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
-| Base model | Qwen2.5-Coder-1.5B | Small enough to train locally; code-aware |
+| Base model | Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA) | Small enough to train locally; code-aware |
 | Max sequence length | 1,536 | Covers variant A p99 (1,252) with headroom |
 | Batch size | 8 (effective 32 with grad accum 4) | Fits in 16GB VRAM |
 | Learning rate | 2e-4 | Standard for small fine-tunes |
@@ -99,5 +99,5 @@ formatted summary once all three variants have finished.*
 | B | Raw `leanExpr` → Qwen BPE | 151,643 | — | — |
 | C | AST-style → Qwen BPE | 151,643 | — | — |
 
-**Config:** Qwen2.5-Coder-1.5B, 3 epochs, seed 42, cosine LR, batch size 8 (effective),
+**Config:** Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA), 3 epochs, seed 42, cosine LR, batch size 8 (effective),
 2,213 train / 246 eval examples, Mathlib `fabf563a` (v4.31.0), encoder v1.2.0.
