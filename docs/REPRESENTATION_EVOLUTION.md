@@ -72,6 +72,18 @@ Audit current metadata consistency:
 python3 python/representation_audit.py
 ```
 
+Enforce non-empty metadata:
+
+```bash
+python3 python/representation_audit.py --strict-nonempty
+```
+
+See readiness across registered candidates:
+
+```bash
+python3 python/representation_matrix_status.py
+```
+
 Register a new candidate in the family registry:
 
 ```bash
