@@ -4,6 +4,30 @@ For the full session-by-session development log, see `SESSION_PROGRESS.md`.
 
 ---
 
+## 2026-07-25 (session 2) — Encoder v1.2.0, FVAR/BVAR split, training pipeline
+
+### Encoder v1.2.0 — forall/lambda binder distinction
+
+`MetaExtractor.lean` now tags bound variable scope strings with a binder-kind prefix:
+- Forall binders (`∀x, ...`) → scope `"∀:declName/depth/x"` → encodes as `FVAR_0`, `FVAR_1`, ...
+- Lambda binders (`fun x => ...`) → scope `"λ:declName/depth/x"` → encodes as `BVAR_0`, `BVAR_1`, ...
+
+Each counter resets to 0 per graph. Both capped at 63; overflow → `FVAR_MANY`/`BVAR_MANY`.
+Total unique vocab: 7,867 tokens (up from 7,265). Round-trip 2,554/2,554 verified.
+
+### Training pipeline complete
+
+- `python/train.py` — fine-tune Qwen2.5-Coder-1.5B on one A/B/C variant, reports eval perplexity
+- `python/compare_results.py` — reads all three `runs/variant_*/results.json`, prints comparison table
+- `runs/` added to `.gitignore` (model weights not committed; `results.json` files are small)
+- `docs/EXPERIMENT_DESIGN.md` — results table stub ready to fill in after training
+
+### Other fixes
+- `mathlibCommitHash` now captured from `lake-manifest.json` via `jq` — `fabf563a` (Mathlib v4.31.0)
+- `String.trim` → `trimAscii` deprecation fixed in `MathlibCorpusBuilder.lean`
+
+---
+
 ## 2026-07-25 — Encoder v1.0.0, multi-module expansion, Python tooling
 
 ### Encoder format stabilization (v1.0.0)
