@@ -188,7 +188,7 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL,
             trust_remote_code=True,
-            torch_dtype=torch.float32,
+            dtype=torch.float32,
         )
         model.resize_token_embeddings(vocab_size)
         print(f"  Resized embedding table: {tokenizer.vocab_size} → {vocab_size}")
@@ -201,7 +201,7 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL,
             trust_remote_code=True,
-            torch_dtype=torch.float32,
+            dtype=torch.float32,
         )
         return model, tokenizer, tokenizer.vocab_size
 
