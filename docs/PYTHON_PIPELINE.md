@@ -47,7 +47,7 @@ Builds three dataset variants for the controlled A/B/C experiment:
 
 | Variant | Representation | Tokenizer |
 |---------|---------------|-----------|
-| A | Maith IR tokens (v1.0.0) | Custom vocab (`vocab_A.json`) |
+| A | Maith IR tokens (v1.2.0) | Custom vocab (`vocab_A.json`) |
 | B | Raw `leanExpr` string | Qwen2.5-Coder BPE |
 | C | AST-style split `leanExpr` | Qwen2.5-Coder BPE |
 

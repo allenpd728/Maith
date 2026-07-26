@@ -12,6 +12,10 @@ Controlled comparison of three input representations for next-token prediction o
 
 Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (2,213 train / 246 eval, seed=42).
 
+Clarification: C is a representation baseline (AST-style split input), not "B with a different context cap."
+B and C intentionally share tokenizer/model family while changing representation; eval perplexity uses a
+shared fixed eval cap for A/B/C comparability.
+
 ## Known confound: embedding table size
 
 Variant A uses a 4,495-token embedding table. Variants B and C use a 151,643-token table.
