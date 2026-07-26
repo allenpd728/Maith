@@ -23,6 +23,9 @@ __pycache__/
 venv/
 .env
 
+# Training runs — model weights are large; commit results.json only
+runs/
+
 # Temporary files
 *.tmp
 *.log
