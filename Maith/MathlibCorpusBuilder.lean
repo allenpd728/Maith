@@ -93,17 +93,21 @@ def buildMathlibIRCorpus
         -- Lake v1.2.0 manifest format (pretty-printed, space after colon):
         --   {"name": "mathlib", ..., "rev": "<40-char hash>", ...}
         -- We search for the mathlib entry, then find the "rev" field within it.
+        -- Strategy: find the mathlib entry by locating "name": "mathlib", then
+        -- search backwards in the content for the "rev" field that belongs to that entry.
+        -- In Lake v1.2.0 manifests, "rev" appears before "name" within each entry, so
+        -- we find the mathlib name marker, take the text before it, and grab the last "rev"
+        -- value in that prefix — which belongs to the mathlib entry.
         let nameMarker := "\"name\": \"mathlib\""
         let revMarker  := "\"rev\": \""
         match content.splitOn nameMarker with
-        | _ :: rest =>
-          -- Take only the text between this entry and the next package entry
-          let entryText := (rest.head!.splitOn "\"name\": \"" |>.head!)
-          match entryText.splitOn revMarker with
-          | _ :: revRest =>
-            let revField := revRest.head!
-            pure (revField.splitOn "\"" |>.head!)
-          | _ => pure "unknown"
+        | prefix :: _ =>
+          -- prefix is everything before "name": "mathlib" — grab the last "rev": "..." in it
+          match prefix.splitOn revMarker with
+          | parts =>
+            match parts.getLast? with
+            | some lastPart => pure (lastPart.splitOn "\"" |>.head!)
+            | none => pure "unknown"
         | _ => pure "unknown"
 
     -- Build final corpus
