@@ -91,7 +91,7 @@ def stage_build_dataset(dry_run: bool) -> None:
 
 def stage_spot_check(dry_run: bool) -> None:
     header("5 / 5  Spot check")
-    run(["python3", "python/spot_check.py"], dry_run)
+    run(["python3", "python/spot_check.py", "Corpus/corpus.jsonl"], dry_run)
 
 
 # ---------------------------------------------------------------------------
