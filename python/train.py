@@ -266,6 +266,16 @@ def _load_example_ids(path: str) -> list[str]:
     return ids
 
 
+def _load_representation_id(path: str) -> str | None:
+    with open(path) as f:
+        first = f.readline().strip()
+    if not first:
+        return None
+    row = json.loads(first)
+    rid = row.get("representation_id")
+    return str(rid) if rid is not None else None
+
+
 def assert_shared_eval_examples(datasets_dir: str, eval_path: str) -> None:
     eval_manifest = Path(datasets_dir) / "eval_manifest.json"
     current_ids = _load_example_ids(eval_path)
@@ -308,6 +318,12 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     assert os.path.exists(eval_path),  f"Missing: {eval_path}"
 
     assert_shared_eval_examples(datasets_dir, eval_path)
+    train_representation_id = _load_representation_id(train_path)
+    eval_representation_id = _load_representation_id(eval_path)
+    if train_representation_id and eval_representation_id:
+        assert train_representation_id == eval_representation_id, (
+            f"Representation mismatch between train ({train_representation_id}) and eval ({eval_representation_id})"
+        )
 
     limit = 50 if smoke_test else None
     train_seq_len = TRAIN_MAX_SEQ_LEN_C if variant == "C" else TRAIN_MAX_SEQ_LEN
@@ -319,6 +335,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     eval_dataset  = IRDataset(eval_path,  max_len=eval_seq_len, limit=limit)
     print(f"  Train: {len(train_dataset)} examples")
     print(f"  Eval:  {len(eval_dataset)} examples")
+    if train_representation_id:
+        print(f"  Representation ID: {train_representation_id}")
     print()
 
     model, tokenizer, model_meta = load_model_for_variant(variant, vocab_path)
@@ -406,6 +424,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     # Save results
     results = {
         "variant": variant,
+        "representation_id": train_representation_id or "unknown",
         "vocab_size": model_meta["model_vocab_size"],
         "tokenizer_mode": model_meta["tokenizer_mode"],
         "tokenizer_vocab_size": model_meta["tokenizer_vocab_size"],
