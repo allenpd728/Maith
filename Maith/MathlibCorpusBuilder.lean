@@ -81,13 +81,36 @@ def buildMathlibIRCorpus
       IO.println s!"  {m.moduleName}: {m.successfulExamples} examples"
     IO.println ""
 
+    -- Read Mathlib commit hash from lake-manifest.json (best-effort; falls back to "unknown").
+    -- The manifest is always present after `lake update` and records the exact resolved revision
+    -- for every dependency, making the corpus run reproducible against a specific Mathlib version.
+    let mathlibHash : String ← do
+      let manifestPath := "lake-manifest.json"
+      match ← IO.FS.readFile manifestPath |>.toBaseIO with
+      | .error _ => pure "unknown"
+      | .ok content =>
+        -- Extract the revision for the "mathlib" package.
+        -- Manifest format: {"packages":[{"name":"mathlib","revision":"<hash>",...},...]}
+        -- Simple string search avoids a full JSON parser dependency.
+        let nameMarker := "\"name\":\"mathlib\""
+        let revMarker  := "\"revision\":\""
+        match content.splitOn nameMarker with
+        | _ :: rest =>
+          let after := rest.head!
+          match after.splitOn revMarker with
+          | _ :: revRest =>
+            let revField := revRest.head!
+            pure (revField.splitOn "\"" |>.head!)
+          | _ => pure "unknown"
+        | _ => pure "unknown"
+
     -- Build final corpus
     let corpus : TrainingCorpus := {
       examples
       stats := {
         stats with
         totalDeclarations := enumerationStats.totalEnumerated
-        mathlibCommitHash := "unknown"
+        mathlibCommitHash := mathlibHash
         encoderVersion := "1.1.0"
         irVersion := "0.1.0"
       }
