@@ -18,6 +18,21 @@ Lean Environment → MetaExtractor.lean → IR Graph → Normalizer.lean → can
   → python/ → A/B/C dataset variants → fine-tuning
 ```
 
+## A/B/C variant definitions (current experiment)
+
+The Lean extraction/encoding path above produces the canonical IR corpus once, then `python/build_dataset.py`
+materializes three training variants:
+
+- **Variant A (IR representation):** encoded Maith IR tokens (`Encoder.lean` v1.2.0) with a custom vocab
+  (`vocab_A.json`), and resized embedding/unembedding layers to that vocab size.
+- **Variant B (raw-syntax baseline):** raw `leanExpr` text tokenized by native Qwen2.5-Coder BPE.
+- **Variant C (AST-style baseline):** AST-style tokenized `leanExpr` (split form), also tokenized by native
+  Qwen2.5-Coder BPE.
+
+So B and C intentionally share the same tokenizer family but differ in input representation. C is **not**
+"B with a different sequence cap"; eval perplexity is computed with the same fixed eval cap across A/B/C
+for apples-to-apples comparison.
+
 ## Detailed pipeline diagram
 
 ```mermaid
@@ -142,6 +157,10 @@ The IR vocabulary is small, canonical, and stable. Encoder v1.2.0 produces:
 - **Semantic constants**: `HMul.hMul`, `Eq`, etc. (stable across corpus)
 - **Generic operations**: `gen:<FullName>` (rare ones map to `GEN_UNK` at dataset-build time)
 
+Known tradeoff: when a declaration exceeds 64 distinct forall/lambda binders in a graph, additional binders
+collapse into `FVAR_MANY`/`BVAR_MANY`, which preserves bounded vocab size but loses positional distinctness
+beyond index 63.
+
 Full specification: `docs/ENCODER_FORMAT.md`.
 
 Current corpus vocabulary: **7,867 unique tokens** across 2,554 declarations (4 modules).
@@ -170,11 +189,19 @@ tokens are skipped, missing `GRAPH_BEGIN` returns an empty graph rather than a p
 
 Supports v1.2.0 (`FVAR_N`/`BVAR_N`/`TERM_N`), v1.0.0 (`BVAR_N`/`TERM_N`), and v0.1.0 legacy (`b(...)`/`t<n>`) formats. Round-trip verified 2,554/2,554.
 
+In v1.0.0, forall and lambda binders were not split into separate token families; both used `BVAR_*`.
+v1.2.0 introduced the explicit `FVAR_*` vs `BVAR_*` distinction. Current corpus/training artifacts use v1.2.0;
+older decode support remains for backward compatibility and regression testing.
+
 
 Rewrite Engine Philosophy
 -------------------------
 
-Rewrites operate on graphs, not syntax. This enables:
+This section is architectural direction, not a fully built standalone module in the current pipeline.
+Today, canonicalization/normalization is implemented (via `Normalizer.lean`), but a broader rewrite engine
+with probabilistic or search-integrated rewrite policies is still future work.
+
+Target rewrite behavior operates on graphs, not syntax. This enables:
 
 *   algebraic simplification
     
