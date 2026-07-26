@@ -13,6 +13,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `tokenizer_study.py` | BPE fragmentation study — compares IR tokens vs Qwen2.5-Coder BPE |
 | `train.py` | Fine-tuning script — runs one A/B/C variant, reports eval perplexity |
 | `compare_results.py` | Reads all three `runs/variant_*/results.json` and prints comparison table |
+| `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
 
@@ -118,6 +119,12 @@ python3 python/train.py --variant C --out runs/variant_C
 Saves `runs/variant_*/results.json` with perplexity, training time, and config. After all three
 runs, the script prints a comparison table automatically.
 Also saves `runs/variant_*/loss_curve.json` (train/eval loss points from Trainer logs).
+
+To monitor the long-running sequential full A/B/C job:
+
+```bash
+python3 python/watch_full_runs.py
+```
 
 Key design choices (from `docs/EXPERIMENT_DESIGN.md`):
 - Variant A: embedding table resized to `vocab_A.json` size (currently 4,495 IR tokens)
