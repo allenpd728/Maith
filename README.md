@@ -78,6 +78,7 @@ python3 python/watch_full_runs.py
 python3 python/estimate_full_run_eta.py
 python3 python/full_run_status_snapshot.py
 python3 python/full_run_status_report.py
+python3 python/full_run_status_history.py
 ```
 
 To guard against stale experiment values in docs while results evolve:
