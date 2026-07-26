@@ -72,6 +72,7 @@ if missing:
 
 BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
 MAX_SEQ_LEN     = 1024
+MAX_SEQ_LEN_C   = 512   # BPE on IR text inflates ~2.6x; reduce to avoid OOM on MPS
 BATCH_SIZE      = 2
 GRAD_ACCUM      = 4
 LEARNING_RATE   = 2e-4
@@ -228,9 +229,10 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     assert os.path.exists(eval_path),  f"Missing: {eval_path}"
 
     limit = 50 if smoke_test else None
+    seq_len = MAX_SEQ_LEN_C if variant == "C" else MAX_SEQ_LEN
     print(f"Loading datasets{' (smoke test: 50 examples)' if smoke_test else ''} ...")
-    train_dataset = IRDataset(train_path, limit=limit)
-    eval_dataset  = IRDataset(eval_path,  limit=limit)
+    train_dataset = IRDataset(train_path, max_len=seq_len, limit=limit)
+    eval_dataset  = IRDataset(eval_path,  max_len=seq_len, limit=limit)
     print(f"  Train: {len(train_dataset)} examples")
     print(f"  Eval:  {len(eval_dataset)} examples")
     print()
@@ -261,6 +263,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         logging_steps=10,
         seed=SEED,
         report_to="none",
+        gradient_checkpointing=True,   # trade compute for memory — needed for C on MPS
         fp16=False,  # MPS doesn't support fp16; set True for CUDA
         bf16=False,
         dataloader_pin_memory=False,
