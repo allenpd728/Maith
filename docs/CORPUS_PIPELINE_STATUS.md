@@ -87,7 +87,7 @@ structure CorpusStats where
 | **Total** | **2,554** | **2,554 (100%)** |
 
 Zero failures. All previously identified failure categories resolved (HOF, projection, letE, HEq).
-Mathlib version: `fabf563a` (v4.31.0). Encoder version: 1.1.0.
+Mathlib version: `fabf563a` (v4.31.0). Encoder version: 1.2.0.
 
 ## Key Design Decisions
 
@@ -98,13 +98,17 @@ arguments, notation expansion, typeclass resolution, and macro expansion are all
 this from source strings is impossible in the general case. `MetaExtractor.lean` walks
 `ConstantInfo`/`Expr` directly from the live `Environment`, avoiding that problem entirely.
 
-### Encoder v1.1.0: positional bound IDs
+### Encoder v1.2.0: positional bound IDs with binder-kind split
 
 Lean uses De Bruijn indices for bound variables. Early versions used scoped IDs
 (`"declName/depth/binderName"`) — unique but producing 21k singleton tokens unusable for training.
-Encoder v1.1.0 replaces them with positional `BVAR_N` tokens assigned in first-appearance order
-within each graph (cap 63, overflow → `BVAR_MANY`). This collapsed vocabulary from 63,747 → 5,577
-tokens (−91%) while leaving sequence lengths unchanged. See `docs/ENCODER_FORMAT.md`.
+Encoder v1.2.0 uses positional IDs with binder-kind tagging:
+- Forall binders (`∀:` scoped names) → `FVAR_N`
+- Lambda binders (`λ:` scoped names, plus legacy untagged scopes) → `BVAR_N`
+
+Both counters are assigned in first-appearance order within each graph (cap 63, overflow →
+`FVAR_MANY` / `BVAR_MANY`). This preserves positional compression while recovering forall/lambda
+distinction in the token stream. See `docs/ENCODER_FORMAT.md`.
 
 ### `OperationOp.generic` fallback
 
@@ -134,4 +138,4 @@ To regenerate: `lake build buildCorpus && lake env ./.lake/build/bin/buildCorpus
 
 1. **Run A/B/C training experiment** — `python3 python/train.py --variant A/B/C`; compare eval perplexity
 2. **Expand corpus** — add more Mathlib modules beyond the current 4
-3. **Explicit binder markers** — distinguish forall vs lambda binders in token stream (future refinement)
+3. **Expand evaluation depth** — run full (non-smoke) A/B/C training and record decision-grade perplexity
