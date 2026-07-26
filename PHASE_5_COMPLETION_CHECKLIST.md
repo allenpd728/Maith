@@ -1,9 +1,13 @@
 # Phase 5 Completion Checklist
 
-## Current Status (Jul 26, 16:28 UTC)
-- Variant A: ✅ Complete (69.0 min, 1.297 perplexity, 361.9M params)
-- Variant B: 🔄 Running (2% complete; use live tqdm ETA from `python3 python/watch_full_runs.py --log runs/full_abc_runs.log`)
+## Current Status (updated Jul 26, 22:46 UTC)
+- Variant A: ✅ Complete (1 epoch rerun: 22.2 min, 1.4781 perplexity, 361.9M params)
+- Variant B: 🔄 Running (use live tqdm ETA from `python3 python/watch_full_runs.py --log runs/full_abc_runs.log`)
 - Variant C: ⏳ Queued (starts after B; use live tqdm ETA once active)
+
+Note: the earlier A result (69.0 min, 1.297 perplexity from a 3-epoch run) is superseded for this
+comparison pass. Authoritative current baseline is `runs/variant_A/results.json` from the matched
+1-epoch restart.
 
 ## What to Do When All Three Finish
 
