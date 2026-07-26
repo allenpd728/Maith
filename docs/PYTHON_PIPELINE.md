@@ -28,6 +28,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `estimate_full_run_eta.py` | Estimates completion ETA from full-run progress history |
 | `full_run_status_snapshot.py` | Exports run/gate/ETA snapshot to `runs/full_run_status.json` |
 | `full_run_status_report.py` | Exports a markdown run-status brief to `runs/full_run_status.md` |
+| `check_docs_consistency.py` | Detects stale README/docs values and writes `runs/docs_consistency_report.json` |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
 
@@ -170,6 +171,12 @@ To run all finalization checks in one command:
 
 ```bash
 python3 python/finalize_full_experiment.py --runs-dir runs/
+```
+
+To catch stale experiment values in markdown docs:
+
+```bash
+python3 python/check_docs_consistency.py
 ```
 
 To scaffold Phase 6 theorem-proving evaluation artifacts:
