@@ -48,17 +48,28 @@ We expect a canonical semantic representation to be easier for sequence models t
 
 ```mermaid
 flowchart LR
-    A[Lean source] --> B[Lean elaborator]
-    B --> C[Expr]
-    C --> D[Maith graph IR]
-    D --> E[Canonical semantic graph]
-    E --> F[Token sequence / embeddings]
-    F --> G[Transformer training]
+    A[Lean source / Mathlib modules] --> B[Lean elaborator]
+    B --> C[Expr + Environment]
+    C --> D[MetaExtractor.lean]
+    D --> E[IR Graph]
+    E --> F[Normalizer.lean]
+    F --> G[Canonical graph]
+    G --> H[Encoder.lean v1.2.0]
+    H --> I[Token sequence]
+    I --> J[CorpusSerializer.lean]
+    J --> K[Corpus/corpus.jsonl]
+    K --> L[python/build_dataset.py]
+    L --> M[datasets/train_*.jsonl + eval_*.jsonl]
+    M --> N[python/train.py variants A/B/C]
+    N --> O[runs/variant_*/results.json + loss_curve.json]
 ```
 
 Concrete pipeline in this repo:
 
 `Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
+
+For a fuller, stage-by-stage architecture and artifact map, see:
+[`docs/Design.md#detailed-pipeline-diagram`](docs/Design.md#detailed-pipeline-diagram).
 
 The full pipeline is implemented and validated. See section 7 for corpus results and section 8 for known limitations.
 

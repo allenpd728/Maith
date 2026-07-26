@@ -18,6 +18,46 @@ Lean Environment → MetaExtractor.lean → IR Graph → Normalizer.lean → can
   → python/ → A/B/C dataset variants → fine-tuning
 ```
 
+## Detailed pipeline diagram
+
+```mermaid
+flowchart TD
+  subgraph LeanExtraction[Lean extraction + IR]
+    A1[Mathlib modules] --> A2[Lean elaborator]
+    A2 --> A3[Expr + Environment]
+    A3 --> A4[MetaExtractor.lean]
+    A4 --> A5[IR Graph]
+    A5 --> A6[Normalizer.lean]
+    A6 --> A7[Canonical graph]
+    A7 --> A8[Encoder.lean v1.2.0]
+    A8 --> A9[Token sequence]
+    A9 --> A10[CorpusSerializer.lean]
+    A10 --> A11[Corpus/corpus.jsonl]
+  end
+
+  subgraph PythonData[Dataset and experiment prep]
+    B1[python/build_dataset.py] --> B2[datasets/train_A|B|C.jsonl]
+    B1 --> B3[datasets/eval_A|B|C.jsonl]
+    B1 --> B4[datasets/train_manifest.json + eval_manifest.json]
+    B1 --> B5[datasets/representation_manifest.json]
+  end
+
+  subgraph TrainingEval[Training and evaluation]
+    C1[python/train.py --variant A|B|C] --> C2[runs/variant_*/results.json]
+    C1 --> C3[runs/variant_*/loss_curve.json]
+    C4[python/compare_results.py] --> C5[runs/loss_curves.json]
+    C6[python/check_results_gate.py] --> C7[runs/full_results_gate.json]
+    C8[python/publish_results_summary.py] --> C9[runs/publish_results_summary.json]
+  end
+
+  A11 --> B1
+  B2 --> C1
+  B3 --> C1
+  C2 --> C4
+  C2 --> C6
+  C2 --> C8
+```
+
 `Transpiler.lean` is debug-only: it formats IR as a human-readable string using a different
 ID format (`var:/term:/bound:` prefixes) than the encoder. It is not in the training pipeline.
 
