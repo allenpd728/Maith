@@ -4,6 +4,35 @@ For the full session-by-session development log, see `SESSION_PROGRESS.md`.
 
 ---
 
+## 2026-07-26 — Experiment operations + gating scaffolds
+
+### Run observability and dashboarding
+
+- Added `python/run_status_dashboard.py` to run monitor/ETA/snapshot/report/history/doc checks in one command.
+- Added `python/full_run_status_snapshot.py` + `python/full_run_status_report.py` + `python/full_run_status_history.py`
+  for machine-readable, markdown, and time-series run tracking.
+
+### Publishability and schema gating
+
+- Added `python/check_publish_readiness.py` to compute `runs/publish_readiness.json`.
+- Added `python/validate_experiment_artifacts.py` to validate key run artifact schemas:
+  - `full_run_status.json`
+  - `full_results_gate.json`
+  - `publish_results_summary.json`
+  - `publish_readiness.json`
+- Added `python/run_postrun_pipeline.py` wrapper for strict compare → gate → publish → readiness → schema checks.
+
+### Decision and representation scaffolds
+
+- Added canonical `docs/DECISION_LOG.md` plus `python/check_decision_log.py` coverage check.
+- Added `python/check_representation_matrix_gate.py` and integrated it into post-run/finalization wrappers.
+- Added theorem-eval schema contract/validation:
+  - `docs/THEOREM_EVAL_SCHEMAS.md`
+  - `python/validate_theorem_eval_artifacts.py`
+  - expanded `python/scaffold_theorem_eval.py` template metadata fields.
+
+---
+
 ## 2026-07-25 (session 2) — Encoder v1.2.0, FVAR/BVAR split, training pipeline
 
 ### Encoder v1.2.0 — forall/lambda binder distinction

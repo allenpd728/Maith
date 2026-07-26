@@ -39,4 +39,5 @@ lake build tests
 
 - `Tests/CorpusPipelineTests.lean` runs 13 additional named checks outside the counted suite.
 - `Tests/CorpusSerializerTests.lean` includes both pure JSON checks and an IO integration test.
-- Decoder count grew from 7 → 11 with the addition of v1.0.0 BVAR/TERM round-trip tests.
+- Decoder count grew from 7 → 12 with v1.0.0/v1.2.0 compatibility and mixed-binder round-trip tests.
+- For run artifact/tooling checks during long experiments, see `docs/PYTHON_PIPELINE.md`.

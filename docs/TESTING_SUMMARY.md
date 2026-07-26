@@ -55,10 +55,10 @@ Covers four structural cases with exact expected token sequences:
 Fails immediately if the encoder changes token output. Update `GOLDEN` dict and bump
 `encoderVersion` in `Corpus/stats.json` when a change is intentional.
 
-## Remaining decoder extension
+## Decoder coverage status
 
-- Add one mixed-binder graph round-trip test (`FVAR_N` + `BVAR_N` in the same graph) for extra
-  coverage of dual-counter behavior.
+- Mixed-binder graph round-trip coverage (`FVAR_N` + `BVAR_N`) is included in the decoder suite.
+- Current suite covers legacy v0.1.0 tokens and v1.0.0/v1.2.0 positional token families.
 
 ## Python corpus validation
 
@@ -71,3 +71,8 @@ Reports FVAR_*/BVAR_*/TERM_* token counts in vocab snapshot.
 - `Maith/Decoder.lean` — v1.2.0 FVAR_N/BVAR_N parsing, `∀:`/`λ:` scope prefix
 - `Maith/MetaExtractor.lean` — `∀:`/`λ:` scope tagging
 - `python/validate_roundtrip.py` — FVAR_* token reporting
+
+Related operational validation tooling (read-only during long runs):
+- `python/check_docs_consistency.py`
+- `python/check_decision_log.py`
+- `python/validate_experiment_artifacts.py`
