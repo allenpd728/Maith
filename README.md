@@ -80,6 +80,12 @@ python3 python/full_run_status_snapshot.py
 python3 python/full_run_status_report.py
 ```
 
+To guard against stale experiment values in docs while results evolve:
+
+```bash
+python3 python/check_docs_consistency.py
+```
+
 ### Corpus extraction result (real run)
 
 4 modules: `Mathlib.Algebra.Group.Defs`, `Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`  
