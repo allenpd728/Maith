@@ -21,13 +21,16 @@ private def formatEntityId (id : EntityId) : String :=
 
 /--
 
-Transpiler converts between Lean syntax (as strings) and the IR graph.
+Transpiler produces human-readable debug strings from IR graphs.
 
-This is a minimal scaffold: each function uses placeholder logic so the
+**This is a debug/display utility, not a training-path component.**
+Its `formatEntityId` uses `var:/term:/bound:` prefixes that differ
+from the `Encoder`'s token format (`t<n>` / `b(<scope>)` / bare name).
+Do not use `Transpiler` output as input to `Decoder` — use `Encoder`
+and `Decoder` for all round-trip and corpus work.
 
-project compiles cleanly and Copilot can begin extending the transpiler
-
-automatically.
+A future IR→Lean decompiler (reconstructing valid Lean syntax from an
+IR graph) would live here but is not yet implemented.
 
 -/
 

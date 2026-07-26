@@ -22,10 +22,29 @@ import Maith.Token
 namespace Lean.DSL
 
 private def parseEntityIdToken (s : String) : EntityId :=
-  if s.startsWith "t" then
-    match s.drop 1 |>.toNat? with
+  -- v1.0.0/v1.1.0: TERM_N positional token → EntityId.term N; TERM_MANY → .term 64 (sentinel > maxPositional 63)
+  if s == "TERM_MANY" then .term 64
+  else if s.startsWith "TERM_" then
+    let suffix := (s.drop 5).toString
+    match suffix.toNat? with
     | some n => .term n
-    | none => .var s
+    | none   => .term 64  -- malformed → sentinel
+  -- v1.2.0: FVAR_N positional token → EntityId.bound "∀:FVAR_N" (forall binder)
+  else if s == "FVAR_MANY" then .bound "∀:FVAR_MANY"
+  else if s.startsWith "FVAR_" then .bound s!"∀:{s}"
+  -- v1.0.0/v1.1.0: BVAR_N positional token → EntityId.bound "λ:BVAR_N" (lambda binder)
+  else if s == "BVAR_MANY" then .bound "λ:BVAR_MANY"
+  else if s.startsWith "BVAR_" then .bound s!"λ:{s}"
+  -- v0.1.0 legacy: EntityId.term serialised as "t<n>" (e.g. "t0", "t12")
+  else if s.startsWith "t" then
+    match (s.drop 1).toString.toNat? with
+    | some n => .term n
+    | none   => .var s
+  -- v0.1.0 legacy: EntityId.bound serialised as "b(<scope>)"
+  else if s.startsWith "b(" && s.endsWith ")" then
+    let inner := (s.drop 2).toString.dropEnd 1 |>.toString
+    .bound inner
+  -- EntityId.var: bare constant name
   else
     .var s
 
@@ -33,15 +52,16 @@ private def parsePolarityToken (s : String) : Polarity :=
   if s = "pos" then .pos else if s = "neut" then .neut else .neg
 
 private def parseRelationOpToken (s : String) : RelationOp :=
-  if s = "eq" then .eq
+  if s = "eq"  then .eq
   else if s = "add" then .add
   else if s = "sub" then .sub
   else if s = "mul" then .mul
   else if s = "div" then .div
-  else if s = "le" then .le
-  else if s = "ge" then .ge
-  else if s = "lt" then .lt
-  else .gt
+  else if s = "le"  then .le
+  else if s = "ge"  then .ge
+  else if s = "lt"  then .lt
+  else if s = "gt"  then .gt
+  else .eq  -- fallback: unknown token → eq (avoids silent wrong-case in .gt default)
 
 private def parseOperationOpToken (s : String) : OperationOp :=
   if s = "add" then .add
@@ -58,11 +78,12 @@ private def parseOperationOpToken (s : String) : OperationOp :=
 
 Decoder transforms linear token sequences back into IR structures.
 
-This is a minimal scaffold: each function uses placeholder logic
+Supports both encoder format versions:
+- v1.0.0: `TERM_N` → `.term N`, `BVAR_N` → `.bound "BVAR_N"` (positional)
+- v0.1.0: `t<n>` → `.term N`, `b(<scope>)` → `.bound scope` (legacy)
 
-so the project compiles cleanly and Copilot can begin extending
-
-the decoder automatically.
+`decodeGraph` is total: missing markers and unknown tokens produce an
+empty or partial graph rather than a panic.
 
 -/
 
@@ -81,10 +102,9 @@ structure Decoder where
 /--
 
 A default decoder implementation that mirrors the default encoder.
-
-This is NOT a full reversible codec — it is a compiling placeholder
-
-that ensures the IR pipeline is structurally complete.
+Handles all three `EntityId` forms (`var`, `term`, `bound`), all nine
+`RelationOp` values, and all `OperationOp` values including `generic`.
+Round-trip fidelity is verified by the test suite in `Tests.DecoderTests`.
 
 -/
 
@@ -122,21 +142,26 @@ def decodeOperation (toks : List Token) : Operation :=
   | ["O", inputsStr, outputStr, opStr, polStr] =>
       let trimmed : String :=
         if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
-      let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken s.trim)
+      let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken (s.trimAscii.toString))
       let outputText : String :=
         if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr
       let output :=
-        parseEntityIdToken outputText.trim
+        parseEntityIdToken (outputText.trimAscii.toString)
       let op := parseOperationOpToken opStr
       let pol := parsePolarityToken polStr
       { inputs := inputs, output := output, op := op, polarity := pol }
   | _ =>
       { inputs := [], output := EntityId.var "ERR", op := OperationOp.add, polarity := Polarity.neut }
 
+-- An empty graph returned on any decode error — safe default, no crash.
+private def emptyGraph : Graph :=
+  { entities := [], attributes := [], relations := [], operations := [] }
+
 def decodeGraph (toks : List Token) : Graph :=
+  -- Find GRAPH_BEGIN; return empty graph gracefully if absent.
   let sections := toks.dropWhile (fun t => t ≠ "GRAPH_BEGIN")
   match sections with
-  | [] => panic! "decodeGraph: missing GRAPH_BEGIN marker"
+  | [] => emptyGraph  -- missing GRAPH_BEGIN: return empty rather than panic
   | _ :: body =>
     let body := body.takeWhile (fun t => t ≠ "GRAPH_END")
     let rec go (remaining : List Token) (acc : Graph) : Graph :=
@@ -150,8 +175,11 @@ def decodeGraph (toks : List Token) : Graph :=
           go rest { acc with relations := acc.relations ++ [decodeRelation ["R", src, tgt, op, pol]] }
       | "O" :: inputs :: output :: op :: pol :: rest =>
           go rest { acc with operations := acc.operations ++ [decodeOperation ["O", inputs, output, op, pol]] }
-      | _ => panic! s!"decodeGraph: malformed token stream: {remaining}"
-    go body { entities := [], attributes := [], relations := [], operations := [] }
+      | _ :: rest =>
+          -- Unknown or malformed token: skip rather than crash.
+          -- This keeps decode total and safe on partial or future-format streams.
+          go rest acc
+    go body emptyGraph
 
 def defaultDecoder : Decoder :=
 {

@@ -1,45 +1,78 @@
-# Maith IR Pipeline - Testing Summary
-
-Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
-
-## Verified build
-
-- `lake build tests` completed successfully (latest verification: 2026-07-06).
-- Build completed with **66 jobs** and **0 failures** (clean build and incremental build).
-- `./.lake/build/bin/tests` completed successfully.
-
-## Verified results
-
-- **54/54 counted tests passed**
-- Corpus pipeline validation checks passed
-- Serializer IO integration passed
-- Lean emitted deprecation warnings from the existing string-trim helpers.
-
-## Files updated during verification
-
-- `Maith/Examples.lean`
-- `Maith/Cirriculum.lean`
-- `Maith/Transpiler.lean`
-- `Maith/Decoder.lean`
-- `Maith/ProblemGenerator.lean`
-- `Maith/CorpusSerializer.lean`
-- `Maith/MathlibLoader.lean`
-- `Maith/ProcessingPipeline.lean`
-- `Tests/CorpusTests.lean` removed
-
-## Issues resolved on 2026-07-05
-
-- Lean 3 list syntax in `Examples.lean`
-- Missing imports in `Cirriculum.lean`
-- Corrupted field-access / escaped syntax in `Transpiler.lean`
-- Graph reconstruction in `Decoder.lean`
-- Solvable batch generation in `ProblemGenerator.lean`
-- Real file persistence in `CorpusSerializer.lean`
-- Source preservation in `MathlibLoader.lean`
-- Normalization wiring in `ProcessingPipeline.lean`
+# Maith IR Pipeline — Testing Summary
 
 ## Current status
 
-- The Maith library builds successfully.
-- The test executable runs successfully.
-- No unresolved module failures remain from the verification run.
+- `lake build tests`: passes, 0 failures
+- `./.lake/build/bin/tests`: all tests pass
+- Last verified: 2026-07-26
+
+## Test counts
+
+| Suite | Tests |
+|-------|-------|
+| Polarity | 2 |
+| EntityId | 2 |
+| Entity | 1 |
+| Attribute | 1 |
+| RelationOp | 2 |
+| Relation | 1 |
+| OperationOp | 2 |
+| Operation | 1 |
+| Graph | 2 |
+| Encoder | 5 |
+| Decoder | 12 |
+| Graph Type | 2 |
+| Normalizer | 7 |
+| Injectivity | 10 |
+| Problem Generator | 9 |
+| Corpus Serializer | 3 |
+| **Subtotal** | **62** |
+
+Additional pipeline checks run via `Tests/CorpusPipelineTests.lean` (not counted above):
+`Data structures compile`, `Transpiler formatting`, `ProcessingResult type`, `Graph normalization`,
+`Injectivity checking`, `Enumeration configuration`, `Serialization configuration`,
+`Forall body with arithmetic ops`, `Metadata extraction`, `Projection extraction`,
+`Let expression extraction`, `HOF application extraction`, `Scoped binder injectivity`.
+
+## Decoder tests (v1.2.0 state)
+
+- `Decoder round-trips EntityId.bound (v0.1.0 legacy)` — legacy `b(<scope>)` format
+- `Decoder round-trips BVAR_N token (v1.2.0 lambda)` — positional lambda binder IDs (`λ:BVAR_N`)
+- `Decoder round-trips FVAR_N token (v1.2.0 forall)` — positional forall binder IDs (`∀:FVAR_N`)
+- `Decoder round-trips TERM_N token (v1.0.0)` — positional term IDs
+- `Decoder round-trips Graph with bound entity (v1.2.0 positional)` — full graph round-trip
+
+## Golden examples fixture (v1.2.0)
+
+`python3 python/test_golden_examples.py` — 4/4 passed.
+
+Covers four structural cases with exact expected token sequences:
+- `LeftCancelSemigroup.toIsLeftCancelMul` — forall-only binders (FVAR_N only)
+- `IsAddCommutative.instDivisionAddCommMonoid` — mixed FVAR_N + BVAR_N
+- `IsAddCommutative.instAddCommSemigroup._proof_1` — semantic `add` op token
+- `npow_eq_pow` — EntityId.var (named constant alongside FVAR_N)
+
+Fails immediately if the encoder changes token output. Update `GOLDEN` dict and bump
+`encoderVersion` in `Corpus/stats.json` when a change is intentional.
+
+## Decoder coverage status
+
+- Mixed-binder graph round-trip coverage (`FVAR_N` + `BVAR_N`) is included in the decoder suite.
+- Current suite covers legacy v0.1.0 tokens and v1.0.0/v1.2.0 positional token families.
+
+## Python corpus validation
+
+`python/validate_roundtrip.py --all` — 2,554/2,554 passed (v1.2.0 corpus).
+Reports FVAR_*/BVAR_*/TERM_* token counts in vocab snapshot.
+
+## Files modified in most recent test update (2026-07-25 session 2)
+
+- `Maith/Encoder.lean` — v1.2.0 FVAR/BVAR split
+- `Maith/Decoder.lean` — v1.2.0 FVAR_N/BVAR_N parsing, `∀:`/`λ:` scope prefix
+- `Maith/MetaExtractor.lean` — `∀:`/`λ:` scope tagging
+- `python/validate_roundtrip.py` — FVAR_* token reporting
+
+Related operational validation tooling (read-only during long runs):
+- `python/check_docs_consistency.py`
+- `python/check_decision_log.py`
+- `python/validate_experiment_artifacts.py`

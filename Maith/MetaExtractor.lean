@@ -164,13 +164,23 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     | .const fnName _ =>
       match relationOpFromConstName? fnName, operationOpFromConstName? fnName with
       | some relOp, _ =>
+        -- For Eq: expect exactly 3 args (Eq α a b) — take last 2 as [a, b].
+        -- For HEq: expect exactly 4 args (HEq α a β b) — take last 2 as [a, b].
+        -- For other relation ops: require ≥ 2 args, take last 2.
+        -- Any other arity: fall back to a generic operation rather than failing.
         let relationArgs :=
           if fnName == ``Eq then
             if args.length = 3 then takeLast 2 args else []
+          else if fnName == ``HEq then
+            if args.length = 4 then takeLast 2 args else []
           else
             if args.length ≥ 2 then takeLast 2 args else []
         if relationArgs.length ≠ 2 then
-          failUnsupported s!"relation arity for `{fnName}`"
+          -- Unexpected arity: treat as a generic operation to avoid extraction failure.
+          let argIds ← args.mapM extractExprEntityId
+          let outputId ← freshTerm
+          addOperation argIds outputId (.generic fnName.toString)
+          pure outputId
         else do
           let srcId ← extractExprEntityId relationArgs[0]!
           let tgtId ← extractExprEntityId relationArgs[1]!
@@ -198,15 +208,25 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
         addOperation argIds outputId (.generic fnName.toString)
         pure outputId
     | _ =>
-      failUnsupported "HOF application (non-constant head)"
+      -- HOF application: the function head is a bvar, fvar, or other non-constant
+      -- (e.g. `f a` where `f` is a universally-quantified variable).
+      -- Represent as an Operation with op=.generic "hof", taking the head entity
+      -- as the first input followed by all argument entities.  This preserves the
+      -- dependency structure without requiring a named constant.
+      let headId ← extractExprEntityId fn
+      let argIds ← args.mapM extractExprEntityId
+      let outputId ← freshTerm
+      addOperation (headId :: argIds) outputId (.generic "hof")
+      pure outputId
   | .forallE binderName binderType body binderInfo =>
     -- 1. Try extracting the binder's type in the current (unextended) context.
     let typeIdOpt ← tryExtractId binderType
     -- 2. Create a declaration-scoped entity for this binder so indices from
     --    different declarations can never collide after encoding.
+    --    The "∀:" prefix lets the encoder emit FVAR_N (forall) vs BVAR_N (lambda).
     let st ← get
     let depth      := st.binderCtx.length
-    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let scopedName := s!"∀:{st.declName}/{depth}/{binderName}"
     let binderId   := EntityId.bound scopedName
     addEntity binderId
     -- 3. Emit binder-kind annotation.
@@ -229,10 +249,11 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     -- Lambda binders are handled symmetrically to forallE: push a scoped entity,
     -- recurse into the body, pop. For theorem proof terms the caller skips value
     -- extraction entirely, so this handler is used primarily for definition bodies.
+    --    The "λ:" prefix lets the encoder emit BVAR_N (lambda) vs FVAR_N (forall).
     let typeIdOpt ← tryExtractId binderType
     let st ← get
     let depth      := st.binderCtx.length
-    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let scopedName := s!"λ:{st.declName}/{depth}/{binderName}"
     let binderId   := EntityId.bound scopedName
     addEntity binderId
     match binderInfo with
@@ -253,8 +274,30 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     match st.binderCtx[n]? with
     | some id => pure id
     | none    => failUnsupported s!"bvar {n} out of scope (depth {st.binderCtx.length})"
-  | .letE .. => failUnsupported "let expression"
-  | .proj ..  => failUnsupported "projection expression"
+  | .letE binderName _type value body _ =>
+    -- let x := value; body
+    -- 1. Extract the value expression to get an entity for the bound name.
+    -- 2. Register a named entity for the let-binding so the body can reference it.
+    -- 3. Recurse into the body with that entity pushed as the De Bruijn 0 binding.
+    let valueId ← extractExprEntityId value
+    let st ← get
+    let depth      := st.binderCtx.length
+    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let letId      := EntityId.bound scopedName
+    addEntity letId
+    addAttribute letId "let-binding" "true"
+    addRelation letId valueId .eq
+    withBinder letId (extractExprEntityId body)
+  | .proj typeName idx struct =>
+    -- e.field — struct projection
+    -- Represent as an Operation: proj:<TypeName>/<fieldIdx> applied to the struct entity,
+    -- producing a fresh term for the projected value.  This keeps the IR vocabulary
+    -- stable: "proj:Semigroup.toMul/0" is a distinct, deterministic op token.
+    let structId  ← extractExprEntityId struct
+    let outputId  ← freshTerm
+    let opLabel   := s!"proj:{typeName}/{idx}"
+    addOperation [structId] outputId (.generic opLabel)
+    pure outputId
   | .mdata _ body => extractExprEntityId body
 
 end

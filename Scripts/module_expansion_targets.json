@@ -1,0 +1,20 @@
+{
+  "baseline_modules": [
+    "Mathlib.Algebra.Group.Defs",
+    "Mathlib.Algebra.Group.Basic",
+    "Mathlib.Algebra.Ring.Defs",
+    "Mathlib.Order.Basic"
+  ],
+  "expansion_candidates": [
+    "Mathlib.Algebra.GroupPower.Basic",
+    "Mathlib.Algebra.Ring.Basic",
+    "Mathlib.Algebra.Field.Defs",
+    "Mathlib.Algebra.Field.Basic",
+    "Mathlib.Order.Lattice",
+    "Mathlib.Order.CompleteLattice",
+    "Mathlib.Data.Nat.Basic",
+    "Mathlib.Data.Int.Basic",
+    "Mathlib.Algebra.Module.Basic",
+    "Mathlib.Topology.Basic"
+  ]
+}
