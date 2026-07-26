@@ -20,6 +20,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
 | `representation_audit.py` | Audits representation metadata consistency across datasets/runs |
+| `representation_matrix_status.py` | Reports readiness/state across registered representation candidates |
 | `register_representation.py` | Registers new representation candidates in the family registry |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
@@ -167,6 +168,18 @@ To audit representation metadata consistency:
 
 ```bash
 python3 python/representation_audit.py
+```
+
+For stricter enforcement (fail if IDs are missing):
+
+```bash
+python3 python/representation_audit.py --strict-nonempty
+```
+
+To summarize status across all registered representation candidates:
+
+```bash
+python3 python/representation_matrix_status.py
 ```
 
 To register a new representation candidate:

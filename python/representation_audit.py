@@ -32,6 +32,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Audit representation metadata consistency.")
     parser.add_argument("--datasets-dir", default="datasets/")
     parser.add_argument("--runs-dir", default="runs/")
+    parser.add_argument(
+        "--strict-nonempty",
+        action="store_true",
+        help="Fail if representation_id is missing/empty in dataset or run artifacts",
+    )
     args = parser.parse_args()
 
     datasets_dir = Path(args.datasets_dir)
@@ -57,6 +62,10 @@ def main() -> int:
         unique_dataset_repr = {r for r in dataset_repr.values() if r is not None}
         if len(unique_dataset_repr) > 1:
             failures.append(f"Dataset representation IDs differ across variants: {dataset_repr}")
+    if args.strict_nonempty:
+        for v, rid in dataset_repr.items():
+            if rid is None or str(rid).strip() == "":
+                failures.append(f"Dataset representation_id missing for variant {v}")
 
     results_repr = {}
     for v in variants:
@@ -64,6 +73,10 @@ def main() -> int:
         if result is None:
             continue
         results_repr[v] = result.get("representation_id")
+    if args.strict_nonempty:
+        for v, rid in results_repr.items():
+            if rid is None or str(rid).strip() == "":
+                failures.append(f"Run representation_id missing for variant {v}")
 
     print("=== Representation Audit ===")
     print(f"Datasets dir: {datasets_dir}")
