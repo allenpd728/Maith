@@ -22,13 +22,13 @@ import Maith.Token
 namespace Lean.DSL
 
 private def parseEntityIdToken (s : String) : EntityId :=
-  -- v1.0.0: TERM_N positional token → EntityId.term N; TERM_MANY → .term 32 (sentinel > maxPositional)
-  if s == "TERM_MANY" then .term 32
+  -- v1.0.0/v1.1.0: TERM_N positional token → EntityId.term N; TERM_MANY → .term 64 (sentinel > maxPositional 63)
+  if s == "TERM_MANY" then .term 64
   else if s.startsWith "TERM_" then
     let suffix := (s.drop 5).toString
     match suffix.toNat? with
     | some n => .term n
-    | none   => .term 32  -- malformed → sentinel
+    | none   => .term 64  -- malformed → sentinel
   -- v1.0.0: BVAR_N positional token → EntityId.bound "BVAR_N" (synthetic stable scope)
   else if s.startsWith "BVAR_" then
     .bound s

@@ -175,11 +175,49 @@ def write_jsonl(path: str, rows: list[dict]) -> None:
     print(f"  Wrote {len(rows)} rows → {path}")
 
 
+TERM_MANY_FILTER_THRESHOLD = 50  # drop examples with more TERM_MANY tokens than this
+
+
+def filter_examples(examples: list[dict], threshold: int, drop_log_path: Optional[str] = None) -> list[dict]:
+    """
+    Drop examples where TERM_MANY appears more than `threshold` times.
+    These are pathological sequences (._f flat constructors, large auto-generated match arms)
+    that would inject hundreds of ambiguous tokens into single training sequences.
+
+    Logs dropped declaration names to `drop_log_path` if provided.
+    """
+    kept, dropped = [], []
+    for ex in examples:
+        count = ex.get("tokens", []).count("TERM_MANY")
+        if count <= threshold:
+            kept.append(ex)
+        else:
+            dropped.append({"name": ex.get("name", ""), "module": ex.get("module", ""), "term_many_count": count})
+
+    dropped.sort(key=lambda x: -x["term_many_count"])
+    print(f"  Filter (TERM_MANY > {threshold}): kept {len(kept)}, dropped {len(dropped)}")
+    if dropped:
+        print(f"  Top 5 dropped: {[d['name'] for d in dropped[:5]]}")
+
+    if drop_log_path and dropped:
+        os.makedirs(os.path.dirname(drop_log_path), exist_ok=True)
+        with open(drop_log_path, "w") as f:
+            json.dump(dropped, f, indent=2)
+        print(f"  Full drop log → {drop_log_path}")
+
+    return kept
+
+
 def run(corpus_path: str, out_dir: str, seed: int = 42) -> None:
     print(f"Loading corpus from {corpus_path} ...")
     with open(corpus_path) as f:
         examples = [json.loads(line) for line in f]
     print(f"Loaded {len(examples)} examples.")
+
+    # Filter pathological examples before splitting
+    print("Filtering pathological examples ...")
+    drop_log = os.path.join(out_dir, "filtered_dropped.json")
+    examples = filter_examples(examples, TERM_MANY_FILTER_THRESHOLD, drop_log_path=drop_log)
     print()
 
     # Deterministic split — fixed seed, same split used for A, B, C
