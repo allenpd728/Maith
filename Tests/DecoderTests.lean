@@ -112,7 +112,53 @@ def decoderTests : List TestResult := [
       operations := []
     }
     defaultDecoder.decodeGraph (encodeGraph original) = expected)
-    "Should round-trip bound graph with positional BVAR_N tokens"
+    "Should round-trip bound graph with positional BVAR_N tokens",
+
+  -- v1.2.0 graph round-trip with mixed binder kinds:
+  -- encodeGraph maps forall/lambda-tagged scopes to independent FVAR_N/BVAR_N counters.
+  runTest "Decoder round-trips mixed FVAR/BVAR graph (v1.2.0 positional)"
+    (let original : Graph := {
+      entities := [
+        { id := EntityId.bound "∀:mul_assoc/0/a", polarity := Polarity.pos },
+        { id := EntityId.bound "λ:mul_assoc/1/b", polarity := Polarity.neut },
+        { id := EntityId.term 0,                  polarity := Polarity.neut }
+      ]
+      attributes := []
+      relations  := [
+        { src := EntityId.bound "∀:mul_assoc/0/a"
+          tgt := EntityId.bound "λ:mul_assoc/1/b"
+          op := RelationOp.eq
+          polarity := Polarity.pos }
+      ]
+      operations := [
+        { inputs := [EntityId.bound "∀:mul_assoc/0/a", EntityId.term 0]
+          output := EntityId.bound "λ:mul_assoc/1/b"
+          op := OperationOp.add
+          polarity := Polarity.neut }
+      ]
+    }
+    let expected : Graph := {
+      entities := [
+        { id := EntityId.bound "∀:FVAR_0", polarity := Polarity.pos },
+        { id := EntityId.bound "λ:BVAR_0", polarity := Polarity.neut },
+        { id := EntityId.term 0,           polarity := Polarity.neut }
+      ]
+      attributes := []
+      relations  := [
+        { src := EntityId.bound "∀:FVAR_0"
+          tgt := EntityId.bound "λ:BVAR_0"
+          op := RelationOp.eq
+          polarity := Polarity.pos }
+      ]
+      operations := [
+        { inputs := [EntityId.bound "∀:FVAR_0", EntityId.term 0]
+          output := EntityId.bound "λ:BVAR_0"
+          op := OperationOp.add
+          polarity := Polarity.neut }
+      ]
+    }
+    defaultDecoder.decodeGraph (encodeGraph original) = expected)
+    "Should round-trip a graph containing both FVAR_N and BVAR_N positional binders"
 ]
 
 def runAllDecoderTests : IO Unit := do
