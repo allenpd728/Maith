@@ -71,13 +71,22 @@ BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; s
 TRAIN_MAX_SEQ_LEN     = 1024
 TRAIN_MAX_SEQ_LEN_C   = 512   # BPE on IR text inflates ~2.6x; reduce to avoid OOM on MPS
 EVAL_MAX_SEQ_LEN      = 512   # fixed across A/B/C for apples-to-apples perplexity
-BATCH_SIZE      = 2
-GRAD_ACCUM      = 4
+BATCH_SIZE      = 2        # Variant A (custom 4.5K vocab, small embeddings)
+GRAD_ACCUM      = 4        # Effective batch = 8
 LEARNING_RATE   = 2e-4
 EPOCHS          = 3
 WEIGHT_DECAY    = 0.01
 WARMUP_RATIO    = 0.05  # converted to warmup_steps at runtime
 SEED            = 42
+
+# Variant-specific batch sizes to manage embedding table memory pressure
+# B/C have 151K+ Qwen vocab (33x larger embeddings than A's 4.5K custom vocab)
+# So they need smaller per-device batch size, compensated by higher grad accum
+VARIANT_BATCH_CONFIG = {
+    "A": {"batch_size": 2, "grad_accum": 4},  # Effective batch = 8, small embeddings
+    "B": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, large Qwen vocab
+    "C": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, large Qwen vocab
+}
 
 
 # ---------------------------------------------------------------------------
@@ -347,15 +356,25 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
 
     os.makedirs(out_dir, exist_ok=True)
     epochs = 1 if smoke_test else EPOCHS
-    total_steps = max(1, (len(train_dataset) // (BATCH_SIZE * GRAD_ACCUM)) * epochs)
+    
+    # Get variant-specific batch size and grad accum
+    batch_cfg = VARIANT_BATCH_CONFIG.get(variant, {"batch_size": BATCH_SIZE, "grad_accum": GRAD_ACCUM})
+    batch_size = batch_cfg["batch_size"]
+    grad_accum = batch_cfg["grad_accum"]
+    
+    print(f"Batch config for variant {variant}: batch_size={batch_size}, grad_accum={grad_accum}")
+    print(f"  → Effective batch size = {batch_size * grad_accum} (all variants matched)")
+    print()
+    
+    total_steps = max(1, (len(train_dataset) // (batch_size * grad_accum)) * epochs)
     warmup_steps = max(1, int(WARMUP_RATIO * total_steps))
 
     training_args = TrainingArguments(
         output_dir=out_dir,
         num_train_epochs=epochs,
-        per_device_train_batch_size=BATCH_SIZE,
-        per_device_eval_batch_size=BATCH_SIZE,
-        gradient_accumulation_steps=GRAD_ACCUM,
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        gradient_accumulation_steps=grad_accum,
         learning_rate=LEARNING_RATE,
         weight_decay=WEIGHT_DECAY,
         warmup_steps=warmup_steps,
@@ -435,6 +454,9 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         "eval_examples": len(eval_dataset),
         "train_seq_len_cap": train_seq_len,
         "eval_seq_len_cap": eval_seq_len,
+        "batch_size": batch_size,
+        "grad_accum": grad_accum,
+        "effective_batch_size": batch_size * grad_accum,
         "epochs": epochs,
         "eval_perplexity": round(ppl, 4),
         "training_minutes": round(elapsed / 60, 1),
