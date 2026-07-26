@@ -25,6 +25,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `register_representation.py` | Registers new representation candidates in the family registry |
 | `backfill_representation_metadata.py` | Backfills missing representation IDs into existing artifacts |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
+| `estimate_full_run_eta.py` | Estimates completion ETA from full-run progress history |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
 
@@ -140,6 +141,7 @@ To monitor the long-running sequential full A/B/C job:
 
 ```bash
 python3 python/watch_full_runs.py
+python3 python/estimate_full_run_eta.py
 ```
 
 To run full A/B/C sequentially via a tracked script (instead of ad-hoc shell):
