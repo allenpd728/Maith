@@ -11,6 +11,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `build_dataset.py` | A/B/C dataset builder — IR vocab + BPE variants, train/eval splits |
 | `validate_roundtrip.py` | Decoder round-trip validator — confirms BVAR/TERM token stability |
 | `tokenizer_study.py` | BPE fragmentation study — compares IR tokens vs Qwen2.5-Coder BPE |
+| `train.py` | Fine-tuning script — runs one A/B/C variant, reports eval perplexity |
 | `spot_check.py` | Manual corpus spot-checking helper |
 
 ## Requirements
@@ -95,17 +96,37 @@ Key classes:
 - `CorpusDataset` — wraps examples + vocab dict; supports `len()` and index access
 - `build_vocabulary` — builds `{token: int}` from corpus frequencies
 
+## train.py
+
+Fine-tunes Qwen2.5-Coder-1.5B on one variant and reports eval perplexity.
+
+```bash
+pip install torch transformers trl datasets
+
+# Smoke test — 1 epoch, 50 examples
+python3 python/train.py --variant A --smoke-test
+
+# Full runs (~20-40 min each on M-series Mac)
+python3 python/train.py --variant A --out runs/variant_A
+python3 python/train.py --variant B --out runs/variant_B
+python3 python/train.py --variant C --out runs/variant_C
+```
+
+Saves `runs/variant_*/results.json` with perplexity, training time, and config. After all three
+runs, the script prints a comparison table automatically.
+
+Key design choices (from `docs/EXPERIMENT_DESIGN.md`):
+- Variant A: embedding table resized to 4,233 IR tokens (Option 1 — hold architecture fixed)
+- Variants B/C: native Qwen2.5-Coder BPE, no resizing
+- Fixed seed 42, cosine LR schedule, 3 epochs, batch size 8 (effective)
+
 ## Known gaps
 
-- No PyTorch `DataLoader` collate function yet — `CorpusDataset` is framework-agnostic.
-- Training script (`train.py`) not yet written — `build_dataset.py` produces the datasets,
-  the fine-tuning step is the next milestone.
-- `mathlibCommitHash` field in `stats.json` is still `"unknown"` — Mathlib version is not
-  automatically captured during corpus build.
+- No PyTorch `DataLoader` collate function in `corpus_loader.py` — `train.py` uses its own collate.
+- Results not yet collected — smoke test in progress.
 
 ## Next steps
 
-1. Write `python/train.py` — fine-tune Qwen2.5-Coder-1.5B on each variant with fixed
-   seeds/splits/hparams for the controlled A/B/C comparison
-2. Evaluate perplexity on eval splits for each variant
-3. Add `mathlibCommitHash` capture to `Scripts/BuildCorpus.lean`
+1. Complete smoke test, then run all three full variants
+2. Record perplexity results in `docs/EXPERIMENT_DESIGN.md`
+3. Expand corpus to more Mathlib modules once baseline results are in

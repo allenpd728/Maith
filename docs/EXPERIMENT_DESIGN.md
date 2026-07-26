@@ -83,3 +83,7 @@ Secondary metrics (if time permits):
    Not a blocker for the first experiment but should be fixed before publishing results.
 4. **Only algebraic/order modules** — the corpus is structurally homogeneous. Results may not
    generalise to tactic-heavy or analysis modules.
+5. **No explicit binder-type markers** — the encoding does not distinguish `forall` binders from
+   `lambda` binders at the token level. Both produce `BVAR_N` entities. The distinction is implicit
+   in graph structure (forall binders appear in relation edges, lambda binders in operation inputs)
+   but not explicit in the token stream. This is a known future refinement.

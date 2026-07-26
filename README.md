@@ -111,7 +111,7 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 
 - Validated across 4 Mathlib modules so far. Broader coverage (more modules, tactic-heavy declarations) may surface new `Expr` patterns.
 - No language model has been trained yet on Maith corpora.
-- The A/B/C comparison experiment (IR tokens vs Lean source vs AST-style) is designed but not yet run — training scripts are the next step.
+- The A/B/C comparison experiment is designed and datasets are built — `train.py` is written and the smoke test is in progress. Perplexity results not yet collected.
 - `Transpiler.lean` is debug-only: its `formatEntityId` output format differs from `Encoder.lean` and is not in the training pipeline. It is retained as a human-readable diagnostic tool only.
 
 ## 9) Research Roadmap
@@ -121,7 +121,7 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.0.0, 5,577 tokens, decoder round-trip verified)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5: Run A/B/C training experiment** — next (fine-tune small model on each variant, compare perplexity)
+6. **Phase 5: Run A/B/C training experiment** — 🔄 in progress (`train.py` written, smoke test running)
 7. **Phase 6: Measure theorem-proving performance** — not started
 
 Remaining IR milestones with current size estimates:
@@ -198,6 +198,7 @@ Tests/
 python/
   corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
   build_dataset.py         # A/B/C dataset builder: IR vocab + BPE variants, train/eval splits
+  train.py                 # fine-tuning script: one variant per run, reports eval perplexity
   validate_roundtrip.py    # decoder round-trip validator (confirms BVAR/TERM stability)
   tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
   spot_check.py            # manual corpus spot-checking helper
