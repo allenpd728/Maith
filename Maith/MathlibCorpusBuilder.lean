@@ -91,7 +91,7 @@ def buildMathlibIRCorpus
       match result with
       | .error _ => pure "unknown"
       | .ok out =>
-        let hash := out.stdout.trim
+        let hash := out.stdout.trimAscii.toString
         if hash.isEmpty || hash == "null" then pure "unknown" else pure hash
 
     -- Build final corpus
