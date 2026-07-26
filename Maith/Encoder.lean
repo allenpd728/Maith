@@ -37,7 +37,9 @@ structure Encoder where
   encodeGraph     : Graph → List Token
 
 -- Maximum positional index before the MANY fallback token.
-private def maxPositional : Nat := 31
+-- Set to 63: covers p95+ of real Mathlib graphs (p90 = 32, p95 = 32 at current corpus size)
+-- without exploding vocab size. Adds 32 new TERM_N/BVAR_N tokens vs the previous cap of 31.
+private def maxPositional : Nat := 63
 
 private def termToken (n : Nat) : Token :=
   if n ≤ maxPositional then s!"TERM_{n}" else "TERM_MANY"

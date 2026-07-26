@@ -28,7 +28,7 @@ from typing import Optional
 def parse_entity_id(s: str) -> dict:
     """Parse a token string into an EntityId dict."""
     if s == "TERM_MANY":
-        return {"kind": "term", "value": 32}  # sentinel > maxPositional (31)
+        return {"kind": "term", "value": 64}  # sentinel > maxPositional (63 in v1.1.0)
     elif s == "BVAR_MANY":
         return {"kind": "bound", "scope": "BVAR_MANY"}
     elif s.startswith("TERM_"):
@@ -36,7 +36,7 @@ def parse_entity_id(s: str) -> dict:
         try:
             return {"kind": "term", "value": int(suffix)}
         except ValueError:
-            return {"kind": "term", "value": 32}  # fallback
+            return {"kind": "term", "value": 64}  # fallback
     elif s.startswith("BVAR_"):
         return {"kind": "bound", "scope": s}  # synthetic stable scope
     elif s.startswith("t") and s[1:].isdigit():
@@ -48,11 +48,11 @@ def parse_entity_id(s: str) -> dict:
 
 
 def entity_id_to_token(eid: dict) -> str:
-    """Re-encode an EntityId dict back to a token string (v1.0.0)."""
+    """Re-encode an EntityId dict back to a token string (v1.1.0)."""
     kind = eid.get("kind")
     if kind == "term":
         n = eid.get("value", 0)
-        return f"TERM_{n}" if n <= 31 else "TERM_MANY"
+        return f"TERM_{n}" if n <= 63 else "TERM_MANY"
     elif kind == "bound":
         scope = eid.get("scope", "BVAR_MANY")
         # BVAR_N and BVAR_MANY scopes are already the canonical token string

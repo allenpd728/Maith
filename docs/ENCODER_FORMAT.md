@@ -36,8 +36,8 @@ that each appear ~3 times — useless for a model.
 | Kind | Raw form | Encoded token |
 |---|---|---|
 | `EntityId.var "HMul.hMul"` | `HMul.hMul` | `HMul.hMul` (unchanged — these are semantically stable constant names) |
-| `EntityId.term 3` | `t3` | `TERM_3` (capped at `TERM_31`; above that → `TERM_MANY`) |
-| `EntityId.bound "mul_assoc/0/a"` | `b(mul_assoc/0/a)` | `BVAR_0`, `BVAR_1`, ... (positional within graph, assigned in order of first appearance; capped at `BVAR_31` → `BVAR_MANY`) |
+| `EntityId.term 3` | `t3` | `TERM_3` (capped at `TERM_63`; above that → `TERM_MANY`) |
+| `EntityId.bound "mul_assoc/0/a"` | `b(mul_assoc/0/a)` | `BVAR_0`, `BVAR_1`, ... (positional within graph, assigned in order of first appearance; capped at `BVAR_63` → `BVAR_MANY`) |
 
 **Rationale for bound → positional:**
 The declaration name in a bound scope (`mul_assoc` in `mul_assoc/0/a`) is not
@@ -77,8 +77,8 @@ GRAPH_BEGIN  GRAPH_END
 E  A  R  O
 pos  neg  neut
 eq  add  sub  mul  div  le  ge  lt  gt  neg  pow
-BVAR_0 ... BVAR_31  BVAR_MANY
-TERM_0 ... TERM_31  TERM_MANY
+BVAR_0 ... BVAR_63  BVAR_MANY
+TERM_0 ... TERM_63  TERM_MANY
 GEN_UNK
 typeclass  sort  let-binding  implicit  param  literal
 inputs:  output:
@@ -91,4 +91,5 @@ inputs:  output:
 | Version | Change |
 |---|---|
 | 0.1.0 | Initial format: raw scoped IDs (`b(...)`), raw term IDs (`t<n>`) |
-| 1.0.0 | Positional bound IDs (`BVAR_N`), capped term IDs (`TERM_N`), `GEN_UNK` for rare ops |
+| 1.0.0 | Positional bound IDs (`BVAR_N`), capped term IDs (`TERM_N`), `GEN_UNK` for rare ops. Cap = 31. |
+| 1.1.0 | Raised positional cap from 31 → 63. Covers p95+ of Mathlib graphs; 386 graphs (15.1%) hit `TERM_MANY` at cap 31, mostly `._f` auto-generated flat constructors. |
