@@ -17,7 +17,7 @@ Total unique vocab: 7,867 tokens (up from 7,265). Round-trip 2,554/2,554 verifie
 
 ### Training pipeline complete
 
-- `python/train.py` — fine-tune Qwen2.5-Coder-1.5B on one A/B/C variant, reports eval perplexity
+- `python/train.py` — fine-tune the configured Qwen2.5-Coder base model on one A/B/C variant, reports eval perplexity
 - `python/compare_results.py` — reads all three `runs/variant_*/results.json`, prints comparison table
 - `runs/` added to `.gitignore` (model weights not committed; `results.json` files are small)
 - `docs/EXPERIMENT_DESIGN.md` — results table stub ready to fill in after training
