@@ -22,6 +22,8 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `validate_theorem_eval_artifacts.py` | Validates theorem-eval config/results schema and writes validation report |
 | `scaffold_context_artifacts.py` | Scaffolds context-pack sidecar templates for train/eval manifests |
 | `build_dependency_manifest.py` | Builds bootstrap dependency manifest from split manifests |
+| `validate_context_artifacts.py` | Validates context-pack sidecars and manifest alignment |
+| `context_pack_stats.py` | Computes coverage/quality stats for context-pack sidecars |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
 | `representation_audit.py` | Audits representation metadata consistency across datasets/runs |
@@ -222,6 +224,8 @@ To scaffold proof-context sidecar artifacts:
 ```bash
 python3 python/scaffold_context_artifacts.py
 python3 python/build_dependency_manifest.py
+python3 python/validate_context_artifacts.py --datasets-dir datasets/
+python3 python/context_pack_stats.py --datasets-dir datasets/
 ```
 
 To audit representation metadata consistency:
