@@ -119,6 +119,7 @@ comparison.
 5. Once gate passes, record final A/B/C conclusions in this document.
 6. Scaffold theorem-proving evaluation artifacts for Phase 6:
    - `python3 python/scaffold_theorem_eval.py`
+   - `python3 python/validate_theorem_eval_artifacts.py`
 7. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
 
 Representation IDs are recorded in dataset rows and `runs/variant_*/results.json` so future IR
@@ -140,13 +141,15 @@ Run these after full A/B/C training completes:
    - `python3 python/check_publish_readiness.py --runs-dir runs/`
 6. Validate artifact schemas:
    - `python3 python/validate_experiment_artifacts.py --runs-dir runs/`
-7. Confirm required artifacts exist:
+7. Validate representation matrix gate:
+   - `python3 python/check_representation_matrix_gate.py --runs-dir runs/`
+8. Confirm required artifacts exist:
    - `runs/variant_A/results.json`
    - `runs/variant_B/results.json`
    - `runs/variant_C/results.json`
    - `runs/loss_curves.json`
    - `runs/full_results_gate.json` (`decision_grade=true`)
    - `runs/publish_results_summary.json`
-8. Only after all checks pass, update the Results table and interpretation in this document as final.
-9. Record any protocol/interpretation changes in:
+9. Only after all checks pass, update the Results table and interpretation in this document as final.
+10. Record any protocol/interpretation changes in:
    - `docs/DECISION_LOG.md`

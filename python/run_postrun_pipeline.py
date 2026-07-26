@@ -44,6 +44,7 @@ def main() -> int:
         ("Publish summary", [py, "python/publish_results_summary.py", "--runs-dir", args.runs_dir]),
         ("Publish readiness", [py, "python/check_publish_readiness.py", "--runs-dir", args.runs_dir]),
         ("Artifact schema validation", [py, "python/validate_experiment_artifacts.py", "--runs-dir", args.runs_dir]),
+        ("Representation matrix gate", [py, "python/check_representation_matrix_gate.py", "--runs-dir", args.runs_dir]),
         ("Decision log check", [py, "python/check_decision_log.py"]),
         ("Status snapshot refresh", [py, "python/full_run_status_snapshot.py", "--log", args.log, "--runs-dir", args.runs_dir]),
         ("Status report refresh", [py, "python/full_run_status_report.py", "--log", args.log, "--runs-dir", args.runs_dir]),

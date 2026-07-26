@@ -118,6 +118,7 @@ python3 python/run_postrun_pipeline.py --runs-dir runs/
 ```
 
 Artifact field contracts are documented in [`docs/ARTIFACT_SCHEMAS.md`](docs/ARTIFACT_SCHEMAS.md).
+Theorem-eval artifact contracts are documented in [`docs/THEOREM_EVAL_SCHEMAS.md`](docs/THEOREM_EVAL_SCHEMAS.md).
 
 Canonical experiment assumptions/interpretation decisions are tracked in
 [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
