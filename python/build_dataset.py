@@ -116,12 +116,17 @@ def make_labels(input_ids: list[int]) -> list[int]:
     return input_ids[1:] + [-100]
 
 
+def example_id(ex: dict) -> str:
+    return f"{ex.get('module', '')}::{ex.get('name', '')}"
+
+
 def build_variant_A(examples: list[dict], vocab: dict[str, int]) -> list[dict]:
     rows = []
     for ex in examples:
         ids = encode_ir(ex.get("tokens", []), vocab)
         rows.append({
             "source": "A",
+            "example_id": example_id(ex),
             "name": ex.get("name", ""),
             "module": ex.get("module", ""),
             "input_ids": ids,
@@ -138,6 +143,7 @@ def build_variant_B(examples: list[dict], tokenizer) -> list[dict]:
         ids = tokenizer.encode(text)
         rows.append({
             "source": "B",
+            "example_id": example_id(ex),
             "name": ex.get("name", ""),
             "module": ex.get("module", ""),
             "input_ids": ids,
@@ -158,6 +164,7 @@ def build_variant_C(examples: list[dict], tokenizer) -> list[dict]:
             ids.extend(tokenizer.encode(piece, add_special_tokens=False))
         rows.append({
             "source": "C",
+            "example_id": example_id(ex),
             "name": ex.get("name", ""),
             "module": ex.get("module", ""),
             "input_ids": ids,
@@ -278,6 +285,14 @@ def run(corpus_path: str, out_dir: str, seed: int = 42) -> None:
         write_jsonl(os.path.join(out_dir, "eval_B.jsonl"),  eval_B)
         write_jsonl(os.path.join(out_dir, "train_C.jsonl"), train_C)
         write_jsonl(os.path.join(out_dir, "eval_C.jsonl"),  eval_C)
+
+    train_manifest_path = os.path.join(out_dir, "train_manifest.json")
+    eval_manifest_path = os.path.join(out_dir, "eval_manifest.json")
+    with open(train_manifest_path, "w") as f:
+        json.dump([example_id(ex) for ex in train_examples], f, indent=2)
+    with open(eval_manifest_path, "w") as f:
+        json.dump([example_id(ex) for ex in eval_examples], f, indent=2)
+    print(f"  Wrote train/eval manifests → {train_manifest_path}, {eval_manifest_path}")
 
     # Summary stats
     print()
