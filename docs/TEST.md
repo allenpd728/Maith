@@ -1,20 +1,18 @@
 # Maith IR Test Suite
 
-## Verified run
+## Running tests
 
 ```bash
-cd Maith
+cd ~/Projects/Maith
 lake build tests
 ./.lake/build/bin/tests
 ```
 
-## Result
+## Current result
 
-- `lake build tests` completed successfully.
-- Build completed with **66 jobs** and **0 failures** (clean build and incremental build).
-- The main suite reported **54/54 counted tests passing**.
-- Additional corpus pipeline checks passed.
-- Serializer integration verified real file output.
+- Build: 0 failures
+- Suite: all tests pass (61 counted + corpus pipeline checks)
+- Last verified: 2026-07-25
 
 ## Counted test breakdown
 
@@ -28,15 +26,17 @@ lake build tests
 - Operation: 1
 - Graph: 2
 - Encoder: 5
-- Decoder: 7
+- Decoder: 11
 - Graph Type: 2
 - Normalizer: 7
 - Injectivity: 10
 - Problem Generator: 9
+- Corpus Serializer: 3
 
-Subtotal: **54**
+**Total: 61**
 
 ## Notes
 
-- `Tests/CorpusPipelineTests.lean` runs additional validation checks outside the counted suite.
+- `Tests/CorpusPipelineTests.lean` runs 13 additional named checks outside the counted suite.
 - `Tests/CorpusSerializerTests.lean` includes both pure JSON checks and an IO integration test.
+- Decoder count grew from 7 → 11 with the addition of v1.0.0 BVAR/TERM round-trip tests.

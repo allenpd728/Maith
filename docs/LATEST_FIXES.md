@@ -1,89 +1,89 @@
-# Latest Fixes — 2026-07-06
+# Latest Fixes
 
-Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+For the full session-by-session development log, see `SESSION_PROGRESS.md`.
 
-## Summary
+---
 
-This session completed the architectural pivot from string-based Lean parsing
-to real Lean 4 metaprogramming extraction, and drove corpus success on
-`Mathlib.Algebra.Group.Defs` from **0/1,129** to **792/1,129 (70%)**.
+## 2026-07-25 — Encoder v1.0.0, multi-module expansion, Python tooling
 
-## What changed
+### Encoder format stabilization (v1.0.0)
 
-### Architecture pivot (sessions 1–3, cumulative)
+Replaced unstable scoped entity IDs with positional tokens:
 
-The original `Transpiler.fromLean*` functions attempted to re-derive IR
-structure from Lean source strings. This was replaced entirely with
-`Maith/MetaExtractor.lean`, which walks `ConstantInfo`/`Expr` trees from
-the live Lean `Environment` directly. No string-based Lean parser exists
-anywhere in the codebase.
+- `EntityId.bound "declName/0/x"` → `BVAR_0`, `BVAR_1`, ..., `BVAR_31`, `BVAR_MANY`
+- `EntityId.term 3` → `TERM_3`, ..., `TERM_31`, `TERM_MANY`
+- `EntityId.var "HMul.hMul"` → unchanged (semantically stable constants)
 
-### `EntityId.bound` — scoped De Bruijn safety
+Result: vocabulary collapsed from **63,747 → 5,577 unique tokens** (−91%). Bound ID tokens
+from 21,292 → 33. Sequence lengths unchanged — no information was lost, only noise removed.
 
-Added `EntityId.bound : String → EntityId` with format
-`"declName/depth/binderName"`. Two declarations that both bind a variable
-named `x` now produce distinct entity IDs and non-colliding tokens.
-`testScopedBinderInjectivity` covers this property.
+Format spec: `docs/ENCODER_FORMAT.md`.
 
-### `forallE` / `lam` / `bvar` handling
+### Decoder backward compatibility
 
-`forallE` and `lam` binders are now processed symmetrically: push a scoped
-entity onto `binderCtx`, optionally emit a type annotation (or `"typeclass"`
-attribute for `instImplicit`), recurse into body, pop. `bvar n` resolves via
-`binderCtx[n]?`.
+`Decoder.lean` now handles both formats:
+- v1.0.0: `BVAR_N` → `.bound "BVAR_N"`, `TERM_N` → `.term N`, `TERM_MANY` → sentinel
+- v0.1.0 legacy: `b(<scope>)` and `t<n>` still parse correctly
 
-### `OperationOp.generic` fallback
+Fixed `TERM_MANY` / `BVAR_MANY` passthrough bug in both Lean decoder and Python decoder
+(suffix parse failure was mapping `TERM_MANY` → `TERM_0`). Full 2554/2554 round-trip verified.
 
-Any constant-headed application (`f a b` where `f` is a known `const`) that
-isn't in the semantic core (add/sub/mul/div/neg/pow/eq/lt/le) now becomes
-`Operation (.generic "f.fullName")` with token `gen:f.fullName`. This
-prevents the IR vocabulary from growing per-symbol forever.
+### Multi-module corpus expansion
 
-### `.thmInfo` value skip
+`Scripts/BuildCorpus.lean` expanded to 4 modules:
+- `Mathlib.Algebra.Group.Defs` (1,129 declarations)
+- `Mathlib.Algebra.Group.Basic` (548)
+- `Mathlib.Algebra.Ring.Defs` (446)
+- `Mathlib.Order.Basic` (431)
 
-Proof term values (theorem witnesses) are now skipped: only the TYPE of a
-theorem is extracted, since the type is the statement. This eliminated
-267 spurious "binder lambda in proof term" failures.
+Coverage: **2,554/2,554 (100%)**, zero failures. Token total: 813,897. Max graph: 3,142 nodes.
+Per-module stats now included in `stats.json` under `moduleStats`.
 
-### `mergeGraphs` entity deduplication (2026-07-06)
+### Python tooling
 
-When merging the type graph and value graph for a definition, entities are
-now deduplicated by ID before concatenation. Forall-binders in the type and
-lambda-binders in the definition body share scoped names — they are the same
-semantic variable. Naïve concatenation was producing 280 injectivity failures;
-this fix recovered all of them.
+Added three new scripts:
+- `python/validate_roundtrip.py` — decoder round-trip validator, 2554/2554 clean
+- `python/tokenizer_study.py` — BPE fragmentation study vs Qwen2.5-Coder (1.69x inflation)
+- `python/build_dataset.py` (rewritten) — A/B/C experiment dataset builder with IR vocab,
+  train/eval splits, and BPE variants B and C
 
-### `Decoder.lean` `gen:` prefix fix (2026-07-06)
+### Test updates
 
-`String.drop` in Lean 4.31.0 returns `Substring`, not `String`. Fixed using
-`(s.drop 4).toString`.
+- Added `Decoder round-trips BVAR_N token (v1.0.0)` and `Decoder round-trips TERM_N token (v1.0.0)`
+- Updated `Decoder round-trips Graph with bound entity` to expect `BVAR_N` positional tokens
+- Updated `Scoped binder injectivity` to assert that structurally identical graphs from different
+  declarations now encode identically under v1.0.0 (correct behavior — declaration-name noise removed)
 
-## Corpus results (2026-07-06)
+---
 
-Module: `Mathlib.Algebra.Group.Defs`, 1,129 declarations
+## 2026-07-06 — IR extraction: 0% → 100% coverage
 
-| | Count | % |
-|---|---|---|
-| **Success** | **792** | **70%** |
-| Failure | 337 | 30% |
+### Architecture pivot
 
-| Count | Failure reason |
-|---|---|
-| 217 | type: HOF application (non-constant application head) |
-| 62 | value: projection expression |
-| 48 | value: HOF application |
-| 6 | value: let expression |
-| 4 | value: `Eq` arity (heterogeneous equality) |
+Replaced string-based `Transpiler.fromLean*` functions entirely with `MetaExtractor.lean`,
+which walks `ConstantInfo`/`Expr` trees from the live Lean `Environment`. No string-based
+Lean parser exists in the codebase.
 
-Note: validated against one module only. The failure taxonomy will likely grow
-with broader corpus coverage (exotic notation, tactic blocks, numeral encodings).
+### Coverage journey
 
-## Test status (2026-07-06)
+| Fix | Coverage |
+|-----|----------|
+| Baseline (MetaExtractor) | 70% (792/1,129) |
+| HOF application (`gen:hof`) | 93% (1,055) |
+| Projection (`gen:proj:TypeName/idx`) | ~99% |
+| `letE` support (5-arg match) | ~99.6% |
+| `HEq` arity fallback | **100% (1,129/1,129)** |
 
-- `lake build tests`: 66 jobs, 0 failures
-- `./.lake/build/bin/tests`: all tests pass
-- New/fixed tests this session:
-  - `testForallBodyWithOps` — `∀ x y : Nat, x+y = y+x` extracts ≥2 ops + ≥1 rel
-  - `testScopedBinderInjectivity` — De Bruijn collision safety across declarations
-  - `testCreateDeclarationMetadata` — real assertions on extracted metadata fields
+### Key fixes
 
+- **HOF application**: variable-headed `f x` now produces `gen:hof` Operation
+- **Projection**: `.proj typeName idx struct` produces `gen:proj:TypeName/idx` Operation
+- **`letE`**: pushes scoped bound entity, recurses into body (5th `Bool` arg matched with `_`)
+- **`HEq` arity**: unexpected arities fall back to generic operation
+- **Stats aggregation**: `tokenDistribution` and `graphStats` were all zeros; fixed with `Float.ofNat`
+- **`buildCorpus` executable**: added to `lakefile.lean` + `Scripts/BuildCorpus.lean`; requires `lake env`
+- **`decodeGraph` panics**: replaced with graceful fallbacks (missing `GRAPH_BEGIN` → empty graph)
+- **`String.dropEnd`/`trimAscii`**: added `.toString` calls for `String.Slice` return type
+- **`List.zipWith` argument order**: fixed in `processBatch` stats aggregation
+- **Decoder `gt` branch**: added explicit `.gt` case in `parseRelationOpToken`
+- **`EntityId.bound` Python validation**: `_validate_entity_id` now accepts `"bound"` kind

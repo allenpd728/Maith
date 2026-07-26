@@ -1,91 +1,111 @@
 # Python Pipeline
 
-The `python/` directory provides tooling to load the JSONL corpus produced by the Lean pipeline,
-build a token vocabulary, split into train/eval sets, and expose dataset objects for model
-training.
+The `python/` directory provides tooling to load, validate, and transform the JSONL corpus
+produced by the Lean pipeline into training-ready datasets for the A/B/C experiment.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
 | `corpus_loader.py` | Schema validation, loading, vocab building, splitting, dataset class |
-| `build_dataset.py` | CLI entry point — loads corpus and prints dataset summary |
+| `build_dataset.py` | A/B/C dataset builder — IR vocab + BPE variants, train/eval splits |
+| `validate_roundtrip.py` | Decoder round-trip validator — confirms BVAR/TERM token stability |
+| `tokenizer_study.py` | BPE fragmentation study — compares IR tokens vs Qwen2.5-Coder BPE |
+| `spot_check.py` | Manual corpus spot-checking helper |
 
 ## Requirements
 
-Python 3.8+. No third-party dependencies — only the standard library.
+- Python 3.8+
+- `transformers` library (for `build_dataset.py` variants B/C and `tokenizer_study.py`):
+  `pip install transformers`
 
-## Usage
+`corpus_loader.py` and `validate_roundtrip.py` use only the standard library.
+
+## build_dataset.py
+
+Builds three dataset variants for the controlled A/B/C experiment:
+
+| Variant | Representation | Tokenizer |
+|---------|---------------|-----------|
+| A | Maith IR tokens (v1.0.0) | Custom vocab (`vocab_A.json`) |
+| B | Raw `leanExpr` string | Qwen2.5-Coder BPE |
+| C | AST-style split `leanExpr` | Qwen2.5-Coder BPE |
 
 ```bash
-cd python
-python build_dataset.py --corpus ../Corpus/corpus.jsonl
+cd ~/Projects/Maith
+python3 python/build_dataset.py [--corpus Corpus/corpus.jsonl] [--out datasets/] [--seed 42]
 ```
 
-Optional flags:
+Outputs under `datasets/`:
+- `vocab_A.json` — IR token → integer ID mapping (built from training split only)
+- `train_A.jsonl`, `eval_A.jsonl` — IR token variant
+- `train_B.jsonl`, `eval_B.jsonl` — Lean source BPE variant
+- `train_C.jsonl`, `eval_C.jsonl` — AST-style BPE variant
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--corpus` | (required) | Path to `corpus.jsonl` |
-| `--eval-ratio` | `0.2` | Fraction of examples held out for eval |
-| `--seed` | `0` | Shuffle seed for reproducible splits |
+Each row: `{ "source", "name", "module", "input_ids", "labels", "seq_len" }`.
+`labels` = `input_ids` shifted left by 1 (standard causal LM format, last position = −100).
 
-Example output:
+Split: 90% train / 10% eval, fixed seed for reproducibility across all three variants.
 
-```
-Loaded examples: 792
-Vocabulary size: 1143
-Train examples: 633
-Eval examples: 159
-```
+### IR vocab design
 
-## Schema validation
+- Structural tokens (`GRAPH_BEGIN`, `E`, `A`, `R`, `O`, polarities, ops) get fixed low IDs.
+- `BVAR_0`–`BVAR_31` + `BVAR_MANY` and `TERM_0`–`TERM_31` + `TERM_MANY` are always in vocab.
+- `gen:*` tokens below frequency threshold (default 5) map to `GEN_UNK`.
+- Vocab is built from the training split only — no test-set leakage.
 
-`corpus_loader.py` validates every line against the schema defined in `CORPUS_SCHEMA.md` before
-returning examples. Any schema violation raises `SchemaError` with the line number and field path.
+## validate_roundtrip.py
 
-Entity ID kinds validated: `var`, `term`, `bound`. Note: `corpus_loader.py` currently validates
-only `var` and `term` — the `bound` kind (scoped De Bruijn IDs added July 6) is not yet in the
-validator. Update `_validate_entity_id` to add `"bound"` to the accepted kind set and check
-`entity_id.get("scope")` is a string.
+Confirms that the Python-side decoder correctly round-trips every corpus token sequence.
 
-## Key classes
-
-### `TrainingExample`
-
-```python
-@dataclass(frozen=True)
-class TrainingExample:
-    name: str        # Declaration name (e.g. "mul_assoc")
-    module: str      # Source Mathlib module
-    lean_expr: str   # Serialized elaborated declaration type
-    graph: dict      # Normalized IR graph (entities/attributes/relations/operations)
-    tokens: list     # Token sequence from Encoder
+```bash
+python3 python/validate_roundtrip.py                   # sample 200
+python3 python/validate_roundtrip.py --all             # full 2554
+python3 python/validate_roundtrip.py --sample 500
 ```
 
-### `CorpusDataset`
+Expected output on v1.0.0 corpus:
+```
+Results: 2554/2554 passed
+  All examples round-trip cleanly ✓
+  BVAR_* tokens: 33   TERM_* tokens: 33   Legacy b(): 0   Legacy t<n>: 0
+```
 
-Wraps a list of `TrainingExample` and a vocabulary dict. Supports `len()` and index access,
-returning `{"name", "module", "token_ids", "graph"}` per item. Token IDs use `<UNK>` (id 1) for
-out-of-vocabulary tokens. Compatible with PyTorch `DataLoader` via a standard `collate_fn`.
+## tokenizer_study.py
 
-### `build_vocabulary`
+Measures BPE fragmentation of IR-specific tokens and sequence length inflation.
 
-Builds `{token: int}` from corpus token frequencies. Special tokens: `<PAD>` (0), `<UNK>` (1).
-Accepts a `min_freq` argument (default 1) to filter rare tokens.
+```bash
+python3 python/tokenizer_study.py [--corpus Corpus/corpus.jsonl] [--sample 500]
+```
+
+Results on 2,554-example corpus (500-example sample):
+- Lean source → BPE: **1.69x** median sequence length inflation vs IR tokens
+- IR-as-text → BPE: **2.63x** inflation (BPE actively harms the structured IR format)
+- Key fragmentation: `HMul.hMul` → 4 BPE tokens, `gen:OfNat.ofNat` → 6, `BVAR_0` → 4
+
+## corpus_loader.py
+
+Low-level schema validation and loading. Validates every line against the schema in
+`CORPUS_SCHEMA.md`. Handles both v0.1.0 (`b(...)` / `t<n>`) and v1.0.0 (`BVAR_N` / `TERM_N`)
+entity ID formats.
+
+Key classes:
+- `TrainingExample` — frozen dataclass: `name`, `module`, `lean_expr`, `graph`, `tokens`
+- `CorpusDataset` — wraps examples + vocab dict; supports `len()` and index access
+- `build_vocabulary` — builds `{token: int}` from corpus frequencies
 
 ## Known gaps
 
-- `_validate_entity_id` does not yet handle the `bound` entity ID kind (scope string format:
-  `"declName/depth/binderName"`). Validation passes for existing corpus output but will need
-  updating as extraction coverage grows.
-- No PyTorch `Dataset` subclass or `collate_fn` is provided yet — `CorpusDataset` is framework-
-  agnostic and needs a thin wrapper for use with `torch.utils.data.DataLoader`.
-- No export format for HuggingFace `datasets` library yet.
+- No PyTorch `DataLoader` collate function yet — `CorpusDataset` is framework-agnostic.
+- Training script (`train.py`) not yet written — `build_dataset.py` produces the datasets,
+  the fine-tuning step is the next milestone.
+- `mathlibCommitHash` field in `stats.json` is still `"unknown"` — Mathlib version is not
+  automatically captured during corpus build.
 
 ## Next steps
 
-1. Fix `bound` kind validation in `_validate_entity_id`
-2. Add a `collate_fn` for batched token-id tensors
-3. Add vocabulary export (`vocab.json`) alongside the dataset summary
-4. Wire into a training script once the Encoder produces full token sequences
+1. Write `python/train.py` — fine-tune Qwen2.5-Coder-1.5B on each variant with fixed
+   seeds/splits/hparams for the controlled A/B/C comparison
+2. Evaluate perplexity on eval splits for each variant
+3. Add `mathlibCommitHash` capture to `Scripts/BuildCorpus.lean`
