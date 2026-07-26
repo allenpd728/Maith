@@ -94,6 +94,11 @@ def stage_spot_check(dry_run: bool) -> None:
     run(["python3", "python/spot_check.py", "Corpus/corpus.jsonl"], dry_run)
 
 
+def stage_eval_completion(dry_run: bool) -> None:
+    header("6 / 6  Completion accuracy  (requires trained models in runs/)")
+    run(["python3", "python/eval_completion.py"], dry_run)
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -111,6 +116,11 @@ def main() -> None:
         "--dry-run",
         action="store_true",
         help="Print commands without executing them",
+    )
+    parser.add_argument(
+        "--eval-completion",
+        action="store_true",
+        help="Also run completion accuracy eval (requires trained models in runs/)",
     )
     args = parser.parse_args()
 
@@ -130,6 +140,9 @@ def main() -> None:
     stage_report(args.dry_run)
     stage_build_dataset(args.dry_run)
     stage_spot_check(args.dry_run)
+
+    if args.eval_completion:
+        stage_eval_completion(args.dry_run)
 
     elapsed = time.time() - total_start
     print(f"\n{GREEN}{BOLD}✓ Pipeline complete in {elapsed/60:.1f} minutes{RESET}\n")
