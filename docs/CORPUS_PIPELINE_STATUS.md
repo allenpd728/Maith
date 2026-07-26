@@ -1,7 +1,7 @@
 # Corpus Pipeline Implementation Status
 
 **Last updated**: July 25, 2026
-**Status**: ✅ **PRODUCTION READY — 100% coverage on `Mathlib.Algebra.Group.Defs`**
+**Status**: ✅ **PRODUCTION READY — 100% coverage across 4 Mathlib modules (2554 declarations)**
 
 Encoder, Decoder, and MetaExtractor are fully implemented. Transpiler is a debug-only
 display utility — not in the training path. See `SESSION_PROGRESS.md` for full changelog.
@@ -128,9 +128,9 @@ lake build tests: all jobs, 0 failures
 ./.lake/build/bin/tests: all tests passing
 ```
 
-Corpus: 1129/1129 (100%) on `Mathlib.Algebra.Group.Defs`.
-Token distribution: min 13, max 7509, avg 318, total 359,310.
-Graph stats: avg 35.8 entities, 13.3 relations, 21.7 operations, max 1,859 nodes.
+Corpus: 2554/2554 (100%) across 4 modules (Algebra.Group.Defs, Algebra.Group.Basic, Algebra.Ring.Defs, Order.Basic).
+Token distribution: min 13, max 13112, avg 318, total 813,897.
+Graph stats: avg 35.8 entities, 13.5 relations, 22.3 operations, max 3,142 nodes.
 
 To regenerate: `lake build buildCorpus && lake env ./.lake/build/bin/buildCorpus`
 
