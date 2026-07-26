@@ -29,9 +29,7 @@ walking `ConstantInfo`/`Expr` trees from the live `Environment`.
 9. Serialization     → Write JSONL + stats + logs to disk (CorpusSerializer.lean)
 ```
 
-Note: step 6 (Encoding) uses a scaffold implementation. Token sequences compile and pass unit
-tests against hand-constructed inputs but are not yet the full production encoder. See README
-Limitations.
+Step 6 uses Encoder v1.1.0: positional `BVAR_N`/`TERM_N` tokens, cap 63, 2554/2554 round-trip verified.
 
 ## Implementation Summary
 
@@ -47,9 +45,9 @@ Limitations.
 | `MathlibLoader.lean` | ✅ Complete | Declaration enumeration |
 | `CorpusSerializer.lean` | ✅ Complete | JSONL/stat serialization to disk |
 | `MathlibCorpusBuilder.lean` | ✅ Complete | Top-level orchestration |
-| `Encoder.lean` | ⚠️ Scaffold | Graph → token sequence (placeholder logic) |
-| `Decoder.lean` | ⚠️ Scaffold | Token → graph (not a full reversible codec) |
-| `Transpiler.lean` | ⚠️ Scaffold | Lean ↔ IR bridge (placeholder logic) |
+| `Encoder.lean` | ✅ v1.1.0 | Graph → token sequence (positional BVAR_N/TERM_N, cap 63) |
+| `Decoder.lean` | ✅ Complete | Token → graph (v0.1.0 + v1.1.0 backward compat, total function) |
+| `Transpiler.lean` | 🔧 Debug-only | Human-readable IR formatter, not in training path |
 
 ## Core Data Structures
 
@@ -76,24 +74,20 @@ structure CorpusStats where
   irVersion : String
 ```
 
-## Corpus Results (July 6, 2026)
+## Corpus Results (July 25, 2026)
 
-Module: `Mathlib.Algebra.Group.Defs` — 1,129 declarations
+4 modules — 2,554 declarations total
 
-| | Count | % |
-|---|---|---|
-| **Success** | **792** | **70%** |
-| Failure | 337 | 30% |
+| Module | Declarations | Success |
+|--------|-------------|---------|
+| Algebra.Group.Defs | 1,129 | 1,129 (100%) |
+| Algebra.Group.Basic | 548 | 548 (100%) |
+| Algebra.Ring.Defs | 446 | 446 (100%) |
+| Order.Basic | 431 | 431 (100%) |
+| **Total** | **2,554** | **2,554 (100%)** |
 
-| Count | Failure reason |
-|---|---|
-| 217 | type: HOF application (non-constant head) |
-| 62 | value: projection expression |
-| 48 | value: HOF application |
-| 6 | value: let expression |
-| 4 | value: `Eq` arity (heterogeneous equality) |
-
-Validated against one module. Broader coverage will likely surface additional failure categories.
+Zero failures. All previously identified failure categories resolved (HOF, projection, letE, HEq).
+Mathlib version: `fabf563a` (v4.31.0). Encoder version: 1.1.0.
 
 ## Key Design Decisions
 
@@ -104,11 +98,13 @@ arguments, notation expansion, typeclass resolution, and macro expansion are all
 this from source strings is impossible in the general case. `MetaExtractor.lean` walks
 `ConstantInfo`/`Expr` directly from the live `Environment`, avoiding that problem entirely.
 
-### Scoped De Bruijn safety (`EntityId.bound`)
+### Encoder v1.1.0: positional bound IDs
 
-Lean uses De Bruijn indices for bound variables. Two declarations binding a variable named `x`
-would collide if indexed only by integer. `EntityId.bound` uses the format
-`"declName/depth/binderName"`, making binder IDs globally unique.
+Lean uses De Bruijn indices for bound variables. Early versions used scoped IDs
+(`"declName/depth/binderName"`) — unique but producing 21k singleton tokens unusable for training.
+Encoder v1.1.0 replaces them with positional `BVAR_N` tokens assigned in first-appearance order
+within each graph (cap 63, overflow → `BVAR_MANY`). This collapsed vocabulary from 63,747 → 5,577
+tokens (−91%) while leaving sequence lengths unchanged. See `docs/ENCODER_FORMAT.md`.
 
 ### `OperationOp.generic` fallback
 
@@ -136,6 +132,6 @@ To regenerate: `lake build buildCorpus && lake env ./.lake/build/bin/buildCorpus
 
 ## Next Steps
 
-1. **Expand corpus** — add more Mathlib modules to `Scripts/BuildCorpus.lean`
-2. **Python training pipeline** — export to HuggingFace `datasets` format
-3. **`mathlibCommitHash`** — resolve from Lake manifest (currently `"unknown"`)
+1. **Run A/B/C training experiment** — `python3 python/train.py --variant A/B/C`; compare eval perplexity
+2. **Expand corpus** — add more Mathlib modules beyond the current 4
+3. **Explicit binder markers** — distinguish forall vs lambda binders in token stream (future refinement)
