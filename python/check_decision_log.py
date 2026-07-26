@@ -14,6 +14,7 @@ REQUIRED_DECISIONS = (
     "DEC-002",
     "DEC-003",
     "DEC-004",
+    "DEC-005",
 )
 
 

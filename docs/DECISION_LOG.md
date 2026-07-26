@@ -60,3 +60,17 @@ Canonical record of experiment-critical decisions that affect interpretation and
   - `python/run_postrun_pipeline.py`
   - `python/check_publish_readiness.py`
   - `docs/EXPERIMENT_DESIGN.md#finalization-checklist-publishability-gate`
+
+### DEC-005: Context-pack sidecar protocol for proof-context gap
+- Date: 2026-07-26
+- Status: accepted
+- Scope: dataset/context scaffolding
+- Decision:
+  - Address cross-declaration proof-context risk via additive sidecar artifacts (`context_refs`,
+    `dependency_refs`, `typeclass_context`) rather than changing core A/B/C rows immediately.
+- Rationale:
+  - Preserves current experiment comparability while enabling controlled context-aware variants.
+- References:
+  - `docs/CONTEXT_PACK_PROTOCOL.md`
+  - `python/scaffold_context_artifacts.py`
+  - `python/build_dependency_manifest.py`

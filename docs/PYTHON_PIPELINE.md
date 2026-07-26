@@ -20,6 +20,8 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `finalize_full_experiment.py` | Runs strict compare, gate, publish, and representation checks in one flow |
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
 | `validate_theorem_eval_artifacts.py` | Validates theorem-eval config/results schema and writes validation report |
+| `scaffold_context_artifacts.py` | Scaffolds context-pack sidecar templates for train/eval manifests |
+| `build_dependency_manifest.py` | Builds bootstrap dependency manifest from split manifests |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
 | `representation_audit.py` | Audits representation metadata consistency across datasets/runs |
@@ -213,6 +215,13 @@ To scaffold Phase 6 theorem-proving evaluation artifacts:
 ```bash
 python3 python/scaffold_theorem_eval.py
 python3 python/validate_theorem_eval_artifacts.py
+```
+
+To scaffold proof-context sidecar artifacts:
+
+```bash
+python3 python/scaffold_context_artifacts.py
+python3 python/build_dependency_manifest.py
 ```
 
 To audit representation metadata consistency:
