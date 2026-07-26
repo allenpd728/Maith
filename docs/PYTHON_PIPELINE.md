@@ -16,12 +16,14 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `run_full_experiment.py` | Sequential full/smoke A/B/C runner with shared log output |
 | `check_results_gate.py` | Fails unless A/B/C outputs are full (non-smoke) and eval-aligned |
 | `publish_results_summary.py` | Produces publish-ready summary JSON + markdown-style output block |
+| `finalize_full_experiment.py` | Runs strict compare, gate, publish, and representation checks in one flow |
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
 | `representation_audit.py` | Audits representation metadata consistency across datasets/runs |
 | `representation_matrix_status.py` | Reports readiness/state across registered representation candidates |
 | `register_representation.py` | Registers new representation candidates in the family registry |
+| `backfill_representation_metadata.py` | Backfills missing representation IDs into existing artifacts |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -158,6 +160,12 @@ To build a publish-ready summary once full runs finish:
 python3 python/publish_results_summary.py --runs-dir runs/
 ```
 
+To run all finalization checks in one command:
+
+```bash
+python3 python/finalize_full_experiment.py --runs-dir runs/
+```
+
 To scaffold Phase 6 theorem-proving evaluation artifacts:
 
 ```bash
@@ -180,6 +188,13 @@ To summarize status across all registered representation candidates:
 
 ```bash
 python3 python/representation_matrix_status.py
+```
+
+To backfill representation IDs on older artifacts (dry-run by default):
+
+```bash
+python3 python/backfill_representation_metadata.py
+python3 python/backfill_representation_metadata.py --apply
 ```
 
 To register a new representation candidate:
