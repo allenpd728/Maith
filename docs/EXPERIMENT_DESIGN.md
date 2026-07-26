@@ -101,3 +101,18 @@ comparison.
 
 **Config:** Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA), 3 epochs, seed 42, cosine LR, batch size 8 (effective),
 2,213 train / 246 eval examples, Mathlib `fabf563a` (v4.31.0), encoder v1.2.0.
+
+## Ordered execution checklist (build-out process)
+
+1. Run full non-smoke A/B/C training with shared logging:
+   - `python3 python/run_full_experiment.py`
+2. Monitor progress during the long run:
+   - `python3 python/watch_full_runs.py`
+3. Generate comparison summary:
+   - `python3 python/compare_results.py --runs-dir runs/`
+4. Gate for decision-grade readiness:
+   - `python3 python/check_results_gate.py --runs-dir runs/`
+5. Once gate passes, record final A/B/C conclusions in this document.
+6. Scaffold theorem-proving evaluation artifacts for Phase 6:
+   - `python3 python/scaffold_theorem_eval.py`
+7. Implement/plug real prover benchmark harness into the generated theorem-eval templates.

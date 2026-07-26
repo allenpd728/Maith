@@ -13,6 +13,9 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `tokenizer_study.py` | BPE fragmentation study — compares IR tokens vs Qwen2.5-Coder BPE |
 | `train.py` | Fine-tuning script — runs one A/B/C variant, reports eval perplexity |
 | `compare_results.py` | Reads all three `runs/variant_*/results.json` and prints comparison table |
+| `run_full_experiment.py` | Sequential full/smoke A/B/C runner with shared log output |
+| `check_results_gate.py` | Fails unless A/B/C outputs are full (non-smoke) and eval-aligned |
+| `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -124,6 +127,24 @@ To monitor the long-running sequential full A/B/C job:
 
 ```bash
 python3 python/watch_full_runs.py
+```
+
+To run full A/B/C sequentially via a tracked script (instead of ad-hoc shell):
+
+```bash
+python3 python/run_full_experiment.py
+```
+
+To enforce decision-grade result quality before interpreting outcomes:
+
+```bash
+python3 python/check_results_gate.py --runs-dir runs/
+```
+
+To scaffold Phase 6 theorem-proving evaluation artifacts:
+
+```bash
+python3 python/scaffold_theorem_eval.py
 ```
 
 Key design choices (from `docs/EXPERIMENT_DESIGN.md`):
