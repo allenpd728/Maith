@@ -146,6 +146,14 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
           avgOperations := avgOf opCounts
           maxGraphSize  := maxGraphSize
         }
+        -- Per-module success counts derived from example metadata.
+        moduleStats :=
+          let modules := (examples.map (·.module)).eraseDups
+          modules.map fun m =>
+            let modExamples := examples.filter (·.module == m)
+            { moduleName := m
+              totalDeclarations := modExamples.length  -- approximation: only counts successes
+              successfulExamples := modExamples.length }
       }
       ProcessingResult.ok (examples, finalStats)
     | decl :: rest =>

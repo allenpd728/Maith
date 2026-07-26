@@ -85,12 +85,20 @@ Fields:
 - `encoderVersion`: Encoder version used
 - `irVersion`: IR version used
 -/
+-- Per-module success/failure summary for multi-module corpus runs.
+structure ModuleStats where
+  (moduleName : String := "")
+  (totalDeclarations : Nat := 0)
+  (successfulExamples : Nat := 0)
+  deriving Repr
+
 structure CorpusStats where
   (totalDeclarations : Nat := 0)
   (successfulExamples : Nat := 0)
   (failureStats : FailureStats := {})
   (tokenDistribution : TokenDistribution := {})
   (graphStats : GraphStats := {})
+  (moduleStats : List ModuleStats := [])
   (mathlibCommitHash : String := "unknown")
   (encoderVersion : String := "0.1.0")
   (irVersion : String := "0.1.0")
