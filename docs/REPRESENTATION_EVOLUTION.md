@@ -84,6 +84,13 @@ See readiness across registered candidates:
 python3 python/representation_matrix_status.py
 ```
 
+Backfill older artifacts that predate `representation_id` metadata (dry-run first):
+
+```bash
+python3 python/backfill_representation_metadata.py
+python3 python/backfill_representation_metadata.py --apply
+```
+
 Register a new candidate in the family registry:
 
 ```bash
