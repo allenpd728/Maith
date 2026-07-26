@@ -76,7 +76,7 @@ Total declarations: **1,129**
 
 | | Count | % |
 |---|---|---|
-| **Successful extractions** | **1129** | **100%** |
+| **Successful extractions** | **2554** | **100%** |
 | Failed | 0 | 0% |
 
 Failure breakdown (exhaustive):
