@@ -12,7 +12,7 @@ Usage:
 
 import argparse
 import ast
-import os
+from datetime import UTC, datetime, timedelta
 import re
 from pathlib import Path
 
@@ -42,6 +42,8 @@ def parse_status(log_text: str) -> dict:
 
     progress_matches = list(re.finditer(r"(\d+)%\|.*?\|\s*(\d+)/(\d+)\s*\[", normalized))
     progress = None
+    eta_utc = None
+    eta_remaining = None
     if progress_matches:
         m = progress_matches[-1]
         progress = {
@@ -49,6 +51,24 @@ def parse_status(log_text: str) -> dict:
             "step": int(m.group(2)),
             "total_steps": int(m.group(3)),
         }
+
+    eta_matches = list(re.finditer(r"\|\s*\d+/\d+\s*\[[^\]]*?<([^,\]]+),", normalized))
+    if eta_matches:
+        remaining_text = eta_matches[-1].group(1).strip()
+        parts = remaining_text.split(":")
+        seconds = None
+        try:
+            if len(parts) == 3:
+                h, m, s = (int(x) for x in parts)
+                seconds = h * 3600 + m * 60 + s
+            elif len(parts) == 2:
+                m, s = (int(x) for x in parts)
+                seconds = m * 60 + s
+        except ValueError:
+            seconds = None
+        if seconds is not None:
+            eta_remaining = remaining_text
+            eta_utc = (datetime.now(UTC) + timedelta(seconds=seconds)).replace(microsecond=0).isoformat()
 
     last_train_loss = None
     last_eval_loss = None
@@ -88,6 +108,8 @@ def parse_status(log_text: str) -> dict:
         "pending_variants": pending,
         "current_variant": current_variant,
         "progress": progress,
+        "eta_utc": eta_utc,
+        "eta_remaining": eta_remaining,
         "last_train_loss": last_train_loss,
         "last_eval_loss": last_eval_loss,
         "last_train_summary": last_train_summary,
@@ -121,6 +143,10 @@ def main() -> None:
         print(f"Progress: {p['percent']}% ({p['step']}/{p['total_steps']})")
     else:
         print("Progress: (not yet available)")
+    if status["eta_utc"] is not None and status["eta_remaining"] is not None:
+        print(f"ETA (from tqdm): {status['eta_utc']} (remaining {status['eta_remaining']})")
+    else:
+        print("ETA (from tqdm): (not yet available)")
 
     if status["last_train_loss"] is not None:
         t = status["last_train_loss"]

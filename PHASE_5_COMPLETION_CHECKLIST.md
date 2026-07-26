@@ -2,13 +2,19 @@
 
 ## Current Status (Jul 26, 16:28 UTC)
 - Variant A: ✅ Complete (69.0 min, 1.297 perplexity, 361.9M params)
-- Variant B: 🔄 Running (2% complete, expected finish ~04:00 UTC Jul 27)
-- Variant C: ⏳ Queued (expected finish ~16:00 UTC Jul 27)
+- Variant B: 🔄 Running (2% complete; use live tqdm ETA from `python3 python/watch_full_runs.py --log runs/full_abc_runs.log`)
+- Variant C: ⏳ Queued (starts after B; use live tqdm ETA once active)
 
 ## What to Do When All Three Finish
 
-### Step 1: Verify completion (run this at ~16:30 UTC Jul 27)
+### Step 0: Verify split integrity (run once before final comparison)
 ```bash
+python3 python/check_split_integrity.py --datasets datasets
+```
+
+### Step 1: Verify completion (run when `watch_full_runs.py` reports COMPLETE)
+```bash
+python3 python/watch_full_runs.py --log runs/full_abc_runs.log
 ls -lh runs/variant_{A,B,C}/results.json
 cat runs/variant_{A,B,C}/results.json | jq -s '.[] | {variant, eval_perplexity, training_minutes, batch_size}'
 ```
@@ -68,10 +74,9 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
 ```
 
 ## Success Criteria
-- [ ] B completes without OOM (check around 04:00 UTC Jul 27)
-- [ ] C completes without OOM (check around 16:00 UTC Jul 27)
+- [ ] B completes without OOM (track via live tqdm ETA, not fixed timestamp)
+- [ ] C completes without OOM (track via live tqdm ETA, not fixed timestamp)
 - [ ] All three results.json files present with eval_perplexity values
 - [ ] Comparison shows clear A vs B/C delta (or no significant difference)
 - [ ] Documentation captures findings honestly (no overinterpretation)
 - [ ] Future work section positions context-packs + proving as separate projects
-
