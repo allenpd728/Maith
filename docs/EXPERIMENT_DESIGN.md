@@ -116,3 +116,22 @@ comparison.
 6. Scaffold theorem-proving evaluation artifacts for Phase 6:
    - `python3 python/scaffold_theorem_eval.py`
 7. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
+
+## Finalization checklist (publishability gate)
+
+Run these after full A/B/C training completes:
+
+1. Enforce full-run-only comparison:
+   - `python3 python/compare_results.py --runs-dir runs/ --strict-full`
+2. Re-check decision-grade gate:
+   - `python3 python/check_results_gate.py --runs-dir runs/`
+3. Build publish summary artifact:
+   - `python3 python/publish_results_summary.py --runs-dir runs/`
+4. Confirm required artifacts exist:
+   - `runs/variant_A/results.json`
+   - `runs/variant_B/results.json`
+   - `runs/variant_C/results.json`
+   - `runs/loss_curves.json`
+   - `runs/full_results_gate.json` (`decision_grade=true`)
+   - `runs/publish_results_summary.json`
+5. Only after all checks pass, update the Results table and interpretation in this document as final.

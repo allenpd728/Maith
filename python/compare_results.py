@@ -12,6 +12,7 @@ Usage:
 import argparse
 import json
 import os
+import sys
 
 
 def run_quality(result: dict) -> str:
@@ -71,9 +72,14 @@ def load_loss_curve(runs_dir: str, variant: str) -> dict:
     return {"source": "none", "train_loss_curve": [], "eval_loss_curve": []}
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs-dir", default="runs/")
+    parser.add_argument(
+        "--strict-full",
+        action="store_true",
+        help="Exit non-zero unless all A/B/C results are present and non-smoke",
+    )
     args = parser.parse_args()
 
     results = {v: load_result(args.runs_dir, v) for v in ["A", "B", "C"]}
@@ -82,7 +88,7 @@ def main():
     if not any_found:
         print("No results found yet. Run train.py for at least one variant first.")
         print(f"  Expected: {args.runs_dir}variant_A/results.json, etc.")
-        return
+        return 1 if args.strict_full else 0
 
     print()
     print("=== A/B/C Experiment Results ===")
@@ -198,7 +204,18 @@ def main():
         print("  All results are from smoke tests — run full 3-epoch experiments for meaningful comparison.")
 
     print()
+    if args.strict_full:
+        missing = [v for v, r in results.items() if r is None]
+        smoke = [v for v, r in results.items() if r is not None and r.get("smoke_test")]
+        if missing:
+            print(f"STRICT_FULL: FAIL — missing results for: {', '.join(missing)}")
+            return 1
+        if smoke:
+            print(f"STRICT_FULL: FAIL — smoke results present for: {', '.join(smoke)}")
+            return 1
+        print("STRICT_FULL: PASS — all A/B/C results are full runs.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

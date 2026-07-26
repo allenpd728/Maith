@@ -15,6 +15,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `compare_results.py` | Reads all three `runs/variant_*/results.json` and prints comparison table |
 | `run_full_experiment.py` | Sequential full/smoke A/B/C runner with shared log output |
 | `check_results_gate.py` | Fails unless A/B/C outputs are full (non-smoke) and eval-aligned |
+| `publish_results_summary.py` | Produces publish-ready summary JSON + markdown-style output block |
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
@@ -141,6 +142,12 @@ To enforce decision-grade result quality before interpreting outcomes:
 
 ```bash
 python3 python/check_results_gate.py --runs-dir runs/
+```
+
+To build a publish-ready summary once full runs finish:
+
+```bash
+python3 python/publish_results_summary.py --runs-dir runs/
 ```
 
 To scaffold Phase 6 theorem-proving evaluation artifacts:
