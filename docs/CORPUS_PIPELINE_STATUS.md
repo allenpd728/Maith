@@ -1,6 +1,6 @@
 # Corpus Pipeline Implementation Status
 
-**Last updated**: July 25, 2026
+**Last updated**: July 26, 2026
 **Status**: ✅ **PRODUCTION READY — 100% coverage across 4 Mathlib modules (2554 declarations)**
 
 Encoder, Decoder, and MetaExtractor are fully implemented. Transpiler is a debug-only
@@ -29,7 +29,7 @@ walking `ConstantInfo`/`Expr` trees from the live `Environment`.
 9. Serialization     → Write JSONL + stats + logs to disk (CorpusSerializer.lean)
 ```
 
-Step 6 uses Encoder v1.1.0: positional `BVAR_N`/`TERM_N` tokens, cap 63, 2554/2554 round-trip verified.
+Step 6 uses Encoder v1.2.0: positional `FVAR_N`/`BVAR_N`/`TERM_N` tokens, cap 63, 2554/2554 round-trip verified.
 
 ## Implementation Summary
 
@@ -45,8 +45,8 @@ Step 6 uses Encoder v1.1.0: positional `BVAR_N`/`TERM_N` tokens, cap 63, 2554/25
 | `MathlibLoader.lean` | ✅ Complete | Declaration enumeration |
 | `CorpusSerializer.lean` | ✅ Complete | JSONL/stat serialization to disk |
 | `MathlibCorpusBuilder.lean` | ✅ Complete | Top-level orchestration |
-| `Encoder.lean` | ✅ v1.1.0 | Graph → token sequence (positional BVAR_N/TERM_N, cap 63) |
-| `Decoder.lean` | ✅ Complete | Token → graph (v0.1.0 + v1.1.0 backward compat, total function) |
+| `Encoder.lean` | ✅ v1.2.0 | Graph → token sequence (positional FVAR_N/BVAR_N/TERM_N, cap 63) |
+| `Decoder.lean` | ✅ Complete | Token → graph (v0.1.0 + v1.2.0 backward compat, total function) |
 | `Transpiler.lean` | 🔧 Debug-only | Human-readable IR formatter, not in training path |
 
 ## Core Data Structures

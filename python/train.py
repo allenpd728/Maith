@@ -2,7 +2,7 @@
 """
 train.py
 
-Fine-tune Qwen2.5-Coder-1.5B on one of the A/B/C dataset variants and report
+Fine-tune Qwen2.5-Coder on one of the A/B/C dataset variants and report
 perplexity on the eval split. Run three times (once per variant) with identical
 hyperparameters to produce a fair comparison.
 
@@ -35,6 +35,7 @@ import os
 import random
 import sys
 import time
+from pathlib import Path
 from typing import Optional
 
 # ---------------------------------------------------------------------------
@@ -47,11 +48,7 @@ try:
 except ImportError:
     missing.append("torch")
 try:
-    from transformers import (
-        AutoConfig, AutoModelForCausalLM, AutoTokenizer,
-        PreTrainedTokenizerFast, TrainingArguments, Trainer,
-        DataCollatorForLanguageModeling,
-    )
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
     from transformers import set_seed as hf_set_seed
 except ImportError:
     missing.append("transformers")
@@ -71,8 +68,9 @@ if missing:
 # ---------------------------------------------------------------------------
 
 BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
-MAX_SEQ_LEN     = 1024
-MAX_SEQ_LEN_C   = 512   # BPE on IR text inflates ~2.6x; reduce to avoid OOM on MPS
+TRAIN_MAX_SEQ_LEN     = 1024
+TRAIN_MAX_SEQ_LEN_C   = 512   # BPE on IR text inflates ~2.6x; reduce to avoid OOM on MPS
+EVAL_MAX_SEQ_LEN      = 512   # fixed across A/B/C for apples-to-apples perplexity
 BATCH_SIZE      = 2
 GRAD_ACCUM      = 4
 LEARNING_RATE   = 2e-4
@@ -89,10 +87,10 @@ SEED            = 42
 class IRDataset(Dataset):
     """
     Loads a pre-built JSONL split (from build_dataset.py) and wraps it as a
-    PyTorch Dataset. Truncates sequences to MAX_SEQ_LEN.
+    PyTorch Dataset. Truncates sequences to the provided max_len.
     """
 
-    def __init__(self, jsonl_path: str, max_len: int = MAX_SEQ_LEN, limit: Optional[int] = None):
+    def __init__(self, jsonl_path: str, max_len: int = TRAIN_MAX_SEQ_LEN, limit: Optional[int] = None):
         self.examples = []
         with open(jsonl_path) as f:
             for i, line in enumerate(f):
@@ -166,9 +164,9 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
 # Model setup
 # ---------------------------------------------------------------------------
 
-def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str):
+def load_model_for_variant(variant: str, vocab_path: Optional[str]):
     """
-    Load Qwen2.5-Coder-1.5B and adapt it for the chosen variant.
+    Load the configured Qwen2.5-Coder base model and adapt it for the chosen variant.
 
     Variant A: resize embeddings to custom IR vocab size (Option 1 from EXPERIMENT_DESIGN.md).
     Variants B/C: use native BPE tokenizer and embedding table unchanged.
@@ -179,8 +177,8 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
         assert vocab_path and os.path.exists(vocab_path), f"vocab_A.json not found at {vocab_path}"
         with open(vocab_path) as f:
             vocab = json.load(f)
-        vocab_size = len(vocab)
-        print(f"  Variant A: custom IR vocab, {vocab_size} tokens")
+        custom_vocab_size = len(vocab)
+        print(f"  Variant A: custom IR vocab, {custom_vocab_size} tokens")
 
         # Load tokenizer as a reference (we use integer IDs directly, not the tokenizer)
         tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
@@ -191,18 +189,39 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
             trust_remote_code=True,
             dtype=torch.float32,
         )
-        model.resize_token_embeddings(vocab_size)
-        print(f"  Resized embedding table: {tokenizer.vocab_size} → {vocab_size}")
+        model.resize_token_embeddings(custom_vocab_size)
+        print(f"  Resized embedding table: {tokenizer.vocab_size} → {custom_vocab_size}")
 
-        # Remap bos/eos token IDs to valid values within the new vocab.
-        # After resizing, the original Qwen IDs (151643) are out of range
-        # and trigger warnings. Use 0/1 as safe placeholders — these IDs
-        # exist in every vocab and we're not doing generation here.
-        model.config.bos_token_id = 0
-        model.config.eos_token_id = 1
-        print(f"  Remapped bos_token_id=0, eos_token_id=1")
+        bos_id = vocab.get("<BOS>")
+        eos_id = vocab.get("<EOS>")
+        pad_id = vocab.get("<PAD>")
+        assert bos_id is not None, "Custom vocab missing <BOS>"
+        assert eos_id is not None, "Custom vocab missing <EOS>"
+        assert pad_id is not None, "Custom vocab missing <PAD>"
 
-        return model, tokenizer, vocab_size
+        model.config.bos_token_id = bos_id
+        model.config.eos_token_id = eos_id
+        model.config.pad_token_id = pad_id
+        model.generation_config.bos_token_id = bos_id
+        model.generation_config.eos_token_id = eos_id
+        model.generation_config.pad_token_id = pad_id
+        print(f"  Remapped bos_token_id={bos_id}, eos_token_id={eos_id}, pad_token_id={pad_id}")
+
+        embedding_rows = int(model.get_input_embeddings().weight.shape[0])
+        assert embedding_rows == custom_vocab_size, (
+            f"Embedding rows ({embedding_rows}) != custom vocab size ({custom_vocab_size})"
+        )
+        assert model.config.vocab_size == custom_vocab_size, (
+            f"Config vocab_size ({model.config.vocab_size}) != custom vocab size ({custom_vocab_size})"
+        )
+
+        return model, tokenizer, {
+            "tokenizer_mode": "custom_ir_vocab",
+            "custom_vocab_size": custom_vocab_size,
+            "tokenizer_vocab_size": int(tokenizer.vocab_size),
+            "model_vocab_size": int(model.config.vocab_size),
+            "embedding_rows": embedding_rows,
+        }
 
     else:
         # Variants B and C: native BPE, no resizing needed
@@ -213,7 +232,58 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
             trust_remote_code=True,
             dtype=torch.float32,
         )
-        return model, tokenizer, tokenizer.vocab_size
+        embedding_rows = int(model.get_input_embeddings().weight.shape[0])
+        assert model.config.vocab_size == embedding_rows, (
+            f"Config vocab_size ({model.config.vocab_size}) != embedding rows ({embedding_rows})"
+        )
+        print(
+            "  Native vocab check: "
+            f"tokenizer.vocab_size={tokenizer.vocab_size}, "
+            f"model.config.vocab_size={model.config.vocab_size}, "
+            f"embedding_rows={embedding_rows}"
+        )
+        return model, tokenizer, {
+            "tokenizer_mode": "qwen_native_bpe",
+            "custom_vocab_size": None,
+            "tokenizer_vocab_size": int(tokenizer.vocab_size),
+            "model_vocab_size": int(model.config.vocab_size),
+            "embedding_rows": embedding_rows,
+        }
+
+
+def _example_id(row: dict) -> str:
+    if row.get("example_id"):
+        return str(row["example_id"])
+    return f"{row.get('module', '')}::{row.get('name', '')}"
+
+
+def _load_example_ids(path: str) -> list[str]:
+    ids = []
+    with open(path) as f:
+        for line in f:
+            row = json.loads(line)
+            ids.append(_example_id(row))
+    return ids
+
+
+def assert_shared_eval_examples(datasets_dir: str, eval_path: str) -> None:
+    eval_manifest = Path(datasets_dir) / "eval_manifest.json"
+    current_ids = _load_example_ids(eval_path)
+    if eval_manifest.exists():
+        with open(eval_manifest) as f:
+            expected_ids = json.load(f)
+        assert current_ids == expected_ids, (
+            f"Eval split mismatch for {eval_path}; run build_dataset.py to regenerate aligned splits"
+        )
+        return
+
+    ref_eval_a = Path(datasets_dir) / "eval_A.jsonl"
+    if not ref_eval_a.exists():
+        return
+    expected_ids = _load_example_ids(str(ref_eval_a))
+    assert current_ids == expected_ids, (
+        f"Eval split mismatch for {eval_path} vs {ref_eval_a}; run build_dataset.py to align A/B/C"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -237,16 +307,21 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     assert os.path.exists(train_path), f"Missing: {train_path} — run build_dataset.py first"
     assert os.path.exists(eval_path),  f"Missing: {eval_path}"
 
+    assert_shared_eval_examples(datasets_dir, eval_path)
+
     limit = 50 if smoke_test else None
-    seq_len = MAX_SEQ_LEN_C if variant == "C" else MAX_SEQ_LEN
+    train_seq_len = TRAIN_MAX_SEQ_LEN_C if variant == "C" else TRAIN_MAX_SEQ_LEN
+    eval_seq_len = EVAL_MAX_SEQ_LEN
     print(f"Loading datasets{' (smoke test: 50 examples)' if smoke_test else ''} ...")
-    train_dataset = IRDataset(train_path, max_len=seq_len, limit=limit)
-    eval_dataset  = IRDataset(eval_path,  max_len=seq_len, limit=limit)
+    print(f"  Train sequence cap: {train_seq_len}")
+    print(f"  Eval sequence cap:  {eval_seq_len} (shared across A/B/C)")
+    train_dataset = IRDataset(train_path, max_len=train_seq_len, limit=limit)
+    eval_dataset  = IRDataset(eval_path,  max_len=eval_seq_len, limit=limit)
     print(f"  Train: {len(train_dataset)} examples")
     print(f"  Eval:  {len(eval_dataset)} examples")
     print()
 
-    model, tokenizer, vocab_size = load_model_for_variant(variant, vocab_path, device)
+    model, tokenizer, model_meta = load_model_for_variant(variant, vocab_path)
     model = model.to(device)
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
     print(f"  Model parameters: {n_params:.1f}M")
@@ -269,7 +344,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         lr_scheduler_type="cosine",
         eval_strategy="epoch",
         save_strategy="epoch",
-        logging_steps=10,
+        logging_strategy="steps",
+        logging_steps=1,
         seed=SEED,
         report_to="none",
         gradient_checkpointing=True,   # trade compute for memory — needed for C on MPS
@@ -293,6 +369,34 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     print(f"Training complete in {elapsed/60:.1f} minutes.")
     print()
 
+    train_loss_curve = [
+        {"step": int(h["step"]), "epoch": float(h.get("epoch", 0.0)), "loss": float(h["loss"])}
+        for h in trainer.state.log_history
+        if "loss" in h and "step" in h
+    ]
+    eval_loss_curve = [
+        {"step": int(h["step"]), "epoch": float(h.get("epoch", 0.0)), "eval_loss": float(h["eval_loss"])}
+        for h in trainer.state.log_history
+        if "eval_loss" in h and "step" in h
+    ]
+    curve_path = os.path.join(out_dir, "loss_curve.json")
+    with open(curve_path, "w") as f:
+        json.dump(
+            {
+                "variant": variant,
+                "train_loss_curve": train_loss_curve,
+                "eval_loss_curve": eval_loss_curve,
+            },
+            f,
+            indent=2,
+        )
+    print(f"Loss curves saved → {curve_path}")
+    print(
+        f"  Train loss points: {len(train_loss_curve)} | "
+        f"Eval loss points: {len(eval_loss_curve)}"
+    )
+    print()
+
     # Final perplexity
     print("Computing final perplexity on eval split ...")
     ppl = evaluate_perplexity(model, eval_dataset, device)
@@ -302,13 +406,21 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     # Save results
     results = {
         "variant": variant,
-        "vocab_size": vocab_size,
+        "vocab_size": model_meta["model_vocab_size"],
+        "tokenizer_mode": model_meta["tokenizer_mode"],
+        "tokenizer_vocab_size": model_meta["tokenizer_vocab_size"],
+        "model_vocab_size": model_meta["model_vocab_size"],
+        "embedding_rows": model_meta["embedding_rows"],
         "n_params_M": round(n_params, 1),
         "train_examples": len(train_dataset),
         "eval_examples": len(eval_dataset),
+        "train_seq_len_cap": train_seq_len,
+        "eval_seq_len_cap": eval_seq_len,
         "epochs": epochs,
         "eval_perplexity": round(ppl, 4),
         "training_minutes": round(elapsed / 60, 1),
+        "train_loss_points": len(train_loss_curve),
+        "eval_loss_points": len(eval_loss_curve),
         "seed": SEED,
         "base_model": BASE_MODEL,
         "smoke_test": smoke_test,

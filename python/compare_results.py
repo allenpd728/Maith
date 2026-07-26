@@ -22,6 +22,51 @@ def load_result(runs_dir: str, variant: str) -> dict | None:
         return json.load(f)
 
 
+def load_loss_curve(runs_dir: str, variant: str) -> dict:
+    curve_path = os.path.join(runs_dir, f"variant_{variant}", "loss_curve.json")
+    if os.path.exists(curve_path):
+        with open(curve_path) as f:
+            data = json.load(f)
+        return {
+            "source": "loss_curve.json",
+            "train_loss_curve": data.get("train_loss_curve", []),
+            "eval_loss_curve": data.get("eval_loss_curve", []),
+        }
+
+    variant_dir = os.path.join(runs_dir, f"variant_{variant}")
+    checkpoint_dirs = sorted(
+        (
+            d for d in os.listdir(variant_dir)
+            if d.startswith("checkpoint-") and os.path.isdir(os.path.join(variant_dir, d))
+        ),
+        key=lambda name: int(name.split("-")[-1]),
+    ) if os.path.isdir(variant_dir) else []
+    trainer_state_path = (
+        os.path.join(variant_dir, checkpoint_dirs[-1], "trainer_state.json")
+        if checkpoint_dirs
+        else ""
+    )
+    if os.path.exists(trainer_state_path):
+        with open(trainer_state_path) as f:
+            state = json.load(f)
+        history = state.get("log_history", [])
+        return {
+            "source": "trainer_state.json",
+            "train_loss_curve": [
+                {"step": h["step"], "epoch": h.get("epoch"), "loss": h["loss"]}
+                for h in history
+                if "loss" in h and "step" in h
+            ],
+            "eval_loss_curve": [
+                {"step": h["step"], "epoch": h.get("epoch"), "eval_loss": h["eval_loss"]}
+                for h in history
+                if "eval_loss" in h and "step" in h
+            ],
+        }
+
+    return {"source": "none", "train_loss_curve": [], "eval_loss_curve": []}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs-dir", default="runs/")
@@ -63,6 +108,35 @@ def main():
             f" {smoke:>8}"
         )
 
+    print()
+
+    print("Loss curves:")
+    combined_curves = {}
+    for variant in ["A", "B", "C"]:
+        r = results[variant]
+        if r is None:
+            continue
+        curve = load_loss_curve(args.runs_dir, variant)
+        train_curve = curve["train_loss_curve"]
+        eval_curve = curve["eval_loss_curve"]
+        combined_curves[variant] = curve
+        if train_curve:
+            first_train = train_curve[0]["loss"]
+            last_train = train_curve[-1]["loss"]
+            summary = f"train points={len(train_curve)} ({first_train:.4f}→{last_train:.4f})"
+        else:
+            summary = "train points=0"
+        if eval_curve:
+            last_eval = eval_curve[-1]["eval_loss"]
+            summary += f", eval points={len(eval_curve)} (last={last_eval:.4f})"
+        else:
+            summary += ", eval points=0"
+        print(f"  Variant {variant}: {summary} [source: {curve['source']}]")
+
+    curves_path = os.path.join(args.runs_dir, "loss_curves.json")
+    with open(curves_path, "w") as f:
+        json.dump(combined_curves, f, indent=2)
+    print(f"  Saved combined curves → {curves_path}")
     print()
 
     # Interpretation

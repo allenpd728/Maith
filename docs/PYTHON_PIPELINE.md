@@ -44,8 +44,9 @@ Outputs under `datasets/`:
 - `train_A.jsonl`, `eval_A.jsonl` — IR token variant
 - `train_B.jsonl`, `eval_B.jsonl` — Lean source BPE variant
 - `train_C.jsonl`, `eval_C.jsonl` — AST-style BPE variant
+- `train_manifest.json`, `eval_manifest.json` — ordered declaration IDs shared across A/B/C
 
-Each row: `{ "source", "name", "module", "input_ids", "labels", "seq_len" }`.
+Each row: `{ "source", "example_id", "name", "module", "input_ids", "labels", "seq_len" }`.
 `labels` = `input_ids` shifted left by 1 (standard causal LM format, last position = −100).
 
 Split: 90% train / 10% eval, fixed seed for reproducibility across all three variants.
@@ -100,7 +101,7 @@ Key classes:
 
 ## train.py
 
-Fine-tunes Qwen2.5-Coder-1.5B on one variant and reports eval perplexity.
+Fine-tunes the configured Qwen2.5-Coder base model on one variant and reports eval perplexity.
 
 ```bash
 pip install torch transformers trl datasets
@@ -116,19 +117,22 @@ python3 python/train.py --variant C --out runs/variant_C
 
 Saves `runs/variant_*/results.json` with perplexity, training time, and config. After all three
 runs, the script prints a comparison table automatically.
+Also saves `runs/variant_*/loss_curve.json` (train/eval loss points from Trainer logs).
 
 Key design choices (from `docs/EXPERIMENT_DESIGN.md`):
-- Variant A: embedding table resized to 4,233 IR tokens (Option 1 — hold architecture fixed)
+- Variant A: embedding table resized to `vocab_A.json` size (currently 4,495 IR tokens)
 - Variants B/C: native Qwen2.5-Coder BPE, no resizing
 - Fixed seed 42, cosine LR schedule, 3 epochs, batch size 8 (effective)
+- Eval perplexity is computed at a fixed 512-token cap for all A/B/C runs
 
 ## Known gaps
 
 - No PyTorch `DataLoader` collate function in `corpus_loader.py` — `train.py` uses its own collate.
-- Results not yet collected — smoke test in progress.
+- Current `runs/variant_*/results.json` are smoke-only (`smoke_test=true`), so they are not decision-grade.
+- Full 3-epoch A/B/C runs on the complete train/eval splits are still pending.
 
 ## Next steps
 
-1. Complete smoke test, then run all three full variants
-2. Record perplexity results in `docs/EXPERIMENT_DESIGN.md`
-3. Expand corpus to more Mathlib modules once baseline results are in
+1. Run all three full variants (A/B/C) with identical settings except representation.
+2. Record full-run perplexity results in `docs/EXPERIMENT_DESIGN.md`.
+3. Expand corpus to more Mathlib modules once baseline results are in.

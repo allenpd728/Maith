@@ -65,11 +65,17 @@ def decoderTests : List TestResult := [
      decoded.id = EntityId.bound "mul_assoc/0/a" && decoded.polarity = Polarity.neut)
     "Should decode legacy b(<scope>) tokens back to EntityId.bound",
 
-  -- v1.0.0: EntityId.bound encodes as BVAR_N; decoder reconstructs as .bound "BVAR_N"
-  runTest "Decoder round-trips BVAR_N token (v1.0.0)"
+  -- v1.2.0: BVAR_N positional token decodes to a lambda-tagged bound ID.
+  runTest "Decoder round-trips BVAR_N token (v1.2.0 lambda)"
     (let decoded := defaultDecoder.decodeEntity ["E", "BVAR_0", "neut"]
-     decoded.id = EntityId.bound "BVAR_0" && decoded.polarity = Polarity.neut)
-    "Should decode BVAR_N positional tokens to EntityId.bound",
+     decoded.id = EntityId.bound "λ:BVAR_0" && decoded.polarity = Polarity.neut)
+    "Should decode BVAR_N positional tokens to lambda-tagged EntityId.bound",
+
+  -- v1.2.0: FVAR_N positional token decodes to a forall-tagged bound ID.
+  runTest "Decoder round-trips FVAR_N token (v1.2.0 forall)"
+    (let decoded := defaultDecoder.decodeEntity ["E", "FVAR_0", "pos"]
+     decoded.id = EntityId.bound "∀:FVAR_0" && decoded.polarity = Polarity.pos)
+    "Should decode FVAR_N positional tokens to forall-tagged EntityId.bound",
 
   -- v1.0.0: EntityId.term encodes as TERM_N
   runTest "Decoder round-trips TERM_N token (v1.0.0)"
@@ -77,29 +83,29 @@ def decoderTests : List TestResult := [
      decoded.id = EntityId.term 3 && decoded.polarity = Polarity.pos)
     "Should decode TERM_N positional tokens to EntityId.term",
 
-  -- v1.0.0 graph round-trip: encodeGraph maps .bound → BVAR_N, decoder maps back to .bound "BVAR_N"
-  -- So the round-tripped graph has .bound "BVAR_0" not .bound "mul_assoc/0/a"
-  runTest "Decoder round-trips Graph with bound entity (v1.0.0 positional)"
+  -- v1.2.0 graph round-trip with lambda-tagged source scopes:
+  -- encodeGraph maps .bound "λ:..." → BVAR_N, decoder maps back to .bound "λ:BVAR_N".
+  runTest "Decoder round-trips Graph with bound entity (v1.2.0 positional)"
     (let original : Graph := {
       entities := [
-        { id := EntityId.bound "mul_assoc/0/a", polarity := Polarity.neut },
+        { id := EntityId.bound "λ:mul_assoc/0/a", polarity := Polarity.neut },
         { id := EntityId.var "HMul.hMul",       polarity := Polarity.neut }
       ]
       attributes := []
-      relations  := [{ src := EntityId.bound "mul_assoc/0/a"
+      relations  := [{ src := EntityId.bound "λ:mul_assoc/0/a"
                        tgt := EntityId.var "HMul.hMul"
                        op  := RelationOp.eq
                        polarity := Polarity.neut }]
       operations := []
     }
-    -- After encoding: bound "mul_assoc/0/a" → BVAR_0; after decoding: bound "BVAR_0"
+    -- After encoding: bound "λ:mul_assoc/0/a" → BVAR_0; after decoding: bound "λ:BVAR_0"
     let expected : Graph := {
       entities := [
-        { id := EntityId.bound "BVAR_0",  polarity := Polarity.neut },
+        { id := EntityId.bound "λ:BVAR_0",  polarity := Polarity.neut },
         { id := EntityId.var "HMul.hMul", polarity := Polarity.neut }
       ]
       attributes := []
-      relations  := [{ src := EntityId.bound "BVAR_0"
+      relations  := [{ src := EntityId.bound "λ:BVAR_0"
                        tgt := EntityId.var "HMul.hMul"
                        op  := RelationOp.eq
                        polarity := Polarity.neut }]
