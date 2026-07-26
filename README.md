@@ -66,28 +66,26 @@ The extraction and normalization stages (up through the canonical graph) are imp
 
 ### Build and tests
 
-- `lake build tests` passes (**66 jobs, 0 failures**).
-- All tests pass (**54 unit tests + corpus-pipeline/serializer integration checks**).
+- `lake build tests` passes (0 failures).
+- All tests pass (**66+ unit tests + corpus-pipeline/serializer integration checks**).
 
 ### Corpus extraction result (real run)
 
-Target module: `Mathlib.Algebra.Group.Defs`  
-Total declarations: **1,129**
+4 modules: `Mathlib.Algebra.Group.Defs`, `Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`  
+Total declarations: **2,554**
 
-| | Count | % |
+| Module | Declarations | Success |
 |---|---|---|
-| **Successful extractions** | **2554** | **100%** |
-| Failed | 0 | 0% |
+| Algebra.Group.Defs | 1,129 | 1,129 (100%) |
+| Algebra.Group.Basic | 548 | 548 (100%) |
+| Algebra.Ring.Defs | 446 | 446 (100%) |
+| Order.Basic | 431 | 431 (100%) |
+| **Total** | **2,554** | **2,554 (100%)** |
 
-Failure breakdown (exhaustive):
+All previously identified failure categories have been resolved — zero failures across all four modules.
 
-| Count | Reason |
-|---|---|
-| 217 | type extraction failed: HOF application (non-constant head) |
-| 62 | value extraction failed: projection expression |
-| 48 | value extraction failed: HOF application (non-constant head) |
-| 6 | value extraction failed: let expression |
-| 4 | value extraction failed: `Eq` arity (heterogeneous equality) |
+Token distribution: min 13, max 13,112, avg 318, total 813,897 tokens.  
+Graph stats: avg 35.8 entities, 13.5 relations, 22.3 operations per graph, max 3,142 nodes.
 
 Non-trivial extracted examples:
 
@@ -97,8 +95,6 @@ Non-trivial extracted examples:
 | `mul_comm` | 8 | 4 | 3 |
 | `mul_one` | 11 | 3 | 6 |
 | `DivisionMonoid.mk` | 34 | 14 | 21 |
-
-Important caveat: this has been validated against exactly one module (`Mathlib.Algebra.Group.Defs`). Broader module coverage will likely surface additional failure categories.
 
 Evidence artifact committed intentionally: [`Corpus/corpus.jsonl`](Corpus/corpus.jsonl) (current 7.2MB extraction output for the module above).
 
@@ -113,20 +109,19 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 
 ## 8) Limitations
 
-- Validation so far is on one Mathlib module.
-- **`Encoder.lean`, `Decoder.lean`, and `Transpiler.lean` are currently minimal scaffolds, not full implementations.** Each function compiles and passes its own unit tests against simple hand-constructed inputs, but the modules' own doc comments describe them as placeholder logic put in place to keep the project structurally complete while the real encode/decode/transpile logic is built out. `Decoder.lean` explicitly notes it is "NOT a full reversible codec." Treat the extraction and normalization stages (sections 4, 6, 7) as the validated part of the pipeline, and the encode/decode/transpile stage as not yet production-quality.
+- Validated across 4 Mathlib modules so far. Broader coverage (more modules, tactic-heavy declarations) may surface new `Expr` patterns.
 - No language model has been trained yet on Maith corpora.
-- No comparative study against Lean-source tokenization or AST serialization has been run yet.
-- Current extraction still has unresolved failure categories (see sections 7 and 9).
+- The A/B/C comparison experiment (IR tokens vs Lean source vs AST-style) is designed but not yet run — training scripts are the next step.
+- `Transpiler.lean` is debug-only: its `formatEntityId` output format differs from `Encoder.lean` and is not in the training pipeline. It is retained as a human-readable diagnostic tool only.
 
 ## 9) Research Roadmap
 
-1. **Phase 1: Build semantic IR** — done (this repo)
-2. **Phase 2: Extract large portions of Mathlib** — started (one module completed)
-3. **Phase 2.5: Complete Encoder/Decoder/Transpiler implementations** — not started (currently scaffolds, see Limitations)
-4. **Phase 3: Build token vocabulary** — in progress via `python/`
-5. **Phase 4: Train transformer models** — not started
-6. **Phase 5: Compare against raw Lean tokenization** — not started
+1. **Phase 1: Build semantic IR** — ✅ done
+2. **Phase 2: Extract Mathlib corpus** — ✅ done (2,554 declarations, 4 modules, 100% coverage)
+3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.0.0, 5,577 tokens, decoder round-trip verified)
+4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
+5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
+6. **Phase 5: Run A/B/C training experiment** — next (fine-tune small model on each variant, compare perplexity)
 7. **Phase 6: Measure theorem-proving performance** — not started
 
 Remaining IR milestones with current size estimates:
@@ -187,9 +182,9 @@ Maith/
   MetaExtractor.lean       # elaborated Lean Expr -> IR graph
   EntityId.lean            # includes EntityId.bound for scoped binders
   Normalizer.lean          # canonical ordering/normalization
-  Encoder.lean             # graph -> token sequence (scaffold, see Limitations)
-  Decoder.lean             # token -> graph parser (scaffold, not a full reversible codec)
-  Transpiler.lean          # Lean syntax <-> IR graph (scaffold, see Limitations)
+  Encoder.lean             # graph -> token sequence (v1.0.0, positional BVAR_N/TERM_N)
+  Decoder.lean             # token -> graph parser (v0.1.0 + v1.0.0 backward compat)
+  Transpiler.lean          # debug-only: human-readable IR formatter, not in training path
   CorpusSerializer.lean    # JSONL/stat serialization
   ProcessingPipeline.lean  # extraction + normalize + encode flow
   MathlibCorpusBuilder.lean
@@ -202,14 +197,19 @@ Tests/
   ...
 python/
   corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
-  build_dataset.py         # CLI entry point that loads corpus and builds train/eval datasets
+  build_dataset.py         # A/B/C dataset builder: IR vocab + BPE variants, train/eval splits
+  validate_roundtrip.py    # decoder round-trip validator (confirms BVAR/TERM stability)
+  tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
+  spot_check.py            # manual corpus spot-checking helper
 docs/
-  LATEST_FIXES.md
-  SESSION_PROGRESS.md
+  ENCODER_FORMAT.md        # canonical token format spec (v1.0.0)
+  LATEST_FIXES.md          # changelog of IR fixes (through 70% coverage milestone)
+  SESSION_PROGRESS.md      # full session-by-session development log
   CORPUS_PIPELINE_STATUS.md
   TESTING_SUMMARY.md
   Design.md
   TEST.md
+  PYTHON_PIPELINE.md       # python/ tooling reference
 README.md
 CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
 ```
