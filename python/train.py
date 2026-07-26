@@ -193,6 +193,15 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
         )
         model.resize_token_embeddings(vocab_size)
         print(f"  Resized embedding table: {tokenizer.vocab_size} → {vocab_size}")
+
+        # Remap bos/eos token IDs to valid values within the new vocab.
+        # After resizing, the original Qwen IDs (151643) are out of range
+        # and trigger warnings. Use 0/1 as safe placeholders — these IDs
+        # exist in every vocab and we're not doing generation here.
+        model.config.bos_token_id = 0
+        model.config.eos_token_id = 1
+        print(f"  Remapped bos_token_id=0, eos_token_id=1")
+
         return model, tokenizer, vocab_size
 
     else:
