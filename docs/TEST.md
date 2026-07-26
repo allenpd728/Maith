@@ -11,8 +11,8 @@ lake build tests
 ## Current result
 
 - Build: 0 failures
-- Suite: all tests pass (61 counted + corpus pipeline checks)
-- Last verified: 2026-07-25
+- Suite: all tests pass (62 counted + corpus pipeline checks)
+- Last verified: 2026-07-26
 
 ## Counted test breakdown
 
@@ -26,14 +26,14 @@ lake build tests
 - Operation: 1
 - Graph: 2
 - Encoder: 5
-- Decoder: 11
+- Decoder: 12
 - Graph Type: 2
 - Normalizer: 7
 - Injectivity: 10
 - Problem Generator: 9
 - Corpus Serializer: 3
 
-**Total: 61**
+**Total: 62**
 
 ## Notes
 

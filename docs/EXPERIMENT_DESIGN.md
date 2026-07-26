@@ -6,9 +6,9 @@ Controlled comparison of three input representations for next-token prediction o
 
 | Variant | Representation | Tokenizer | Vocab size |
 |---------|---------------|-----------|------------|
-| A | Maith IR tokens (v1.1.0) | Custom (`vocab_A.json`) | 4,233 |
-| B | Raw `leanExpr` string | Qwen2.5-Coder BPE | 151,643 |
-| C | AST-style split `leanExpr` | Qwen2.5-Coder BPE | 151,643 |
+| A | Maith IR tokens (v1.2.0) | Custom (`vocab_A.json`) | 4,495 |
+| B | Raw `leanExpr` string | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
+| C | AST-style split `leanExpr` | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 
 Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (2,213 train / 246 eval, seed=42).
 
@@ -83,21 +83,21 @@ Secondary metrics (if time permits):
    Not a blocker for the first experiment but should be fixed before publishing results.
 4. **Only algebraic/order modules** — the corpus is structurally homogeneous. Results may not
    generalise to tactic-heavy or analysis modules.
-5. **No explicit binder-type markers** — the encoding does not distinguish `forall` binders from
-   `lambda` binders at the token level. Both produce `BVAR_N` entities. The distinction is implicit
-   in graph structure (forall binders appear in relation edges, lambda binders in operation inputs)
-   but not explicit in the token stream. This is a known future refinement.
+5. **Cross-graph binder identity remains positional** — v1.2.0 now distinguishes binder kinds
+   (`FVAR_N` for `forall`, `BVAR_N` for `lambda`), but IDs are still positional per graph. So
+   `FVAR_0`/`BVAR_0` do not carry stable identity across declarations.
 
 ## Results
 
-*To be filled in after training runs complete. Run `python3 python/compare_results.py` for a
-formatted summary once all three variants have finished.*
+Current artifacts in `runs/` are smoke tests (`--smoke-test`: 50 examples, 1 epoch) and are not
+decision-grade. Run `python3 python/compare_results.py` after full A/B/C runs for publishable
+comparison.
 
 | Variant | Representation | Vocab | Perplexity | Training time |
 |---------|---------------|-------|------------|---------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | — | — |
-| B | Raw `leanExpr` → Qwen BPE | 151,643 | — | — |
-| C | AST-style → Qwen BPE | 151,643 | — | — |
+| A | Maith IR tokens (v1.2.0) | 4,495 | 178.95 *(smoke)* | 0.7 min *(smoke)* |
+| B | Raw `leanExpr` → Qwen BPE | 151,643 / 151,936 embeddings | 58.45 *(smoke)* | 7.4 min *(smoke)* |
+| C | AST-style → Qwen BPE | 151,643 / 151,936 embeddings | 30.98 *(smoke)* | 6.3 min *(smoke)* |
 
 **Config:** Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA), 3 epochs, seed 42, cosine LR, batch size 8 (effective),
 2,213 train / 246 eval examples, Mathlib `fabf563a` (v4.31.0), encoder v1.2.0.

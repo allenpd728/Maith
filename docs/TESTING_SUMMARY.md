@@ -4,7 +4,7 @@
 
 - `lake build tests`: passes, 0 failures
 - `./.lake/build/bin/tests`: all tests pass
-- Last verified: 2026-07-25
+- Last verified: 2026-07-26
 
 ## Test counts
 
@@ -20,13 +20,13 @@
 | Operation | 1 |
 | Graph | 2 |
 | Encoder | 5 |
-| Decoder | 11 |
+| Decoder | 12 |
 | Graph Type | 2 |
 | Normalizer | 7 |
 | Injectivity | 10 |
 | Problem Generator | 9 |
 | Corpus Serializer | 3 |
-| **Subtotal** | **61** |
+| **Subtotal** | **62** |
 
 Additional pipeline checks run via `Tests/CorpusPipelineTests.lean` (not counted above):
 `Data structures compile`, `Transpiler formatting`, `ProcessingResult type`, `Graph normalization`,
@@ -34,12 +34,13 @@ Additional pipeline checks run via `Tests/CorpusPipelineTests.lean` (not counted
 `Forall body with arithmetic ops`, `Metadata extraction`, `Projection extraction`,
 `Let expression extraction`, `HOF application extraction`, `Scoped binder injectivity`.
 
-## Decoder tests (v1.0.0 additions)
+## Decoder tests (v1.2.0 state)
 
 - `Decoder round-trips EntityId.bound (v0.1.0 legacy)` — legacy `b(<scope>)` format
-- `Decoder round-trips BVAR_N token (v1.0.0)` — positional bound IDs
+- `Decoder round-trips BVAR_N token (v1.2.0 lambda)` — positional lambda binder IDs (`λ:BVAR_N`)
+- `Decoder round-trips FVAR_N token (v1.2.0 forall)` — positional forall binder IDs (`∀:FVAR_N`)
 - `Decoder round-trips TERM_N token (v1.0.0)` — positional term IDs
-- `Decoder round-trips Graph with bound entity (v1.0.0 positional)` — full graph round-trip
+- `Decoder round-trips Graph with bound entity (v1.2.0 positional)` — full graph round-trip
 
 ## Golden examples fixture (v1.2.0)
 
@@ -54,13 +55,10 @@ Covers four structural cases with exact expected token sequences:
 Fails immediately if the encoder changes token output. Update `GOLDEN` dict and bump
 `encoderVersion` in `Corpus/stats.json` when a change is intentional.
 
-## Decoder tests (v1.2.0 additions — needed)
+## Remaining decoder extension
 
-The following tests should be added to `Tests/DecoderTests.lean` to cover the FVAR_N split:
-
-- `Decoder round-trips FVAR_N token (v1.2.0)` — forall binder positional IDs
-- `Decoder round-trips BVAR_N token (v1.2.0)` — lambda binder positional IDs (verify `λ:` prefix)
-- `Decoder round-trips graph with mixed FVAR/BVAR (v1.2.0)` — graph with both binder kinds
+- Add one mixed-binder graph round-trip test (`FVAR_N` + `BVAR_N` in the same graph) for extra
+  coverage of dual-counter behavior.
 
 ## Python corpus validation
 
