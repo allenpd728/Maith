@@ -110,6 +110,13 @@ def corpusStatsToJsonString (stats : CorpusStats) : String :=
       ("avgOperations", toString stats.graphStats.avgOperations),
       ("maxGraphSize", toString stats.graphStats.maxGraphSize)
     ]),
+    ("moduleStats", jsonArray (stats.moduleStats.map (fun m =>
+      jsonObject [
+        ("module", jsonString m.moduleName),
+        ("totalDeclarations", toString m.totalDeclarations),
+        ("successfulExamples", toString m.successfulExamples)
+      ]
+    ))),
     ("mathlibCommitHash", jsonString stats.mathlibCommitHash),
     ("encoderVersion", jsonString stats.encoderVersion),
     ("irVersion", jsonString stats.irVersion)

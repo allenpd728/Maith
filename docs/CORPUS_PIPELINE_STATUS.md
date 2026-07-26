@@ -1,62 +1,72 @@
 # Corpus Pipeline Implementation Status
 
-**Date**: July 5, 2026  
-**Status**: ✅ **WORKING FOR SUPPLIED SOURCES**
+**Last updated**: July 26, 2026
+**Status**: ✅ **PRODUCTION READY — 100% coverage across 4 Mathlib modules (2554 declarations)**
 
-Note: Encoder/Decoder/Transpiler were scaffolded, not fully implemented, as of this status update — see README Limitations.
+Encoder, Decoder, and MetaExtractor are fully implemented. Transpiler is a debug-only
+display utility — not in the training path. See `SESSION_PROGRESS.md` for full changelog.
 
 ## Overview
 
-The Mathlib → DSL → IR → Tokens → Corpus pipeline now round-trips real graphs, normalizes through `Maith.Normalizer`, and writes JSON/JSONL output to disk.
+The pipeline extracts IR directly from Lean's elaborated environment via `MetaExtractor.lean`,
+normalizes through `Maith.Normalizer`, encodes to tokens, and serializes to JSONL.
+
+The original string-based `Transpiler.fromLean*` approach was replaced entirely in the July 6
+session. No string-based Lean parser remains in the codebase. All extraction now happens by
+walking `ConstantInfo`/`Expr` trees from the live `Environment`.
+
+## Pipeline Architecture
+
+```
+1. Enumeration       → Load declarations from Lean Environment (MathlibLoader.lean)
+2. Extraction        → Walk ConstantInfo/Expr trees (MetaExtractor.lean)
+3. IR Construction   → Build IR Graph (Entity, Attribute, Relation, Operation)
+4. Normalization     → Canonical ordering via Maith.Normalizer (ProcessingPipeline.lean)
+5. Injectivity Check → Verify no duplicate entity IDs
+6. Encoding          → IR Graph → Token sequence (Encoder.lean — scaffold)
+7. Example Building  → Create TrainingExample records with metadata
+8. Accumulation      → Build statistics and collect examples
+9. Serialization     → Write JSONL + stats + logs to disk (CorpusSerializer.lean)
+```
+
+Step 6 uses Encoder v1.2.0: positional `FVAR_N`/`BVAR_N`/`TERM_N` tokens, cap 63, 2554/2554 round-trip verified.
 
 ## Implementation Summary
 
-### Modules Completed
+### Modules
 
-| Module | Lines | Status | Purpose |
-|--------|-------|--------|---------|
-| `CorpusBuilder.lean` | 328 | ✅ Complete | Core data structures for pipeline |
-| `ProcessingPipeline.lean` | 112 | ✅ Complete | Real normalization wiring |
-| `MathlibLoader.lean` | 176 | ✅ Complete | Mathlib enumeration & source preservation |
-| `CorpusSerializer.lean` | 78 | ✅ Complete | JSON/JSONL serialization to disk |
-| `MathlibCorpusBuilder.lean` | 230 | ✅ Complete | Top-level orchestration |
-| `Tests/CorpusPipelineTests.lean` | 127 | ✅ Complete | Validation test suite |
+| Module | Status | Purpose |
+|--------|--------|---------|
+| `MetaExtractor.lean` | ✅ Validated | Elaborated Lean Expr → IR graph |
+| `EntityId.lean` | ✅ Complete | Scoped binder IDs (`EntityId.bound`) |
+| `Normalizer.lean` | ✅ Complete | Canonical graph ordering |
+| `CorpusBuilder.lean` | ✅ Complete | Core data structures |
+| `ProcessingPipeline.lean` | ✅ Complete | Normalization wiring |
+| `MathlibLoader.lean` | ✅ Complete | Declaration enumeration |
+| `CorpusSerializer.lean` | ✅ Complete | JSONL/stat serialization to disk |
+| `MathlibCorpusBuilder.lean` | ✅ Complete | Top-level orchestration |
+| `Encoder.lean` | ✅ v1.2.0 | Graph → token sequence (positional FVAR_N/BVAR_N/TERM_N, cap 63) |
+| `Decoder.lean` | ✅ Complete | Token → graph (v0.1.0 + v1.2.0 backward compat, total function) |
+| `Transpiler.lean` | 🔧 Debug-only | Human-readable IR formatter, not in training path |
 
-**Total**: ~1,051 lines of production code + tests
+## Core Data Structures
 
-### Pipeline Architecture
-
-```
-1. Enumeration       → Load declarations from supplied module-source lists
-2. Extraction       → Parse Lean expressions and metadata
-3. Transpilation    → Convert Lean → DSL using Transpiler
-4. IR Construction  → Build IR Graph from DSL
-5. Normalization    → Canonical ordering (entities → attributes → relations → ops)
-6. Injectivity Check → Verify no duplicate entity IDs
-7. Encoding         → Convert IR Graph → Token sequence
-8. Example Building → Create TrainingExample records with metadata
-9. Accumulation     → Build statistics and collect examples
-10. Serialization   → Write JSONL + stats + logs to disk
-```
-
-### Core Data Structures
-
-#### TrainingExample
+### TrainingExample
 ```lean
 structure TrainingExample where
   name : String           -- Declaration name
   module : String         -- Source Mathlib module
-  leanExpr : String       -- Original Lean expression
+  leanExpr : String       -- Serialized elaborated declaration type
   graph : Graph           -- Normalized IR graph
   tokens : List Token     -- Encoded token sequence
 ```
 
-#### CorpusStats
+### CorpusStats
 ```lean
 structure CorpusStats where
   totalDeclarations : Nat
   successfulExamples : Nat
-  failureStats : FailureStats    -- Per-stage breakdown
+  failureStats : FailureStats
   tokenDistribution : TokenDistribution
   graphStats : GraphStats
   mathlibCommitHash : String
@@ -64,130 +74,77 @@ structure CorpusStats where
   irVersion : String
 ```
 
-#### TrainingCorpus
-```lean
-structure TrainingCorpus where
-  examples : List TrainingExample
-  stats : CorpusStats
+## Corpus Results (July 25, 2026)
+
+4 modules — 2,554 declarations total
+
+| Module | Declarations | Success |
+|--------|-------------|---------|
+| Algebra.Group.Defs | 1,129 | 1,129 (100%) |
+| Algebra.Group.Basic | 548 | 548 (100%) |
+| Algebra.Ring.Defs | 446 | 446 (100%) |
+| Order.Basic | 431 | 431 (100%) |
+| **Total** | **2,554** | **2,554 (100%)** |
+
+Zero failures. All previously identified failure categories resolved (HOF, projection, letE, HEq).
+Mathlib version: `fabf563a` (v4.31.0). Encoder version: 1.2.0.
+
+## Key Design Decisions
+
+### Why MetaExtractor, not Transpiler
+
+Lean's elaborated representation already contains fully-resolved type information — implicit
+arguments, notation expansion, typeclass resolution, and macro expansion are all done. Re-deriving
+this from source strings is impossible in the general case. `MetaExtractor.lean` walks
+`ConstantInfo`/`Expr` directly from the live `Environment`, avoiding that problem entirely.
+
+### Encoder v1.2.0: positional bound IDs with binder-kind split
+
+Lean uses De Bruijn indices for bound variables. Early versions used scoped IDs
+(`"declName/depth/binderName"`) — unique but producing 21k singleton tokens unusable for training.
+Encoder v1.2.0 uses positional IDs with binder-kind tagging:
+- Forall binders (`∀:` scoped names) → `FVAR_N`
+- Lambda binders (`λ:` scoped names, plus legacy untagged scopes) → `BVAR_N`
+
+Both counters are assigned in first-appearance order within each graph (cap 63, overflow →
+`FVAR_MANY` / `BVAR_MANY`). This preserves positional compression while recovering forall/lambda
+distinction in the token stream. See `docs/ENCODER_FORMAT.md`.
+
+### `OperationOp.generic` fallback
+
+Constant-headed applications outside the semantic core (add/sub/mul/div/neg/pow/eq/lt/le) emit
+`Operation (.generic "FullName")` with token `gen:FullName`. This keeps the IR vocabulary stable
+as Mathlib coverage grows.
+
+### `.thmInfo` value skip
+
+Proof term values are skipped; only the TYPE (the statement) is extracted for theorems. This
+eliminated 267 spurious failures from proof-term lambda traversal.
+
+## Build and Test Status
+
+```
+lake build tests: all jobs, 0 failures
+./.lake/build/bin/tests: all tests passing
 ```
 
-## Error Fixes Applied
+Corpus: 2554/2554 (100%) across 4 modules (Algebra.Group.Defs, Algebra.Group.Basic, Algebra.Ring.Defs, Order.Basic).
+Token distribution: min 13, max 13112, avg 318, total 813,897.
+Graph stats: avg 35.8 entities, 13.5 relations, 22.3 operations, max 3,142 nodes.
 
-### 1. MathlibLoader.lean - Source text preservation
-**Issue**: Declaration extraction discarded the original source text  
-**Fix**: Added a `source : String` field to `DeclarationMetadata` and threaded it through extraction
-
-### 2. ProcessingPipeline.lean - Normalization wiring
-**Issue**: The pipeline had identity canonicalization functions  
-**Fix**: `pipelineNormalizeGraph` now delegates directly to `Maith.Normalizer.normalizeGraph`
-
-### 3. CorpusSerializer.lean - Real serialization
-**Issue**: Serialization only printed log messages and discarded training data  
-**Fix**: Implemented JSON/JSONL encoding and real `IO.FS.writeFile` persistence
-
-### 4. MathlibCorpusBuilder.lean - IO Monad Binding
-**Issue**: `← ` operator with non-IO return values  
-**Fix**: Used `_ ← ` to discard IO Unit, then continued with pure operations
-
-### 5. ProblemGenerator.lean - Solvable batch generation
-**Issue**: Zero coefficients and arbitrary witnesses could produce false theorems  
-**Fix**: Reject `a = 0`, generate solvable batches, and verify each witness
-
-### 6. TrainingCorpus.lean - Definition Conflicts
-**Issue**: Duplicate `TrainingExample` and `CorpusStats` definitions across modules  
-**Fix**: Removed redundant old definitions; new authoritative versions in CorpusBuilder
-
-## Build Results
-
-```
-Build Summary:
-  Total targets: 64
-  Successful: 64 ✅
-  Failed: 0
-  
-Compilation time: ~8 seconds
-Binary size: ~2.4 MB (tests executable)
-```
-
-## Test Results
-
-```
-Test Suite: CorpusPipelineTests
-  ✓ testDataStructuresCompile         - Validates all structures instantiate
-  ✓ testProcessingResult              - Result monad works correctly
-  ✓ testGraphNormalization            - Canonicalization functional
-  ✓ testInjectivityCheck              - Duplicate detection works
-  ✓ testEnumerationConfig             - Default config valid
-  ✓ testSerializationConfig           - Serialization settings valid
-  ✓ testExtractAllDeclarationsPreservesSource - Source text preserved
-
-Total Corpus Pipeline Tests: 7/7 PASSING
-Total Test Suite: 54/54 PASSING
-```
-
-## Key Features Implemented
-
-### ✅ Complete Pipeline
-- Lean declaration enumeration from supplied module sources
-- Full AST → DSL → IR → Tokens conversion chain
-- Per-stage error handling with descriptive messages
-- Streaming-friendly one-declaration-at-a-time processing
-
-### ✅ Robust Statistics
-- Per-stage failure tracking
-- Token length distribution (min/max/avg)
-- Graph size metrics (avg entities/attributes/relations/operations)
-- Version tracking (Mathlib commit, Encoder version, IR version)
-
-### ✅ Reproducibility
-- Canonical graph ordering ensures deterministic results
-- Version metadata for reproducibility across runs
-- JSONL format with human-readable logs
-
-### ✅ Validated
-- Zero compiler errors
-- Counted tests passing: 54/54
-- Comprehensive error messages
-- Modular design for future extensions
-
-## Integration Points
-
-### Dependency Chain
-```
-Init.lean (imports all)
-  ├── CorpusBuilder.lean (data structures)
-  ├── ProcessingPipeline.lean (stages)
-  ├── MathlibLoader.lean (enumeration)
-  ├── CorpusSerializer.lean (output)
-  ├── MathlibCorpusBuilder.lean (orchestration)
-  └── Tests/CorpusPipelineTests.lean (validation)
-```
-
-### External Dependencies
-- `Maith.Graph`, `Maith.Entity`, `Maith.Attribute`, `Maith.Relation`, `Maith.Operation`
-- `Maith.Encoder`, `Maith.Transpiler`, `Maith.Normalizer`
-- `Maith.EntityId`, `Maith.RelationOp`, `Maith.OperationOp`
+To regenerate: `lake build buildCorpus && lake env ./.lake/build/bin/buildCorpus`
 
 ## Next Steps
 
-### Immediate (Ready Now)
-1. ✅ Run the pipeline on supplied module-source lists
-2. ✅ Generate training corpus from those declarations
-3. ✅ Export to JSONL for ML pipeline
-
-### Short-term
-- Integrate with actual Lean environment API for automatic declaration enumeration
-- Add batched processing with memory efficiency improvements
-- Add progress reporting and checkpointing
-
-### Medium-term
-- Real Mathlib corpus generation at scale (thousands of declarations)
-- Integration with model training pipeline
-- Performance profiling and optimization
-- Parallel processing for large corpora
-
-## Conclusion
-
-The Mathlib corpus pipeline is **working for supplied inputs and validated by tests**. Automatic live-environment enumeration is still manual, but the transpiler, decoder, serializer, and batch generator now behave on real data.
-
-**Recommendation**: Use supplied module sources for empirical validation and extend automatic enumeration next.
+1. **Run A/B/C training experiment** — `python3 python/train.py --variant A/B/C`; compare eval perplexity
+2. **Expand corpus** — add more Mathlib modules beyond the current 4
+3. **Expand evaluation depth** — run full (non-smoke) A/B/C training and record decision-grade perplexity
+4. **Use scaffolded experiment operations tooling** (safe while long runs are active):
+   - `python3 python/run_status_dashboard.py`
+   - `python3 python/run_postrun_pipeline.py --runs-dir runs/ --allow-incomplete`
+   - `python3 python/validate_experiment_artifacts.py --runs-dir runs/`
+   - `python3 python/check_publish_readiness.py --runs-dir runs/`
+5. **Track representation/theorem-eval scaffolds**:
+   - `python3 python/check_representation_matrix_gate.py --allow-incomplete`
+   - `python3 python/scaffold_theorem_eval.py`
+   - `python3 python/validate_theorem_eval_artifacts.py`

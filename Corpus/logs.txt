@@ -1,2 +1,2 @@
-Wrote 792 examples
-Wrote stats for 792 successful examples
+Wrote 2554 examples
+Wrote stats for 2554 successful examples

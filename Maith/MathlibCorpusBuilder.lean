@@ -75,7 +75,24 @@ def buildMathlibIRCorpus
                     s!" - {stats.tokenDistribution.maxLength}" ++
                     s!" (avg: {stats.tokenDistribution.avgLength})"
     IO.println tokenMsg
+    -- Per-module breakdown
+    IO.println "[STATS] Per-module results:"
+    for m in stats.moduleStats do
+      IO.println s!"  {m.moduleName}: {m.successfulExamples} examples"
     IO.println ""
+
+    -- Read Mathlib commit hash via jq — exact match on package name, no fragile string parsing.
+    -- Falls back to "unknown" if jq is unavailable or manifest is missing.
+    let mathlibHash : String ← do
+      let result ← IO.Process.output {
+        cmd  := "jq"
+        args := #["-r", ".packages[] | select(.name==\"mathlib\") | .rev", "lake-manifest.json"]
+      } |>.toBaseIO
+      match result with
+      | .error _ => pure "unknown"
+      | .ok out =>
+        let hash := out.stdout.trimAscii.toString
+        if hash.isEmpty || hash == "null" then pure "unknown" else pure hash
 
     -- Build final corpus
     let corpus : TrainingCorpus := {
@@ -83,8 +100,8 @@ def buildMathlibIRCorpus
       stats := {
         stats with
         totalDeclarations := enumerationStats.totalEnumerated
-        mathlibCommitHash := "unknown"
-        encoderVersion := "0.1.0"
+        mathlibCommitHash := mathlibHash
+        encoderVersion := "1.2.0"
         irVersion := "0.1.0"
       }
     }

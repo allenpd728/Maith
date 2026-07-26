@@ -11,3 +11,6 @@ lean_lib Tests
 
 lean_exe tests where
   root := `Tests.Main
+
+lean_exe buildCorpus where
+  root := `Scripts.BuildCorpus
