@@ -81,34 +81,18 @@ def buildMathlibIRCorpus
       IO.println s!"  {m.moduleName}: {m.successfulExamples} examples"
     IO.println ""
 
-    -- Read Mathlib commit hash from lake-manifest.json (best-effort; falls back to "unknown").
-    -- The manifest is always present after `lake update` and records the exact resolved revision
-    -- for every dependency, making the corpus run reproducible against a specific Mathlib version.
+    -- Read Mathlib commit hash via jq — exact match on package name, no fragile string parsing.
+    -- Falls back to "unknown" if jq is unavailable or manifest is missing.
     let mathlibHash : String ← do
-      let manifestPath := "lake-manifest.json"
-      match ← IO.FS.readFile manifestPath |>.toBaseIO with
+      let result ← IO.Process.output {
+        cmd  := "jq"
+        args := #["-r", ".packages[] | select(.name==\"mathlib\") | .rev", "lake-manifest.json"]
+      } |>.toBaseIO
+      match result with
       | .error _ => pure "unknown"
-      | .ok content =>
-        -- Extract the revision for the "mathlib" package.
-        -- Lake v1.2.0 manifest format (pretty-printed, space after colon):
-        --   {"name": "mathlib", ..., "rev": "<40-char hash>", ...}
-        -- We search for the mathlib entry, then find the "rev" field within it.
-        -- Strategy: find the mathlib entry by locating "name": "mathlib", then
-        -- search backwards in the content for the "rev" field that belongs to that entry.
-        -- In Lake v1.2.0 manifests, "rev" appears before "name" within each entry, so
-        -- we find the mathlib name marker, take the text before it, and grab the last "rev"
-        -- value in that prefix — which belongs to the mathlib entry.
-        let nameMarker := "\"name\": \"mathlib\""
-        let revMarker  := "\"rev\": \""
-        match content.splitOn nameMarker with
-        | prefix :: _ =>
-          -- prefix is everything before "name": "mathlib" — grab the last "rev": "..." in it
-          match prefix.splitOn revMarker with
-          | parts =>
-            match parts.getLast? with
-            | some lastPart => pure (lastPart.splitOn "\"" |>.head!)
-            | none => pure "unknown"
-        | _ => pure "unknown"
+      | .ok out =>
+        let hash := out.stdout.trim
+        if hash.isEmpty || hash == "null" then pure "unknown" else pure hash
 
     -- Build final corpus
     let corpus : TrainingCorpus := {
