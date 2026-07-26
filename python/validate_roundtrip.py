@@ -27,12 +27,16 @@ from typing import Optional
 
 def parse_entity_id(s: str) -> dict:
     """Parse a token string into an EntityId dict."""
-    if s.startswith("TERM_"):
+    if s == "TERM_MANY":
+        return {"kind": "term", "value": 32}  # sentinel > maxPositional (31)
+    elif s == "BVAR_MANY":
+        return {"kind": "bound", "scope": "BVAR_MANY"}
+    elif s.startswith("TERM_"):
         suffix = s[5:]
         try:
             return {"kind": "term", "value": int(suffix)}
         except ValueError:
-            return {"kind": "term", "value": 0}  # TERM_MANY
+            return {"kind": "term", "value": 32}  # fallback
     elif s.startswith("BVAR_"):
         return {"kind": "bound", "scope": s}  # synthetic stable scope
     elif s.startswith("t") and s[1:].isdigit():
@@ -50,7 +54,9 @@ def entity_id_to_token(eid: dict) -> str:
         n = eid.get("value", 0)
         return f"TERM_{n}" if n <= 31 else "TERM_MANY"
     elif kind == "bound":
-        return eid.get("scope", "BVAR_MANY")  # BVAR_N scopes are already the token
+        scope = eid.get("scope", "BVAR_MANY")
+        # BVAR_N and BVAR_MANY scopes are already the canonical token string
+        return scope
     else:
         return eid.get("name", "")
 
