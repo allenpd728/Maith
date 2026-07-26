@@ -1,0 +1,19 @@
+{
+  "active_representation_id": "semantic_graph_ir_v1_2_0",
+  "families": [
+    {
+      "family_id": "semantic_graph_ir",
+      "representation_id": "semantic_graph_ir_v1_2_0",
+      "status": "active",
+      "core_contract_version": "core_v1",
+      "notes": "Current baseline candidate with FVAR/BVAR split."
+    },
+    {
+      "family_id": "semantic_graph_ir",
+      "representation_id": "semantic_graph_ir_v2_template",
+      "status": "planned",
+      "core_contract_version": "core_v1",
+      "notes": "Template slot for next semantic graph IR candidate."
+    }
+  ]
+}

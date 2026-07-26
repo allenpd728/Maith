@@ -129,6 +129,9 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 6. **Phase 5: Run A/B/C training experiment** — 🔄 in progress (smoke runs done; full runs pending)
 7. **Phase 6: Measure theorem-proving performance** — not started
 
+Representation contingency planning is tracked in `docs/REPRESENTATION_EVOLUTION.md` so alternate
+IR candidates can be developed/evaluated quickly if the current semantic graph IR underperforms.
+
 Remaining IR milestones with current size estimates:
 
 All previously identified failure categories have been resolved:
