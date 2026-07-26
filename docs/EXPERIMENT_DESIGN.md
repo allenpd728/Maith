@@ -123,6 +123,8 @@ comparison.
 7. Scaffold proof-context sidecar protocol artifacts:
    - `python3 python/scaffold_context_artifacts.py`
    - `python3 python/build_dependency_manifest.py`
+   - `python3 python/validate_context_artifacts.py --datasets-dir datasets/`
+   - `python3 python/context_pack_stats.py --datasets-dir datasets/`
 8. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
 
 Representation IDs are recorded in dataset rows and `runs/variant_*/results.json` so future IR

@@ -22,6 +22,11 @@ Bootstrap dependency generator:
 
 - `python/build_dependency_manifest.py` → `dependency_manifest.bootstrap.json`
 
+Validation and quality reporting:
+
+- `python/validate_context_artifacts.py` → `runs/context_artifact_validation.json`
+- `python/context_pack_stats.py` → `runs/context_pack_stats.json`
+
 ## Context row schema (`*_context_manifest.template.json`)
 
 Each row includes:
@@ -38,3 +43,10 @@ Each row includes:
 - `dependency_manifest.bootstrap.json` is heuristic-only (module-local window), intended as a starting point.
 - A production dependency extractor should replace heuristic refs with semantically grounded edges.
 - Keep eval comparisons apples-to-apples by applying the same context-pack construction rules across variants.
+
+## Validation commands
+
+```bash
+python3 python/validate_context_artifacts.py --datasets-dir datasets/
+python3 python/context_pack_stats.py --datasets-dir datasets/
+```
