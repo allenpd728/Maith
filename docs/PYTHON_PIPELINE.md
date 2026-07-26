@@ -33,6 +33,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `full_run_status_history.py` | Appends deduplicated run snapshots to `runs/full_run_status_history.jsonl` |
 | `check_publish_readiness.py` | Verifies full-run artifacts and emits `runs/publish_readiness.json` |
 | `validate_experiment_artifacts.py` | Validates schema of key run artifacts and writes `runs/artifact_schema_validation.json` |
+| `check_decision_log.py` | Validates required entries exist in `docs/DECISION_LOG.md` |
 | `check_docs_consistency.py` | Detects stale README/docs values and writes `runs/docs_consistency_report.json` |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -202,6 +203,7 @@ To catch stale experiment values in markdown docs:
 
 ```bash
 python3 python/check_docs_consistency.py
+python3 python/check_decision_log.py
 ```
 
 To scaffold Phase 6 theorem-proving evaluation artifacts:
