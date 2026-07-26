@@ -86,6 +86,28 @@ inputs:  output:
 
 ---
 
+## Known design constraints
+
+### Cross-graph positional identity
+
+`BVAR_0` in one graph has no relationship to `BVAR_0` in another — the index is positional
+within a single graph only. The model cannot learn "the first bound variable in a ring axiom
+usually means the carrier type" because that information is declaration-specific and not
+preserved across the positional encoding.
+
+This is an intentional tradeoff: preserving declaration-scoped names (v0.1.0 format) would
+give the model cross-graph identity but at the cost of 21k unstable singleton tokens. The
+positional format removes noise at the cost of cross-graph alignment.
+
+**Practical implication:** the model can still learn structural patterns ("a `BVAR_0` appearing
+in both an `E` row and an `R` row indicates a bound variable used in a relation") because those
+patterns are consistent within a graph. Cross-graph semantic alignment would require a separate
+mechanism — e.g. a canonical variable-naming scheme based on type structure rather than
+declaration name. This is a known future direction, not a blocker for the current experiment.
+
+**Watch for:** if eval perplexity on graph-completion tasks is unexpectedly high, revisit
+whether cross-graph identity is the missing signal.
+
 ## Version history
 
 | Version | Change |
