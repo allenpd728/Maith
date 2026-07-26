@@ -70,10 +70,10 @@ if missing:
 # Constants (from EXPERIMENT_DESIGN.md)
 # ---------------------------------------------------------------------------
 
-BASE_MODEL      = "Qwen/Qwen2.5-Coder-1.5B"
-MAX_SEQ_LEN     = 1024       # reduced from 1536 to fit MPS memory
-BATCH_SIZE      = 1          # reduced from 2; MPS shared memory limit ~20 GB
-GRAD_ACCUM      = 8          # increased to keep effective batch size at 8
+BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
+MAX_SEQ_LEN     = 1024
+BATCH_SIZE      = 2
+GRAD_ACCUM      = 4
 LEARNING_RATE   = 2e-4
 EPOCHS          = 3
 WEIGHT_DECAY    = 0.01
@@ -263,7 +263,6 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         report_to="none",
         fp16=False,  # MPS doesn't support fp16; set True for CUDA
         bf16=False,
-        gradient_checkpointing=True,   # trade compute for memory on MPS
         dataloader_pin_memory=False,
     )
 
