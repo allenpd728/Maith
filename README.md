@@ -69,6 +69,17 @@ The full pipeline is implemented and validated. See section 7 for corpus results
 - `lake build tests` passes (0 failures).
 - All tests pass (**66+ unit tests + corpus-pipeline/serializer integration checks**).
 
+### While full A/B/C runs are active
+
+Use these read-only monitoring helpers (safe during active training):
+
+```bash
+python3 python/watch_full_runs.py
+python3 python/estimate_full_run_eta.py
+python3 python/full_run_status_snapshot.py
+python3 python/full_run_status_report.py
+```
+
 ### Corpus extraction result (real run)
 
 4 modules: `Mathlib.Algebra.Group.Defs`, `Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`  
