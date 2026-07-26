@@ -148,3 +148,5 @@ Run these after full A/B/C training completes:
    - `runs/full_results_gate.json` (`decision_grade=true`)
    - `runs/publish_results_summary.json`
 8. Only after all checks pass, update the Results table and interpretation in this document as final.
+9. Record any protocol/interpretation changes in:
+   - `docs/DECISION_LOG.md`

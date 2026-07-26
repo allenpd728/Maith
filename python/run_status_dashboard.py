@@ -50,6 +50,7 @@ def main() -> int:
             [py, "python/full_run_status_history.py", "--log", args.log, "--runs-dir", args.runs_dir],
         ),
         ("Check docs consistency", [py, "python/check_docs_consistency.py"]),
+        ("Check decision log", [py, "python/check_decision_log.py"]),
     ]
 
     results = [run_step(name, cmd) for name, cmd in steps]

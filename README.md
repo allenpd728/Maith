@@ -119,6 +119,9 @@ python3 python/run_postrun_pipeline.py --runs-dir runs/
 
 Artifact field contracts are documented in [`docs/ARTIFACT_SCHEMAS.md`](docs/ARTIFACT_SCHEMAS.md).
 
+Canonical experiment assumptions/interpretation decisions are tracked in
+[`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
+
 ### Corpus extraction result (real run)
 
 4 modules: `Mathlib.Algebra.Group.Defs`, `Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`  
