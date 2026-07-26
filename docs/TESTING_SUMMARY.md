@@ -41,6 +41,19 @@ Additional pipeline checks run via `Tests/CorpusPipelineTests.lean` (not counted
 - `Decoder round-trips TERM_N token (v1.0.0)` — positional term IDs
 - `Decoder round-trips Graph with bound entity (v1.0.0 positional)` — full graph round-trip
 
+## Golden examples fixture (v1.2.0)
+
+`python3 python/test_golden_examples.py` — 4/4 passed.
+
+Covers four structural cases with exact expected token sequences:
+- `LeftCancelSemigroup.toIsLeftCancelMul` — forall-only binders (FVAR_N only)
+- `IsAddCommutative.instDivisionAddCommMonoid` — mixed FVAR_N + BVAR_N
+- `IsAddCommutative.instAddCommSemigroup._proof_1` — semantic `add` op token
+- `npow_eq_pow` — EntityId.var (named constant alongside FVAR_N)
+
+Fails immediately if the encoder changes token output. Update `GOLDEN` dict and bump
+`encoderVersion` in `Corpus/stats.json` when a change is intentional.
+
 ## Decoder tests (v1.2.0 additions — needed)
 
 The following tests should be added to `Tests/DecoderTests.lean` to cover the FVAR_N split:
