@@ -90,14 +90,16 @@ def buildMathlibIRCorpus
       | .error _ => pure "unknown"
       | .ok content =>
         -- Extract the revision for the "mathlib" package.
-        -- Manifest format: {"packages":[{"name":"mathlib","revision":"<hash>",...},...]}
-        -- Simple string search avoids a full JSON parser dependency.
-        let nameMarker := "\"name\":\"mathlib\""
-        let revMarker  := "\"revision\":\""
+        -- Lake v1.2.0 manifest format (pretty-printed, space after colon):
+        --   {"name": "mathlib", ..., "rev": "<40-char hash>", ...}
+        -- We search for the mathlib entry, then find the "rev" field within it.
+        let nameMarker := "\"name\": \"mathlib\""
+        let revMarker  := "\"rev\": \""
         match content.splitOn nameMarker with
         | _ :: rest =>
-          let after := rest.head!
-          match after.splitOn revMarker with
+          -- Take only the text between this entry and the next package entry
+          let entryText := (rest.head!.splitOn "\"name\": \"" |>.head!)
+          match entryText.splitOn revMarker with
           | _ :: revRest =>
             let revField := revRest.head!
             pure (revField.splitOn "\"" |>.head!)
