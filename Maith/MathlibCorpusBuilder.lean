@@ -75,6 +75,10 @@ def buildMathlibIRCorpus
                     s!" - {stats.tokenDistribution.maxLength}" ++
                     s!" (avg: {stats.tokenDistribution.avgLength})"
     IO.println tokenMsg
+    -- Per-module breakdown
+    IO.println "[STATS] Per-module results:"
+    for m in stats.moduleStats do
+      IO.println s!"  {m.moduleName}: {m.successfulExamples} examples"
     IO.println ""
 
     -- Build final corpus
