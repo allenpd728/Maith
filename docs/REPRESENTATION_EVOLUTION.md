@@ -82,6 +82,7 @@ See readiness across registered candidates:
 
 ```bash
 python3 python/representation_matrix_status.py
+python3 python/check_representation_matrix_gate.py --allow-incomplete
 ```
 
 Backfill older artifacts that predate `representation_id` metadata (dry-run first):

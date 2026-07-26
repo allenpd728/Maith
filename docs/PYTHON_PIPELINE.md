@@ -19,10 +19,12 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `run_postrun_pipeline.py` | Runs strict compare → gate → publish → readiness → schema validation |
 | `finalize_full_experiment.py` | Runs strict compare, gate, publish, and representation checks in one flow |
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
+| `validate_theorem_eval_artifacts.py` | Validates theorem-eval config/results schema and writes validation report |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
 | `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
 | `representation_audit.py` | Audits representation metadata consistency across datasets/runs |
 | `representation_matrix_status.py` | Reports readiness/state across registered representation candidates |
+| `check_representation_matrix_gate.py` | Enforces representation matrix gate and writes `runs/representation_matrix_gate.json` |
 | `register_representation.py` | Registers new representation candidates in the family registry |
 | `backfill_representation_metadata.py` | Backfills missing representation IDs into existing artifacts |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
@@ -210,6 +212,7 @@ To scaffold Phase 6 theorem-proving evaluation artifacts:
 
 ```bash
 python3 python/scaffold_theorem_eval.py
+python3 python/validate_theorem_eval_artifacts.py
 ```
 
 To audit representation metadata consistency:
@@ -228,6 +231,7 @@ To summarize status across all registered representation candidates:
 
 ```bash
 python3 python/representation_matrix_status.py
+python3 python/check_representation_matrix_gate.py --allow-incomplete
 ```
 
 To backfill representation IDs on older artifacts (dry-run by default):
