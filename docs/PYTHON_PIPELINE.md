@@ -27,6 +27,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `estimate_full_run_eta.py` | Estimates completion ETA from full-run progress history |
 | `full_run_status_snapshot.py` | Exports run/gate/ETA snapshot to `runs/full_run_status.json` |
+| `full_run_status_report.py` | Exports a markdown run-status brief to `runs/full_run_status.md` |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
 
@@ -144,6 +145,7 @@ To monitor the long-running sequential full A/B/C job:
 python3 python/watch_full_runs.py
 python3 python/estimate_full_run_eta.py
 python3 python/full_run_status_snapshot.py
+python3 python/full_run_status_report.py
 ```
 
 To run full A/B/C sequentially via a tracked script (instead of ad-hoc shell):

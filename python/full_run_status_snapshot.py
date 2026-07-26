@@ -54,28 +54,13 @@ def build_eta(log_text: str) -> dict:
     }
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Export full-run status snapshot JSON.")
-    parser.add_argument("--log", default="runs/full_abc_runs.log")
-    parser.add_argument("--runs-dir", default="runs/")
-    parser.add_argument("--out", default="runs/full_run_status.json")
-    args = parser.parse_args()
-
-    log_path = Path(args.log)
-    runs_dir = Path(args.runs_dir)
-    out_path = Path(args.out)
-
-    if not log_path.exists():
-        print(f"Log not found: {log_path}")
-        return 1
-
+def build_snapshot(log_path: Path, runs_dir: Path) -> dict:
     text = log_path.read_text(errors="replace")
     status = parse_status(text)
     eta = build_eta(text)
     gate = load_json(runs_dir / "full_results_gate.json")
     publish_summary = load_json(runs_dir / "publish_results_summary.json")
-
-    snapshot = {
+    return {
         "generated_at_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "log_path": str(log_path),
         "status": status,
@@ -91,12 +76,33 @@ def main() -> int:
         },
     }
 
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Export full-run status snapshot JSON.")
+    parser.add_argument("--log", default="runs/full_abc_runs.log")
+    parser.add_argument("--runs-dir", default="runs/")
+    parser.add_argument("--out", default="runs/full_run_status.json")
+    args = parser.parse_args()
+
+    log_path = Path(args.log)
+    runs_dir = Path(args.runs_dir)
+    out_path = Path(args.out)
+
+    if not log_path.exists():
+        print(f"Log not found: {log_path}")
+        return 1
+
+    snapshot = build_snapshot(log_path, runs_dir)
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(snapshot, f, indent=2)
         f.write("\n")
 
     print(f"Wrote status snapshot: {out_path}")
+    status = snapshot["status"]
+    eta = snapshot["eta"]
+
     print(f"Run state: {status['run_state']}")
     if status.get("progress"):
         p = status["progress"]
