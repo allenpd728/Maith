@@ -16,6 +16,8 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `run_full_experiment.py` | Sequential full/smoke A/B/C runner with shared log output |
 | `check_results_gate.py` | Fails unless A/B/C outputs are full (non-smoke) and eval-aligned |
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
+| `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
+| `corpus_expansion_dry_run.py` | Runs module expansion to temp output and prints failure summary |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -146,6 +148,31 @@ To scaffold Phase 6 theorem-proving evaluation artifacts:
 ```bash
 python3 python/scaffold_theorem_eval.py
 ```
+
+## Coverage expansion protocol (low-risk scaffold)
+
+Target modules are tracked in:
+
+```text
+Scripts/module_expansion_targets.json
+```
+
+Recommended flow:
+
+1. Validate that target modules import in the current Lean/Mathlib environment:
+
+```bash
+python3 python/validate_module_targets.py --set candidates
+```
+
+2. Run a dry-run extraction to temp output (no tracked corpus files touched):
+
+```bash
+python3 python/corpus_expansion_dry_run.py --set candidates --output-dir /tmp/maith-corpus-expansion-dryrun
+```
+
+3. Inspect dry-run summary (`totalDeclarations`, `successfulExamples`, failure buckets, per-module stats)
+   and only then promote selected modules into the production corpus build path.
 
 Key design choices (from `docs/EXPERIMENT_DESIGN.md`):
 - Variant A: embedding table resized to `vocab_A.json` size (currently 4,495 IR tokens)
