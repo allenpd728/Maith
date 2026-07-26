@@ -2,9 +2,14 @@
 
 Encoder.lean
 
-IR → Token sequence encoder. Format version 1.0.0.
+IR → Token sequence encoder. Format version 1.2.0.
 
 See docs/ENCODER_FORMAT.md for the full token grammar specification.
+
+Changes in v1.2.0:
+- Forall binders (∀:) → FVAR_N tokens (separate counter from BVAR_N)
+- Lambda binders (λ:) → BVAR_N tokens (unchanged)
+- Legacy untagged scopes → BVAR_N (backward compat)
 
 -/
 
@@ -22,10 +27,12 @@ namespace Lean.DSL
 /--
 Encoder transforms IR structures into linear token sequences.
 
-Format version 1.0.0 (see docs/ENCODER_FORMAT.md):
+Format version 1.2.0 (see docs/ENCODER_FORMAT.md):
 - `EntityId.var`   → bare constant name (stable across corpus)
-- `EntityId.term`  → `TERM_N` (capped at TERM_31; beyond → TERM_MANY)
-- `EntityId.bound` → `BVAR_N` positional within graph (capped at BVAR_31; beyond → BVAR_MANY)
+- `EntityId.term`  → `TERM_N` (capped at TERM_63; beyond → TERM_MANY)
+- `EntityId.bound` with "∀:" prefix → `FVAR_N` (forall binder, counter starts at 0 per graph)
+- `EntityId.bound` with "λ:" prefix → `BVAR_N` (lambda binder, counter starts at 0 per graph)
+- `EntityId.bound` untagged (legacy) → `BVAR_N` (backward compat)
 - Operation ops    → `gen:*` (rare ops mapped to GEN_UNK at dataset-build time)
 - Graph structure  → GRAPH_BEGIN / E / A / R / O / GRAPH_END
 -/
@@ -44,26 +51,34 @@ private def maxPositional : Nat := 63
 private def termToken (n : Nat) : Token :=
   if n ≤ maxPositional then s!"TERM_{n}" else "TERM_MANY"
 
--- Assign positional BVAR indices to all EntityId.bound values in a graph,
+-- Assign positional FVAR/BVAR indices to all EntityId.bound values in a graph,
 -- in order of first appearance across entities, attributes, relations, and operations.
--- Returns a mapping from scope string → BVAR_N token.
+-- Scope strings tagged with "∀:" prefix → FVAR_N (forall binders).
+-- Scope strings tagged with "λ:" prefix → BVAR_N (lambda binders).
+-- Untagged legacy scopes → BVAR_N (backward compat with pre-v1.2.0 corpus data).
+-- Returns a mapping from scope string → token.
 private def buildBvarMap (g : Graph) : List (String × Token) :=
   let allIds : List EntityId :=
     (g.entities.map (·.id)) ++
     (g.attributes.flatMap (fun a => [a.target])) ++
     (g.relations.flatMap (fun r => [r.src, r.tgt])) ++
     (g.operations.flatMap (fun o => o.inputs ++ [o.output]))
-  -- Walk in order, assign a fresh index to each new bound scope.
-  let (_, mapping) := allIds.foldl (fun (state : Nat × List (String × Token)) id =>
-    let (nextIdx, acc) := state
-    match id with
-    | .bound scope =>
-      if acc.any (fun (s, _) => s == scope) then (nextIdx, acc)
-      else
-        let tok := if nextIdx ≤ maxPositional then s!"BVAR_{nextIdx}" else "BVAR_MANY"
-        (nextIdx + 1, acc ++ [(scope, tok)])
-    | _ => (nextIdx, acc)
-  ) (0, [])
+  -- Separate counters for forall and lambda binders so each starts from 0.
+  let (_, _, mapping) := allIds.foldl
+    (fun (state : Nat × Nat × List (String × Token)) id =>
+      let (nextFvar, nextBvar, acc) := state
+      match id with
+      | .bound scope =>
+        if acc.any (fun (s, _) => s == scope) then (nextFvar, nextBvar, acc)
+        else if scope.startsWith "∀:" then
+          let tok := if nextFvar ≤ maxPositional then s!"FVAR_{nextFvar}" else "FVAR_MANY"
+          (nextFvar + 1, nextBvar, acc ++ [(scope, tok)])
+        else
+          -- "λ:" prefix or legacy untagged → BVAR_N
+          let tok := if nextBvar ≤ maxPositional then s!"BVAR_{nextBvar}" else "BVAR_MANY"
+          (nextFvar, nextBvar + 1, acc ++ [(scope, tok)])
+      | _ => (nextFvar, nextBvar, acc)
+    ) (0, 0, [])
   mapping
 
 private def resolveId (bvarMap : List (String × Token)) (id : EntityId) : Token :=

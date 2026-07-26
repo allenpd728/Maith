@@ -223,9 +223,10 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     let typeIdOpt ← tryExtractId binderType
     -- 2. Create a declaration-scoped entity for this binder so indices from
     --    different declarations can never collide after encoding.
+    --    The "∀:" prefix lets the encoder emit FVAR_N (forall) vs BVAR_N (lambda).
     let st ← get
     let depth      := st.binderCtx.length
-    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let scopedName := s!"∀:{st.declName}/{depth}/{binderName}"
     let binderId   := EntityId.bound scopedName
     addEntity binderId
     -- 3. Emit binder-kind annotation.
@@ -248,10 +249,11 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     -- Lambda binders are handled symmetrically to forallE: push a scoped entity,
     -- recurse into the body, pop. For theorem proof terms the caller skips value
     -- extraction entirely, so this handler is used primarily for definition bodies.
+    --    The "λ:" prefix lets the encoder emit BVAR_N (lambda) vs FVAR_N (forall).
     let typeIdOpt ← tryExtractId binderType
     let st ← get
     let depth      := st.binderCtx.length
-    let scopedName := s!"{st.declName}/{depth}/{binderName}"
+    let scopedName := s!"λ:{st.declName}/{depth}/{binderName}"
     let binderId   := EntityId.bound scopedName
     addEntity binderId
     match binderInfo with
