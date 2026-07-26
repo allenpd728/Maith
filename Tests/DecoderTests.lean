@@ -59,18 +59,28 @@ def decoderTests : List TestResult := [
     (defaultDecoder.decodeGraph ["GRAPH_BEGIN", "GRAPH_END"] = { entities := [], attributes := [], relations := [], operations := [] })
     "Should decode an empty graph",
 
-  -- EntityId.bound serialises as "b(<scope>)" — verify the decoder round-trips it.
-  runTest "Decoder round-trips EntityId.bound"
-    (let boundId := EntityId.bound "mul_assoc/0/a"
-     let entity : Entity := { id := boundId, polarity := Polarity.neut }
-     let encoded := encodeEntity entity   -- ["E", "b(mul_assoc/0/a)", "neut"]
-     let decoded := defaultDecoder.decodeEntity encoded
-     decoded.id = boundId && decoded.polarity = Polarity.neut)
-    "Should decode b(<scope>) tokens back to EntityId.bound",
+  -- v0.1.0 legacy: EntityId.bound serialises as "b(<scope>)"
+  runTest "Decoder round-trips EntityId.bound (v0.1.0 legacy)"
+    (let decoded := defaultDecoder.decodeEntity ["E", "b(mul_assoc/0/a)", "neut"]
+     decoded.id = EntityId.bound "mul_assoc/0/a" && decoded.polarity = Polarity.neut)
+    "Should decode legacy b(<scope>) tokens back to EntityId.bound",
 
-  -- Verify the full graph round-trip works when bound IDs are present.
-  runTest "Decoder round-trips Graph with bound entity"
-    (let graph : Graph := {
+  -- v1.0.0: EntityId.bound encodes as BVAR_N; decoder reconstructs as .bound "BVAR_N"
+  runTest "Decoder round-trips BVAR_N token (v1.0.0)"
+    (let decoded := defaultDecoder.decodeEntity ["E", "BVAR_0", "neut"]
+     decoded.id = EntityId.bound "BVAR_0" && decoded.polarity = Polarity.neut)
+    "Should decode BVAR_N positional tokens to EntityId.bound",
+
+  -- v1.0.0: EntityId.term encodes as TERM_N
+  runTest "Decoder round-trips TERM_N token (v1.0.0)"
+    (let decoded := defaultDecoder.decodeEntity ["E", "TERM_3", "pos"]
+     decoded.id = EntityId.term 3 && decoded.polarity = Polarity.pos)
+    "Should decode TERM_N positional tokens to EntityId.term",
+
+  -- v1.0.0 graph round-trip: encodeGraph maps .bound → BVAR_N, decoder maps back to .bound "BVAR_N"
+  -- So the round-tripped graph has .bound "BVAR_0" not .bound "mul_assoc/0/a"
+  runTest "Decoder round-trips Graph with bound entity (v1.0.0 positional)"
+    (let original : Graph := {
       entities := [
         { id := EntityId.bound "mul_assoc/0/a", polarity := Polarity.neut },
         { id := EntityId.var "HMul.hMul",       polarity := Polarity.neut }
@@ -82,8 +92,21 @@ def decoderTests : List TestResult := [
                        polarity := Polarity.neut }]
       operations := []
     }
-    defaultDecoder.decodeGraph (encodeGraph graph) = graph)
-    "Should round-trip a graph containing EntityId.bound nodes"
+    -- After encoding: bound "mul_assoc/0/a" → BVAR_0; after decoding: bound "BVAR_0"
+    let expected : Graph := {
+      entities := [
+        { id := EntityId.bound "BVAR_0",  polarity := Polarity.neut },
+        { id := EntityId.var "HMul.hMul", polarity := Polarity.neut }
+      ]
+      attributes := []
+      relations  := [{ src := EntityId.bound "BVAR_0"
+                       tgt := EntityId.var "HMul.hMul"
+                       op  := RelationOp.eq
+                       polarity := Polarity.neut }]
+      operations := []
+    }
+    defaultDecoder.decodeGraph (encodeGraph original) = expected)
+    "Should round-trip bound graph with positional BVAR_N tokens"
 ]
 
 def runAllDecoderTests : IO Unit := do
