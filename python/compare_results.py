@@ -14,6 +14,10 @@ import json
 import os
 
 
+def run_quality(result: dict) -> str:
+    return "SMOKE" if result.get("smoke_test") else "FULL"
+
+
 def load_result(runs_dir: str, variant: str) -> dict | None:
     path = os.path.join(runs_dir, f"variant_{variant}", "results.json")
     if not os.path.exists(path):
@@ -83,8 +87,21 @@ def main():
     print()
     print("=== A/B/C Experiment Results ===")
     print()
-    print(f"  {'Variant':<10} {'Perplexity':>12} {'Vocab':>8} {'Params':>10} {'Minutes':>9} {'Smoke?':>8}")
-    print(f"  {'-'*10} {'-'*12} {'-'*8} {'-'*10} {'-'*9} {'-'*8}")
+    print(
+        f"  {'Variant':<10} {'Perplexity':>12} {'Vocab':>8} {'Params':>10} "
+        f"{'Minutes':>9} {'Quality':>8} {'Tokenizer':>17} {'Caps(T/E)':>10}"
+    )
+    print(f"  {'-'*10} {'-'*12} {'-'*8} {'-'*10} {'-'*9} {'-'*8} {'-'*17} {'-'*10}")
+
+    present_results = [r for r in results.values() if r is not None]
+    has_mixed_quality = (
+        len({run_quality(r) for r in present_results}) > 1
+        if present_results
+        else False
+    )
+    if has_mixed_quality:
+        print("  ⚠ Mixed run quality detected (SMOKE + FULL). Do not compare winners yet.")
+        print()
 
     best_ppl = min(
         (r["eval_perplexity"] for r in results.values() if r is not None),
@@ -97,15 +114,20 @@ def main():
             print(f"  {'Variant ' + variant:<10} {'(not run yet)':>12}")
             continue
         ppl = r["eval_perplexity"]
-        flag = " ←" if ppl == best_ppl else ""
-        smoke = "yes" if r.get("smoke_test") else "no"
+        flag = " ←" if (not has_mixed_quality and ppl == best_ppl) else ""
+        quality = run_quality(r)
+        tokenizer_mode = r.get("tokenizer_mode", "unknown")
+        train_cap = r.get("train_seq_len_cap", "?")
+        eval_cap = r.get("eval_seq_len_cap", "?")
         print(
             f"  {'Variant ' + variant:<10}"
             f" {ppl:>12.2f}{flag}"
             f" {r['vocab_size']:>8,}"
             f" {r['n_params_M']:>9.0f}M"
             f" {r['training_minutes']:>9.1f}"
-            f" {smoke:>8}"
+            f" {quality:>8}"
+            f" {tokenizer_mode:>17}"
+            f" {str(train_cap) + '/' + str(eval_cap):>10}"
         )
 
     print()
@@ -141,7 +163,11 @@ def main():
 
     # Interpretation
     completed = [v for v, r in results.items() if r is not None and not r.get("smoke_test")]
-    if len(completed) == 3:
+    if has_mixed_quality:
+        print("Interpretation:")
+        print("  Mixed SMOKE/FULL results in table; winner interpretation is suppressed.")
+        print("  Wait until A/B/C are all FULL runs for decision-grade comparison.")
+    elif len(completed) == 3:
         ppl_A = results["A"]["eval_perplexity"]
         ppl_B = results["B"]["eval_perplexity"]
         ppl_C = results["C"]["eval_perplexity"]
