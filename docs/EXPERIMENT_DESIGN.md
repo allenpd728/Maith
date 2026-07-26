@@ -87,3 +87,17 @@ Secondary metrics (if time permits):
    `lambda` binders at the token level. Both produce `BVAR_N` entities. The distinction is implicit
    in graph structure (forall binders appear in relation edges, lambda binders in operation inputs)
    but not explicit in the token stream. This is a known future refinement.
+
+## Results
+
+*To be filled in after training runs complete. Run `python3 python/compare_results.py` for a
+formatted summary once all three variants have finished.*
+
+| Variant | Representation | Vocab | Perplexity | Training time |
+|---------|---------------|-------|------------|---------------|
+| A | Maith IR tokens (v1.2.0) | 4,495 | — | — |
+| B | Raw `leanExpr` → Qwen BPE | 151,643 | — | — |
+| C | AST-style → Qwen BPE | 151,643 | — | — |
+
+**Config:** Qwen2.5-Coder-1.5B, 3 epochs, seed 42, cosine LR, batch size 8 (effective),
+2,213 train / 246 eval examples, Mathlib `fabf563a` (v4.31.0), encoder v1.2.0.

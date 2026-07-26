@@ -199,6 +199,7 @@ python/
   corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
   build_dataset.py         # A/B/C dataset builder: IR vocab + BPE variants, train/eval splits
   train.py                 # fine-tuning script: one variant per run, reports eval perplexity
+  compare_results.py       # prints A/B/C comparison table from runs/variant_*/results.json
   validate_roundtrip.py    # decoder round-trip validator (confirms BVAR/TERM stability)
   tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
   spot_check.py            # manual corpus spot-checking helper

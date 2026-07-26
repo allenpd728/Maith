@@ -12,6 +12,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `validate_roundtrip.py` | Decoder round-trip validator — confirms BVAR/TERM token stability |
 | `tokenizer_study.py` | BPE fragmentation study — compares IR tokens vs Qwen2.5-Coder BPE |
 | `train.py` | Fine-tuning script — runs one A/B/C variant, reports eval perplexity |
+| `compare_results.py` | Reads all three `runs/variant_*/results.json` and prints comparison table |
 | `spot_check.py` | Manual corpus spot-checking helper |
 
 ## Requirements
