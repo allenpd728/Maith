@@ -90,9 +90,24 @@ def load_eval_split(variant: str, datasets_dir: str, limit: Optional[int]) -> li
 # Model loading
 # ---------------------------------------------------------------------------
 
+def find_checkpoint_dir(model_dir: Path) -> Path:
+    """
+    Return the best checkpoint directory inside model_dir.
+    Trainer saves to checkpoint-<step>/ subdirectories; pick the highest-numbered one.
+    Falls back to model_dir itself if no checkpoint subdirs exist.
+    """
+    checkpoints = sorted(
+        [d for d in model_dir.iterdir() if d.is_dir() and d.name.startswith("checkpoint-")],
+        key=lambda d: int(d.name.split("-")[-1]),
+    )
+    if checkpoints:
+        return checkpoints[-1]
+    return model_dir
+
+
 def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device: str):
     """
-    Load a fine-tuned model from runs/variant_X/.
+    Load a fine-tuned model from runs/variant_X/ (or its latest checkpoint subdir).
     For variant A, also loads vocab_A.json to get the vocab size.
     Returns (model, vocab_size).
     """
@@ -101,6 +116,7 @@ def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device:
         raise FileNotFoundError(
             f"No saved model at {model_dir} — run train.py --variant {variant} first"
         )
+    model_dir = find_checkpoint_dir(model_dir)
 
     if variant == "A":
         vocab_path = Path(datasets_dir) / "vocab_A.json"
