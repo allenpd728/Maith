@@ -41,6 +41,7 @@ def main() -> int:
         ("Decision-grade gate", [sys.executable, "python/check_results_gate.py", "--runs-dir", args.runs_dir]),
         ("Publish summary", [sys.executable, "python/publish_results_summary.py", "--runs-dir", args.runs_dir]),
         ("Representation audit (strict)", [sys.executable, "python/representation_audit.py", "--strict-nonempty"]),
+        ("Representation matrix gate", [sys.executable, "python/check_representation_matrix_gate.py", "--runs-dir", args.runs_dir]),
         ("Representation matrix status", [sys.executable, "python/representation_matrix_status.py"]),
     ]
 
