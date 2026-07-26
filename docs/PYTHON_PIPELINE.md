@@ -16,6 +16,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `run_full_experiment.py` | Sequential full/smoke A/B/C runner with shared log output |
 | `check_results_gate.py` | Fails unless A/B/C outputs are full (non-smoke) and eval-aligned |
 | `publish_results_summary.py` | Produces publish-ready summary JSON + markdown-style output block |
+| `run_postrun_pipeline.py` | Runs strict compare → gate → publish → readiness → schema validation |
 | `finalize_full_experiment.py` | Runs strict compare, gate, publish, and representation checks in one flow |
 | `scaffold_theorem_eval.py` | Generates Phase 6 theorem-eval config/result templates |
 | `validate_module_targets.py` | Preflight-check module importability for corpus expansion |
@@ -31,6 +32,7 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `full_run_status_report.py` | Exports a markdown run-status brief to `runs/full_run_status.md` |
 | `full_run_status_history.py` | Appends deduplicated run snapshots to `runs/full_run_status_history.jsonl` |
 | `check_publish_readiness.py` | Verifies full-run artifacts and emits `runs/publish_readiness.json` |
+| `validate_experiment_artifacts.py` | Validates schema of key run artifacts and writes `runs/artifact_schema_validation.json` |
 | `check_docs_consistency.py` | Detects stale README/docs values and writes `runs/docs_consistency_report.json` |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -178,10 +180,22 @@ To run all finalization checks in one command:
 python3 python/finalize_full_experiment.py --runs-dir runs/
 ```
 
+To run publish/finalization steps as one post-run pipeline:
+
+```bash
+python3 python/run_postrun_pipeline.py --runs-dir runs/
+```
+
 To verify publishability in one readiness check:
 
 ```bash
 python3 python/check_publish_readiness.py --runs-dir runs/
+```
+
+To validate key artifact schemas:
+
+```bash
+python3 python/validate_experiment_artifacts.py --runs-dir runs/
 ```
 
 To catch stale experiment values in markdown docs:

@@ -105,6 +105,20 @@ After runs complete, check publish readiness in one command:
 python3 python/check_publish_readiness.py --runs-dir runs/
 ```
 
+Validate key artifact schemas:
+
+```bash
+python3 python/validate_experiment_artifacts.py --runs-dir runs/
+```
+
+Run the full post-run publication pipeline:
+
+```bash
+python3 python/run_postrun_pipeline.py --runs-dir runs/
+```
+
+Artifact field contracts are documented in [`docs/ARTIFACT_SCHEMAS.md`](docs/ARTIFACT_SCHEMAS.md).
+
 ### Corpus extraction result (real run)
 
 4 modules: `Mathlib.Algebra.Group.Defs`, `Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`  
