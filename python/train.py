@@ -48,7 +48,7 @@ try:
 except ImportError:
     missing.append("torch")
 try:
-    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, TrainerCallback
     from transformers import set_seed as hf_set_seed
 except ImportError:
     missing.append("transformers")
@@ -69,7 +69,7 @@ if missing:
 
 BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
 TRAIN_MAX_SEQ_LEN     = 1024
-TRAIN_MAX_SEQ_LEN_C   = 512   # BPE on IR text inflates ~2.6x; reduce to avoid OOM on MPS
+TRAIN_MAX_SEQ_LEN_BC  = 512   # B/C use Qwen BPE + large softmax; cap for bounded runtime and memory
 EVAL_MAX_SEQ_LEN      = 512   # fixed across A/B/C for apples-to-apples perplexity
 BATCH_SIZE      = 2        # Variant A (custom 4.5K vocab, small embeddings)
 GRAD_ACCUM      = 4        # Effective batch = 8
@@ -87,6 +87,15 @@ VARIANT_BATCH_CONFIG = {
     "B": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, large Qwen vocab
     "C": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, large Qwen vocab
 }
+
+# Bounded full-run profile for current experiment pass:
+# - 1 epoch for all variants (matched comparison point)
+# - B/C capped at shorter train sequence length to reduce MPS pressure
+VARIANT_EPOCHS = {"A": 1, "B": 1, "C": 1}
+VARIANT_TRAIN_SEQ_LEN = {"A": TRAIN_MAX_SEQ_LEN, "B": TRAIN_MAX_SEQ_LEN_BC, "C": TRAIN_MAX_SEQ_LEN_BC}
+
+# Periodic cache clearing to reduce long-run MPS allocator fragmentation.
+CACHE_CLEAR_EVERY_STEPS = 10
 
 
 # ---------------------------------------------------------------------------
@@ -167,6 +176,23 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
 
     avg_loss = total_loss / max(total_tokens, 1)
     return math.exp(avg_loss)
+
+
+class PeriodicCacheClearCallback(TrainerCallback):
+    """Periodically clear backend cache to reduce long-run allocator fragmentation."""
+
+    def __init__(self, device: str, every_steps: int):
+        self.device = device
+        self.every_steps = max(1, int(every_steps))
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if state.global_step <= 0 or state.global_step % self.every_steps != 0:
+            return control
+        if self.device == "mps" and torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+        elif self.device == "cuda" and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return control
 
 
 # ---------------------------------------------------------------------------
@@ -335,7 +361,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         )
 
     limit = 50 if smoke_test else None
-    train_seq_len = TRAIN_MAX_SEQ_LEN_C if variant == "C" else TRAIN_MAX_SEQ_LEN
+    train_seq_len = VARIANT_TRAIN_SEQ_LEN[variant]
     eval_seq_len = EVAL_MAX_SEQ_LEN
     print(f"Loading datasets{' (smoke test: 50 examples)' if smoke_test else ''} ...")
     print(f"  Train sequence cap: {train_seq_len}")
@@ -355,7 +381,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     print()
 
     os.makedirs(out_dir, exist_ok=True)
-    epochs = 1 if smoke_test else EPOCHS
+    epochs = 1 if smoke_test else VARIANT_EPOCHS[variant]
     
     # Get variant-specific batch size and grad accum
     batch_cfg = VARIANT_BATCH_CONFIG.get(variant, {"batch_size": BATCH_SIZE, "grad_accum": GRAD_ACCUM})
@@ -364,6 +390,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     
     print(f"Batch config for variant {variant}: batch_size={batch_size}, grad_accum={grad_accum}")
     print(f"  → Effective batch size = {batch_size * grad_accum} (all variants matched)")
+    print(f"  Epochs: {epochs}")
+    print(f"  Cache clear cadence: every {CACHE_CLEAR_EVERY_STEPS} train steps")
     print()
     
     total_steps = max(1, (len(train_dataset) // (batch_size * grad_accum)) * epochs)
@@ -397,6 +425,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=lambda batch: collate_fn(batch),
+        callbacks=[PeriodicCacheClearCallback(device=device, every_steps=CACHE_CLEAR_EVERY_STEPS)],
     )
 
     print(f"Training variant {variant} for {epochs} epoch(s) ...")
@@ -436,7 +465,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
 
     # Final perplexity
     print("Computing final perplexity on eval split ...")
-    ppl = evaluate_perplexity(model, eval_dataset, device)
+    ppl = evaluate_perplexity(model, eval_dataset, device, batch_size=batch_size)
     print(f"  Variant {variant} eval perplexity: {ppl:.2f}")
     print()
 
