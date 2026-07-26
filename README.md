@@ -25,11 +25,11 @@ High-level flow:
 - Extract declaration semantics from elaborated `Expr` trees (`MetaExtractor.lean`)
 - Build IR Graph (`Entity`, `Attribute`, `Relation`, `Operation`)
 - Canonicalize graph ordering (`Normalizer.lean`)
-- Encode canonical graph to tokens (`Encoder.lean`) — **currently a scaffold, see Limitations**
+- Encode canonical graph to tokens (`Encoder.lean`) — v1.2.0, `FVAR_N`/`BVAR_N`/`TERM_N` positional tokens
 - Serialize examples to JSONL (`CorpusSerializer.lean`)
 - Consume JSONL in `python/` for vocab/tokenizer, splits, and dataset objects
 
-The extraction stage (`MetaExtractor.lean` → IR Graph → `Normalizer.lean`) is the part that has been run against real Mathlib code and produced the results in section 7. The encode/decode/transpile stage is not yet at that level of maturity — see Limitations below before assuming the full pipeline is end-to-end functional.
+The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode (see `python/validate_roundtrip.py`). Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
 
 ## 5) Why Not Train Directly on Lean Source?
 
@@ -60,7 +60,7 @@ Concrete pipeline in this repo:
 
 `Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
 
-The extraction and normalization stages (up through the canonical graph) are implemented and validated against real Mathlib input (see section 7). The encoder/decoder stage past that point is currently a placeholder implementation — see Limitations.
+The full pipeline is implemented and validated. See section 7 for corpus results and section 8 for known limitations.
 
 ## 7) Current Status / Results
 
@@ -84,8 +84,10 @@ Total declarations: **2,554**
 
 All previously identified failure categories have been resolved — zero failures across all four modules.
 
-Token distribution: min 13, max 13,112, avg 318, total 813,897 tokens.  
-Graph stats: avg 35.8 entities, 13.5 relations, 22.3 operations per graph, max 3,142 nodes.
+Token distribution (encoder v1.2.0): min 13, max 13,253, avg 324, total ~39M tokens.  
+After pathological filter (>50 TERM_MANY): 2,459 training examples, max sequence 1,264 tokens.  
+Graph stats: avg 35.8 entities, 13.5 relations, 22.3 operations per graph, max 3,142 nodes.  
+Unique vocab (IR): 7,867 tokens (4,495 after filtering to training split).
 
 Non-trivial extracted examples:
 
@@ -98,14 +100,17 @@ Non-trivial extracted examples:
 
 Evidence artifact committed intentionally: [`Corpus/corpus.jsonl`](Corpus/corpus.jsonl) (current 7.2MB extraction output for the module above).
 
-### Binder scoping design (`EntityId.bound`)
+### Binder encoding (encoder v1.2.0)
 
-Lean uses De Bruijn indices for bound variables, so index-only IDs can collide across declarations. Maith addresses this with scoped IDs:
+Lean uses De Bruijn indices for bound variables. Maith uses positional tokens assigned in
+first-appearance order within each graph:
 
-- `EntityId.bound : String -> EntityId`
-- current naming scheme: `"declName/depth/binderName"`
+- Forall binders (`∀x, ...`) → `FVAR_0`, `FVAR_1`, ... (cap 63, overflow → `FVAR_MANY`)
+- Lambda binders (`fun x => ...`) → `BVAR_0`, `BVAR_1`, ... (cap 63, overflow → `BVAR_MANY`)
 
-This avoids cross-declaration collisions and is covered by `testScopedBinderInjectivity` in `Tests/CorpusPipelineTests.lean`.
+Each counter resets to 0 per graph. Scoped names (`∀:declName/depth/x`) are used internally
+during extraction to prevent cross-declaration collisions, then mapped to positional tokens by
+the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 
 ## 8) Limitations
 
@@ -118,7 +123,7 @@ This avoids cross-declaration collisions and is covered by `testScopedBinderInje
 
 1. **Phase 1: Build semantic IR** — ✅ done
 2. **Phase 2: Extract Mathlib corpus** — ✅ done (2,554 declarations, 4 modules, 100% coverage)
-3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.0.0, 5,577 tokens, decoder round-trip verified)
+3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.2.0, 7,867 tokens, FVAR/BVAR split, decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
 6. **Phase 5: Run A/B/C training experiment** — 🔄 in progress (`train.py` written, smoke test running)
@@ -182,8 +187,8 @@ Maith/
   MetaExtractor.lean       # elaborated Lean Expr -> IR graph
   EntityId.lean            # includes EntityId.bound for scoped binders
   Normalizer.lean          # canonical ordering/normalization
-  Encoder.lean             # graph -> token sequence (v1.0.0, positional BVAR_N/TERM_N)
-  Decoder.lean             # token -> graph parser (v0.1.0 + v1.0.0 backward compat)
+  Encoder.lean             # graph -> token sequence (v1.2.0, FVAR_N/BVAR_N/TERM_N positional)
+  Decoder.lean             # token -> graph parser (v0.1.0 + v1.0.0 + v1.2.0 backward compat)
   Transpiler.lean          # debug-only: human-readable IR formatter, not in training path
   CorpusSerializer.lean    # JSONL/stat serialization
   ProcessingPipeline.lean  # extraction + normalize + encode flow
