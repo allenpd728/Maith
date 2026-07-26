@@ -134,11 +134,13 @@ Run these after full A/B/C training completes:
    - `python3 python/check_results_gate.py --runs-dir runs/`
 3. Build publish summary artifact:
    - `python3 python/publish_results_summary.py --runs-dir runs/`
-4. Confirm required artifacts exist:
+4. Check publish readiness:
+   - `python3 python/check_publish_readiness.py --runs-dir runs/`
+5. Confirm required artifacts exist:
    - `runs/variant_A/results.json`
    - `runs/variant_B/results.json`
    - `runs/variant_C/results.json`
    - `runs/loss_curves.json`
    - `runs/full_results_gate.json` (`decision_grade=true`)
    - `runs/publish_results_summary.json`
-5. Only after all checks pass, update the Results table and interpretation in this document as final.
+6. Only after all checks pass, update the Results table and interpretation in this document as final.

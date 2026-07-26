@@ -26,9 +26,11 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `backfill_representation_metadata.py` | Backfills missing representation IDs into existing artifacts |
 | `watch_full_runs.py` | Monitors `runs/full_abc_runs.log` and reports current full-run progress |
 | `estimate_full_run_eta.py` | Estimates completion ETA from full-run progress history |
+| `run_status_dashboard.py` | Runs monitor/ETA/snapshot/report/history/docs checks in one command |
 | `full_run_status_snapshot.py` | Exports run/gate/ETA snapshot to `runs/full_run_status.json` |
 | `full_run_status_report.py` | Exports a markdown run-status brief to `runs/full_run_status.md` |
 | `full_run_status_history.py` | Appends deduplicated run snapshots to `runs/full_run_status_history.jsonl` |
+| `check_publish_readiness.py` | Verifies full-run artifacts and emits `runs/publish_readiness.json` |
 | `check_docs_consistency.py` | Detects stale README/docs values and writes `runs/docs_consistency_report.json` |
 | `corpus_report.py` | Node-type frequency report — merges top-N token counts into `Corpus/stats.json` |
 | `spot_check.py` | Manual corpus spot-checking helper |
@@ -144,6 +146,7 @@ Also saves `runs/variant_*/loss_curve.json` (train/eval loss points from Trainer
 To monitor the long-running sequential full A/B/C job:
 
 ```bash
+python3 python/run_status_dashboard.py
 python3 python/watch_full_runs.py
 python3 python/estimate_full_run_eta.py
 python3 python/full_run_status_snapshot.py
@@ -173,6 +176,12 @@ To run all finalization checks in one command:
 
 ```bash
 python3 python/finalize_full_experiment.py --runs-dir runs/
+```
+
+To verify publishability in one readiness check:
+
+```bash
+python3 python/check_publish_readiness.py --runs-dir runs/
 ```
 
 To catch stale experiment values in markdown docs:

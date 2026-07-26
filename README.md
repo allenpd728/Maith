@@ -85,6 +85,7 @@ The full pipeline is implemented and validated. See section 7 for corpus results
 Use these read-only monitoring helpers (safe during active training):
 
 ```bash
+python3 python/run_status_dashboard.py
 python3 python/watch_full_runs.py
 python3 python/estimate_full_run_eta.py
 python3 python/full_run_status_snapshot.py
@@ -96,6 +97,12 @@ To guard against stale experiment values in docs while results evolve:
 
 ```bash
 python3 python/check_docs_consistency.py
+```
+
+After runs complete, check publish readiness in one command:
+
+```bash
+python3 python/check_publish_readiness.py --runs-dir runs/
 ```
 
 ### Corpus extraction result (real run)
