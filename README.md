@@ -170,8 +170,11 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 ## 8) Limitations
 
 - Validated across 4 Mathlib modules so far. Broader coverage (more modules, tactic-heavy declarations) may surface new `Expr` patterns.
-- A/B/C results currently in `runs/` are smoke-only (`--smoke-test`: 50 examples, 1 epoch) and not decision-grade.
-- Full 3-epoch A/B/C runs on the full train/eval splits are still pending.
+- Phase 5 A/B/C training is in-progress and has required restarts for stability on large-vocab variants (B/C).
+- A prior non-smoke B run produced `eval_perplexity=NaN` and is invalid for comparison; stabilized reruns are in progress.
+- For the current authoritative experiment state, use:
+  - `PHASE_5_COMPLETION_CHECKLIST.md`
+  - `python3 python/watch_full_runs.py --log runs/full_abc_runs.log`
 - `Transpiler.lean` is debug-only: its `formatEntityId` output format differs from `Encoder.lean` and is not in the training pipeline. It is retained as a human-readable diagnostic tool only.
 
 ## 9) Research Roadmap
@@ -181,7 +184,7 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.2.0, 7,867 tokens, FVAR/BVAR split, decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5: Run A/B/C training experiment** — 🔄 in progress (smoke runs done; full runs pending)
+6. **Phase 5: Run A/B/C training experiment** — 🔄 in progress (non-smoke attempts/reruns ongoing; see checklist/log monitor)
 7. **Phase 6: Measure theorem-proving performance** — not started
 
 Representation contingency planning is tracked in `docs/REPRESENTATION_EVOLUTION.md` so alternate
@@ -211,7 +214,7 @@ Candidate metrics (planned):
 - Proof-search efficiency (time/steps)
 - Embedding quality for mathematical similarity/retrieval
 
-These comparative experiments have **not yet been run**, and depend on completing the encoder/decoder work noted in Limitations first. The current evidence is extraction feasibility and coverage (section 7), not theorem-proving performance.
+These comparative experiments are in progress for next-token prediction (Phase 5). Theorem-proving evaluation (Phase 6) is still not started; current evidence is extraction feasibility/coverage plus intermediate training behavior, not downstream proving performance.
 
 ## 11) Building the Project
 

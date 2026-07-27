@@ -52,6 +52,13 @@ letting the embedding table reflect the actual vocab is the cleanest test.
 | Seed | 42 | Fixed across all three runs |
 | Eval metric | Perplexity on eval split | Primary comparison metric |
 
+Current execution note (stabilization pass): due observed B/C instability (`NaN` eval on a prior non-smoke B run),
+the active rerun uses a bounded profile in `python/train.py`:
+- 1 epoch for A/B/C
+- train sequence caps: A=1024, B=512, C=512
+- B/C learning rate reduced to `5e-5` with warmup ratio `0.10`
+- explicit `max_grad_norm=1.0`, periodic cache clears, and non-finite loss/perplexity hard-fail guards
+
 ## Evaluation
 
 Primary metric: **perplexity on held-out eval split** (lower = better).
@@ -93,18 +100,17 @@ Secondary metrics (if time permits):
 
 ## Results
 
-Current artifacts in `runs/` are smoke tests (`--smoke-test`: 50 examples, 1 epoch) and are not
-decision-grade. Run `python3 python/compare_results.py` after full A/B/C runs for publishable
-comparison.
+Current `runs/` contents include non-smoke restarts. Do **not** treat them as final until the
+active stabilized B/C pass completes and strict gates pass.
 
 | Variant | Representation | Vocab | Perplexity | Training time |
 |---------|---------------|-------|------------|---------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | 178.95 *(smoke)* | 0.7 min *(smoke)* |
-| B | Raw `leanExpr` → Qwen BPE | 151,643 / 151,936 embeddings | 58.45 *(smoke)* | 7.4 min *(smoke)* |
-| C | AST-style → Qwen BPE | 151,643 / 151,936 embeddings | 30.98 *(smoke)* | 6.3 min *(smoke)* |
+| A | Maith IR tokens (v1.2.0) | 4,495 | 1.4781 *(non-smoke, 1 epoch rerun)* | 22.2 min |
+| B | Raw `leanExpr` → Qwen BPE | 151,643 / 151,936 embeddings | NaN *(invalid prior run; rerunning stabilized pass)* | 183.8 min *(invalid run)* |
+| C | AST-style → Qwen BPE | 151,643 / 151,936 embeddings | pending *(stabilized rerun in progress)* | pending |
 
-**Config:** Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA), 3 epochs, seed 42, cosine LR, batch size 8 (effective),
-2,213 train / 246 eval examples, Mathlib `fabf563a` (v4.31.0), encoder v1.2.0.
+**Current run profile:** Qwen2.5-Coder-0.5B (MPS), seed 42, effective batch size 8, 2,213 train / 246 eval,
+fixed eval cap 512, encoder v1.2.0. See `PHASE_5_COMPLETION_CHECKLIST.md` for authoritative live status.
 
 ## Ordered execution checklist (build-out process)
 

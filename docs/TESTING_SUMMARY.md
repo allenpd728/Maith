@@ -1,5 +1,7 @@
 # Maith IR Pipeline — Testing Summary
 
+This is the canonical test-status document. `docs/TEST.md` is a short pointer + run commands.
+
 ## Current status
 
 - `lake build tests`: passes, 0 failures
