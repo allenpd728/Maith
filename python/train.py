@@ -402,7 +402,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     warmup_ratio = VARIANT_WARMUP_RATIO[variant]
     
     print(f"Batch config for variant {variant}: batch_size={batch_size}, grad_accum={grad_accum}")
-    print(f"  → Effective batch size = {batch_size * grad_accum} (all variants matched)")
+    print(f"  → Effective batch size = {batch_size * grad_accum}")
     print(f"  Epochs: {epochs}")
     print(f"  Learning rate: {learning_rate}")
     print(f"  Warmup ratio: {warmup_ratio}")
