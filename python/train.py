@@ -120,7 +120,9 @@ class IRDataset(Dataset):
                     break
                 row = json.loads(line)
                 ids    = row["input_ids"][:max_len]
-                labels = row["labels"][:max_len]
+                # For AutoModelForCausalLM, labels should match input_ids; model shifts internally.
+                # Ignore pre-shifted dataset labels to avoid double-shifting and all--100 edge cases.
+                labels = ids[:]
                 self.examples.append({
                     "input_ids":      ids,
                     "attention_mask": [1] * len(ids),
@@ -175,8 +177,8 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
             if not torch.isfinite(loss):
                 raise RuntimeError(f"Non-finite eval loss at batch starting index {start}: {loss.item()}")
 
-            # Count non-padding label tokens
-            n_tokens = (batch_tensors["labels"] != -100).sum().item()
+            # Model shifts labels internally for causal LM, so effective token count excludes first position.
+            n_tokens = (batch_tensors["labels"][:, 1:] != -100).sum().item()
             total_loss   += loss.item() * n_tokens
             total_tokens += n_tokens
 
