@@ -14,4 +14,5 @@ def main (args : List String) : IO Unit := do
     , "Mathlib.Algebra.Ring.Defs"
     , "Mathlib.Order.Basic"
     ]
-    traceDecl
+    (encoder := Lean.DSL.defaultEncoder)
+    (traceDecl := traceDecl)
