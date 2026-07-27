@@ -292,17 +292,18 @@ python3 python/corpus_expansion_dry_run.py --set candidates --output-dir /tmp/ma
 Key design choices (from `docs/EXPERIMENT_DESIGN.md`):
 - Variant A: embedding table resized to `vocab_A.json` size (currently 4,495 IR tokens)
 - Variants B/C: native Qwen2.5-Coder BPE, no resizing
-- Fixed seed 42, cosine LR schedule, 3 epochs, batch size 8 (effective)
+- Fixed seed 42, cosine LR schedule, effective batch size 8
+- Active stabilization run profile: 1 epoch for A/B/C; train seq cap A=1024, B/C=512; B/C LR `5e-5`, warmup `0.10`, `max_grad_norm=1.0`
 - Eval perplexity is computed at a fixed 512-token cap for all A/B/C runs
 
 ## Known gaps
 
 - No PyTorch `DataLoader` collate function in `corpus_loader.py` — `train.py` uses its own collate.
-- Current `runs/variant_*/results.json` are smoke-only (`smoke_test=true`), so they are not decision-grade.
-- Full 3-epoch A/B/C runs on the complete train/eval splits are still pending.
+- A prior non-smoke B run produced `eval_perplexity=NaN` (invalid); stabilized B/C rerun is in progress.
+- Do not treat intermediate `runs/variant_*/results.json` as final until post-run strict gates pass.
 
 ## Next steps
 
-1. Run all three full variants (A/B/C) with identical settings except representation.
-2. Record full-run perplexity results in `docs/EXPERIMENT_DESIGN.md`.
-3. Expand corpus to more Mathlib modules once baseline results are in.
+1. Complete the stabilized B/C rerun and validate finite results.
+2. Run strict compare/gating (`compare_results.py --strict-full`, `check_results_gate.py`, `run_postrun_pipeline.py`).
+3. Record final Phase 5 results in `docs/EXPERIMENT_DESIGN.md`.
