@@ -29,6 +29,7 @@ Usage:
 """
 
 import argparse
+import gc
 import json
 import math
 import os
@@ -69,7 +70,7 @@ if missing:
 
 BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
 TRAIN_MAX_SEQ_LEN     = 1024
-TRAIN_MAX_SEQ_LEN_BC  = 512   # B/C use Qwen BPE + large softmax; cap for bounded runtime and memory
+TRAIN_MAX_SEQ_LEN_BC  = 384   # B/C use Qwen BPE + large softmax; lower cap to reduce swap pressure
 EVAL_MAX_SEQ_LEN      = 512   # fixed across A/B/C for apples-to-apples perplexity
 BATCH_SIZE      = 2        # Variant A (custom 4.5K vocab, small embeddings)
 GRAD_ACCUM      = 4        # Effective batch = 8
@@ -85,8 +86,8 @@ SEED            = 42
 # So they need smaller per-device batch size, compensated by higher grad accum
 VARIANT_BATCH_CONFIG = {
     "A": {"batch_size": 2, "grad_accum": 4},  # Effective batch = 8, small embeddings
-    "B": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, large Qwen vocab
-    "C": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, large Qwen vocab
+    "B": {"batch_size": 1, "grad_accum": 4},  # Effective batch = 4, tradeoff for stability/runtime
+    "C": {"batch_size": 1, "grad_accum": 4},  # Effective batch = 4, tradeoff for stability/runtime
 }
 
 # Bounded full-run profile for current experiment pass:
@@ -94,11 +95,11 @@ VARIANT_BATCH_CONFIG = {
 # - B/C capped at shorter train sequence length to reduce MPS pressure
 VARIANT_EPOCHS = {"A": 1, "B": 1, "C": 1}
 VARIANT_TRAIN_SEQ_LEN = {"A": TRAIN_MAX_SEQ_LEN, "B": TRAIN_MAX_SEQ_LEN_BC, "C": TRAIN_MAX_SEQ_LEN_BC}
-VARIANT_LR = {"A": LEARNING_RATE, "B": 5e-5, "C": 5e-5}
-VARIANT_WARMUP_RATIO = {"A": WARMUP_RATIO, "B": 0.10, "C": 0.10}
+VARIANT_LR = {"A": LEARNING_RATE, "B": 3e-5, "C": 3e-5}
+VARIANT_WARMUP_RATIO = {"A": WARMUP_RATIO, "B": 0.15, "C": 0.15}
 
 # Periodic cache clearing to reduce long-run MPS allocator fragmentation.
-CACHE_CLEAR_EVERY_STEPS = 10
+CACHE_CLEAR_EVERY_STEPS = 5
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +196,7 @@ class PeriodicCacheClearCallback(TrainerCallback):
     def on_step_end(self, args, state, control, **kwargs):
         if state.global_step <= 0 or state.global_step % self.every_steps != 0:
             return control
+        gc.collect()
         if self.device == "mps" and torch.backends.mps.is_available():
             torch.mps.empty_cache()
         elif self.device == "cuda" and torch.cuda.is_available():
