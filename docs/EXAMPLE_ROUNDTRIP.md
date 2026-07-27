@@ -62,11 +62,24 @@ indices, universe levels, and Lean's internal `Expr.forallE` / `Expr.app` nodes
 To capture a live trace, run:
 
 ```bash
-lake build MetaExtractor && lake env .lake/build/bin/buildCorpus --trace neg_neg
+lake build buildCorpus && lake env .lake/build/bin/buildCorpus --trace neg_neg
 ```
 
-(The `--trace` flag does not currently exist — it would need to be added to
-`MathlibCorpusBuilder.lean` to emit the raw `Expr` repr before serialization.)
+This prints three representations of the elaborated `Expr` before the pipeline
+runs, then continues with normal corpus building:
+
+- `[TRACE:leanExpr]` — `toString decl.info.type`, the same string stored in
+  `corpus.jsonl`. Human-readable but loses some universe/metavariable detail.
+- `[TRACE:dbgToString]` — `Expr.dbgToString decl.info.type`, the internal Lean
+  kernel representation with de Bruijn indices and universe levels fully explicit.
+- `[TRACE:reprStr]` — `reprStr decl.info.type`, the full constructor tree
+  (`Expr.forallE`, `Expr.app`, `Expr.const`, etc.) showing exactly what
+  `MetaExtractor.lean` pattern-matches against.
+
+The flag is implemented in `Scripts/BuildCorpus.lean` (arg parsing),
+`Maith/MathlibCorpusBuilder.lean` (pre-pass before `processBatch`), and
+`Maith/ProcessingPipeline.lean` (`processDeclarationWithTrace` for future
+per-declaration use).
 
 ---
 
