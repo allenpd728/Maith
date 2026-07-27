@@ -106,3 +106,34 @@ Canonical record of experiment-critical decisions that affect interpretation and
 - References:
   - `docs/EXPERIMENT_DESIGN.md#known-confound-embedding-table-size`
   - `python/train.py` (MAX_SEQ_LEN / MAX_SEQ_LEN_C constants)
+
+### DEC-007: Effective batch size differs across variants (unmatched)
+- Date: 2026-07-27
+- Status: accepted
+- Scope: training protocol / experiment validity
+- Decision:
+  - VARIANT_BATCH_CONFIG sets batch_size=2 for A and batch_size=1 for B/C, producing effective
+    batch sizes of 8 vs 4 respectively. The print statement "(all variants matched)" in train.py
+    was incorrect and has been removed.
+
+  **Consequence for the full run (2026-07-27):**
+  Variant A received ~277 gradient steps; B/C received ~554 steps
+  (2,213 examples / 8 = 277; / 4 = 554). A received half the parameter updates of B/C
+  regardless of representation quality. This is an additional confound — alongside DEC-006's
+  embedding-init confound — that must be ruled out before concluding that A's higher perplexity
+  (1.39 vs 1.13-1.14) reflects a failure of the IR representation hypothesis.
+
+  **Rationale for the asymmetry:**
+  A uses a 4,495-token vocab with smaller embeddings, which allows a larger per-device batch size
+  within MPS memory limits. B/C carry 151k-token embedding tables (494M params) and require
+  batch_size=1.
+
+  **Resolution for next run:**
+  Match gradient steps explicitly. Recommended: set B/C to grad_accum=8 (batch_size=1, effective 8)
+  to match A's effective batch of 8. Alternatively train for multiple epochs to give A equivalent
+  update exposure. Do not interpret perplexity differences as hypothesis evidence until step counts
+  are matched or the asymmetry is explicitly discounted.
+
+- References:
+  - python/train.py (VARIANT_BATCH_CONFIG, lines 88-90)
+  - Full-run results 2026-07-27: A=1.39, B=1.14, C=1.13
