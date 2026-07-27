@@ -298,6 +298,16 @@ sequence is identical to the input. The 3 FVAR and 4 TERM counts match the graph
 exactly. Zero legacy tokens confirms this corpus entry was built with Encoder
 v1.2.0 (which introduced the `∀:`/`λ:` prefix distinction).
 
+**Scope of this round-trip:** this confirms token↔graph losslessness only —
+that the token sequence encodes the IR graph without information loss and that
+the graph decodes back to the same tokens. It does not reconstruct readable Lean
+syntax from the graph. A graph→Lean-syntax decompiler does not yet exist:
+`Transpiler.lean` currently emits debug strings (`entity bound:… @ neut`,
+`op (…) -> … using neg`) rather than valid Lean, and its own in-file comment
+marks full IR→Lean reconstruction as unimplemented future work. The final leg
+of the round-trip — producing output visually comparable to Stage 1 — remains
+an open task.
+
 ---
 
 ## Summary
