@@ -77,6 +77,7 @@ LEARNING_RATE   = 2e-4
 EPOCHS          = 3
 WEIGHT_DECAY    = 0.01
 WARMUP_RATIO    = 0.05  # converted to warmup_steps at runtime
+MAX_GRAD_NORM   = 1.0
 SEED            = 42
 
 # Variant-specific batch sizes to manage embedding table memory pressure
@@ -93,6 +94,8 @@ VARIANT_BATCH_CONFIG = {
 # - B/C capped at shorter train sequence length to reduce MPS pressure
 VARIANT_EPOCHS = {"A": 1, "B": 1, "C": 1}
 VARIANT_TRAIN_SEQ_LEN = {"A": TRAIN_MAX_SEQ_LEN, "B": TRAIN_MAX_SEQ_LEN_BC, "C": TRAIN_MAX_SEQ_LEN_BC}
+VARIANT_LR = {"A": LEARNING_RATE, "B": 5e-5, "C": 5e-5}
+VARIANT_WARMUP_RATIO = {"A": WARMUP_RATIO, "B": 0.10, "C": 0.10}
 
 # Periodic cache clearing to reduce long-run MPS allocator fragmentation.
 CACHE_CLEAR_EVERY_STEPS = 10
@@ -168,6 +171,8 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
 
             outputs = model(**batch_tensors)
             loss = outputs.loss
+            if not torch.isfinite(loss):
+                raise RuntimeError(f"Non-finite eval loss at batch starting index {start}: {loss.item()}")
 
             # Count non-padding label tokens
             n_tokens = (batch_tensors["labels"] != -100).sum().item()
@@ -175,6 +180,8 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
             total_tokens += n_tokens
 
     avg_loss = total_loss / max(total_tokens, 1)
+    if not math.isfinite(avg_loss):
+        raise RuntimeError(f"Non-finite average eval loss: {avg_loss}")
     return math.exp(avg_loss)
 
 
@@ -387,15 +394,19 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     batch_cfg = VARIANT_BATCH_CONFIG.get(variant, {"batch_size": BATCH_SIZE, "grad_accum": GRAD_ACCUM})
     batch_size = batch_cfg["batch_size"]
     grad_accum = batch_cfg["grad_accum"]
+    learning_rate = VARIANT_LR[variant]
+    warmup_ratio = VARIANT_WARMUP_RATIO[variant]
     
     print(f"Batch config for variant {variant}: batch_size={batch_size}, grad_accum={grad_accum}")
     print(f"  → Effective batch size = {batch_size * grad_accum} (all variants matched)")
     print(f"  Epochs: {epochs}")
+    print(f"  Learning rate: {learning_rate}")
+    print(f"  Warmup ratio: {warmup_ratio}")
     print(f"  Cache clear cadence: every {CACHE_CLEAR_EVERY_STEPS} train steps")
     print()
     
     total_steps = max(1, (len(train_dataset) // (batch_size * grad_accum)) * epochs)
-    warmup_steps = max(1, int(WARMUP_RATIO * total_steps))
+    warmup_steps = max(1, int(warmup_ratio * total_steps))
 
     training_args = TrainingArguments(
         output_dir=out_dir,
@@ -403,7 +414,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=grad_accum,
-        learning_rate=LEARNING_RATE,
+        learning_rate=learning_rate,
         weight_decay=WEIGHT_DECAY,
         warmup_steps=warmup_steps,
         lr_scheduler_type="cosine",
@@ -413,6 +424,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         logging_steps=1,
         seed=SEED,
         report_to="none",
+        max_grad_norm=MAX_GRAD_NORM,
         gradient_checkpointing=True,   # trade compute for memory — needed for C on MPS
         fp16=False,  # MPS doesn't support fp16; set True for CUDA
         bf16=False,
@@ -445,6 +457,12 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         for h in trainer.state.log_history
         if "eval_loss" in h and "step" in h
     ]
+    for entry in train_loss_curve:
+        if not math.isfinite(entry["loss"]):
+            raise RuntimeError(f"Non-finite train loss at step {entry['step']}: {entry['loss']}")
+    for entry in eval_loss_curve:
+        if not math.isfinite(entry["eval_loss"]):
+            raise RuntimeError(f"Non-finite eval loss at step {entry['step']}: {entry['eval_loss']}")
     curve_path = os.path.join(out_dir, "loss_curve.json")
     with open(curve_path, "w") as f:
         json.dump(
@@ -466,6 +484,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     # Final perplexity
     print("Computing final perplexity on eval split ...")
     ppl = evaluate_perplexity(model, eval_dataset, device, batch_size=batch_size)
+    if not math.isfinite(ppl):
+        raise RuntimeError(f"Non-finite perplexity for variant {variant}: {ppl}")
     print(f"  Variant {variant} eval perplexity: {ppl:.2f}")
     print()
 
@@ -486,6 +506,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         "batch_size": batch_size,
         "grad_accum": grad_accum,
         "effective_batch_size": batch_size * grad_accum,
+        "learning_rate": learning_rate,
+        "warmup_ratio": warmup_ratio,
         "epochs": epochs,
         "eval_perplexity": round(ppl, 4),
         "training_minutes": round(elapsed / 60, 1),
