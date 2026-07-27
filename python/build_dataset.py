@@ -20,8 +20,8 @@ Also outputs:
   - datasets/split_train.jsonl   — 90% train split (same declarations across A/B/C)
   - datasets/split_eval.jsonl    — 10% eval split
 
-Task: next-token prediction. input_ids = full sequence; labels = input_ids shifted
-left by 1 (standard causal LM format).
+Task: next-token prediction. input_ids = full sequence; labels = input_ids.
+(`AutoModelForCausalLM` performs the causal shift internally during loss computation.)
 
 Usage:
     python3 python/build_dataset.py [--corpus Corpus/corpus.jsonl] [--out datasets/]
@@ -112,8 +112,8 @@ def ast_tokenize(expr: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def make_labels(input_ids: list[int]) -> list[int]:
-    """Standard causal LM: labels = input_ids shifted left, last position = -100."""
-    return input_ids[1:] + [-100]
+    """Causal LM labels mirror input_ids; the model applies the shift internally."""
+    return input_ids[:]
 
 
 def example_id(ex: dict) -> str:
