@@ -29,7 +29,7 @@ High-level flow:
 - Serialize examples to JSONL (`CorpusSerializer.lean`)
 - Consume JSONL in `python/` for vocab/tokenizer, splits, and dataset objects
 
-The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode (see `python/validate_roundtrip.py`). Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
+The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode (see `python/validate_roundtrip.py`), confirming token/graph losslessness; this does not include reconstruction back to Lean syntax, which is not yet implemented. Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
 
 ## 5) Why Not Train Directly on Lean Source?
 

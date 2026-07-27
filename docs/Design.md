@@ -107,6 +107,13 @@ Every IR token must map back to a Lean construct. This ensures:
 *   verifiable SLM outputs
     
 *   safe rewriting
+
+The token↔graph direction of this round-trip is implemented and verified
+(2,554/2,554 declarations pass `validate_roundtrip.py`). The graph→Lean-syntax
+direction — reconstructing valid Lean from an IR graph — is not yet implemented;
+`Transpiler.lean` currently produces debug strings, not valid Lean syntax.
+"Verifiable SLM outputs" and "safe rewriting" depend on the latter and remain
+future work.
     
 
 ### **3\. Graphs are the universal representation**
