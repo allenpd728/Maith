@@ -123,15 +123,20 @@ fixed eval cap 512, encoder v1.2.0. See `PHASE_5_COMPLETION_CHECKLIST.md` for au
 4. Gate for decision-grade readiness:
    - `python3 python/check_results_gate.py --runs-dir runs/`
 5. Once gate passes, record final A/B/C conclusions in this document.
-6. Scaffold theorem-proving evaluation artifacts for Phase 6:
+
+## Phase 6 (conditional — not required for this experiment)
+
+Proceed only if A/B/C results show a clear, decision-grade perplexity advantage for variant A over B and C.
+
+1. Scaffold theorem-proving evaluation artifacts for Phase 6:
    - `python3 python/scaffold_theorem_eval.py`
    - `python3 python/validate_theorem_eval_artifacts.py`
-7. Scaffold proof-context sidecar protocol artifacts:
+2. Scaffold proof-context sidecar protocol artifacts:
    - `python3 python/scaffold_context_artifacts.py`
    - `python3 python/build_dependency_manifest.py`
    - `python3 python/validate_context_artifacts.py --datasets-dir datasets/`
    - `python3 python/context_pack_stats.py --datasets-dir datasets/`
-8. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
+3. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
 
 Representation IDs are recorded in dataset rows and `runs/variant_*/results.json` so future IR
 candidate families can be compared without changing the reporting pipeline.
