@@ -52,34 +52,101 @@ it.
 
 ## Stage 2 — Elaborated Expr (what MetaExtractor.lean sees)
 
-**Provenance: NOT available without running a live Lean build.**
+**Provenance: live output of `lake env .lake/build/bin/buildCorpus --trace neg_neg`**
 
-The `leanExpr` string in stage 1 is the serialized output *after* MetaExtractor
-has processed the internal `Expr` tree. The raw `Expr` term — with de Bruijn
-indices, universe levels, and Lean's internal `Expr.forallE` / `Expr.app` nodes
-— is only accessible inside a running `MetaM` context during `lake build`.
-
-To capture a live trace, run:
+To reproduce:
 
 ```bash
-lake build buildCorpus && lake env .lake/build/bin/buildCorpus --trace neg_neg
+lake build buildCorpus
+lake env .lake/build/bin/buildCorpus --trace neg_neg 2>&1 | head -60
 ```
 
-This prints three representations of the elaborated `Expr` before the pipeline
-runs, then continues with normal corpus building:
+The `--trace` flag (added in `Scripts/BuildCorpus.lean`) runs a pre-pass before
+`processBatch` that prints three representations of `decl.info.type` at the
+point where the raw `Expr` is live inside Lean's kernel.
 
-- `[TRACE:leanExpr]` — `toString decl.info.type`, the same string stored in
-  `corpus.jsonl`. Human-readable but loses some universe/metavariable detail.
-- `[TRACE:dbgToString]` — `Expr.dbgToString decl.info.type`, the internal Lean
-  kernel representation with de Bruijn indices and universe levels fully explicit.
-- `[TRACE:reprStr]` — `reprStr decl.info.type`, the full constructor tree
-  (`Expr.forallE`, `Expr.app`, `Expr.const`, etc.) showing exactly what
-  `MetaExtractor.lean` pattern-matches against.
+---
 
-The flag is implemented in `Scripts/BuildCorpus.lean` (arg parsing),
-`Maith/MathlibCorpusBuilder.lean` (pre-pass before `processBatch`), and
-`Maith/ProcessingPipeline.lean` (`processDeclarationWithTrace` for future
-per-declaration use).
+**`[TRACE:leanExpr]`** — `toString decl.info.type`
+
+The same string stored in `corpus.jsonl`. Universe-polymorphic and fully
+explicit, but printed in Lean's surface syntax. `dbgToString` is identical for
+this declaration — the two only diverge when loose metavariables or synthetic
+binder details are present, which `neg_neg` does not have.
+
+```
+forall {G : Type.{u_1}}
+  [inst._@.Mathlib.Algebra.Group.Defs.567151492._hygCtx._hyg.3 : InvolutiveNeg.{u_1} G]
+  (a : G),
+  Eq.{succ u_1} G
+    (Neg.neg.{u_1} G (InvolutiveNeg.toNeg.{u_1} G inst...) (Neg.neg.{u_1} G (InvolutiveNeg.toNeg.{u_1} G inst...) a))
+    a
+```
+
+---
+
+**`[TRACE:reprStr]`** — full constructor tree
+
+This is the `Expr` representation that `MetaExtractor.lean` pattern-matches
+against: `Expr.forallE`, `Expr.app`, `Expr.const`, and `Expr.bvar` with de
+Bruijn indices. De Bruijn index `n` refers to the binder `n` levels up from the
+current node — so inside the innermost `forallE` body, `bvar 0` = `a`,
+`bvar 1` = the `inst` (InvolutiveNeg instance), `bvar 2` = `G`.
+
+```
+Lean.Expr.forallE                            -- ∀ {G : ...}
+  `G
+  (Lean.Expr.sort (Lean.Level.succ (Lean.Level.param `u_1)))   -- Type.{u_1}
+  (Lean.Expr.forallE                         -- ∀ [inst : InvolutiveNeg G]
+    `inst._@.Mathlib.Algebra.Group.Defs.567151492._hygCtx._hyg.3
+    (Lean.Expr.app
+      (Lean.Expr.const `InvolutiveNeg [Lean.Level.param `u_1])
+      (Lean.Expr.bvar 0))                    -- bvar 0 = G (one binder up)
+    (Lean.Expr.forallE                       -- ∀ (a : G)
+      `a
+      (Lean.Expr.bvar 1)                     -- bvar 1 = G (two binders up)
+      (Lean.Expr.app                         -- Eq G (neg (neg a)) a
+        (Lean.Expr.app
+          (Lean.Expr.app
+            (Lean.Expr.const `Eq [Lean.Level.succ (Lean.Level.param `u_1)])
+            (Lean.Expr.bvar 2))              -- bvar 2 = G (three binders up)
+          (Lean.Expr.app                     -- neg (neg a)  [outer neg]
+            (Lean.Expr.app
+              (Lean.Expr.app
+                (Lean.Expr.const `Neg.neg [Lean.Level.param `u_1])
+                (Lean.Expr.bvar 2))          -- G
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.const `InvolutiveNeg.toNeg [Lean.Level.param `u_1])
+                  (Lean.Expr.bvar 2))        -- G
+                (Lean.Expr.bvar 1)))         -- inst
+            (Lean.Expr.app                   -- neg a  [inner neg]
+              (Lean.Expr.app
+                (Lean.Expr.app
+                  (Lean.Expr.const `Neg.neg [Lean.Level.param `u_1])
+                  (Lean.Expr.bvar 2))        -- G
+                (Lean.Expr.app
+                  (Lean.Expr.app
+                    (Lean.Expr.const `InvolutiveNeg.toNeg [Lean.Level.param `u_1])
+                    (Lean.Expr.bvar 2))      -- G
+                  (Lean.Expr.bvar 1)))       -- inst
+              (Lean.Expr.bvar 0))))          -- a
+        (Lean.Expr.bvar 0))                  -- a  [RHS of Eq]
+      (Lean.BinderInfo.default))             -- (a : G) is explicit
+    (Lean.BinderInfo.instImplicit))          -- [inst] is instance-implicit
+  (Lean.BinderInfo.implicit)                 -- {G} is implicit
+```
+
+**How MetaExtractor.lean reads this tree:**
+- Each `Expr.forallE` introduces a bound variable; MetaExtractor tags these with
+  `∀:` scope prefixes and assigns them `EntityId.bound` entries.
+- `Expr.bvar n` is resolved by counting `n` binders outward to recover the
+  scope string, which the Encoder later collapses to `FVAR_N`.
+- `Expr.app (Expr.const \`InvolutiveNeg ...) (Expr.bvar 0)` is recognized as a
+  typeclass application and produces the `A FVAR_1 typeclass InvolutiveNeg`
+  attribute in the IR graph.
+- The two nested `Expr.app ... Neg.neg` chains produce the two `O neg` operation
+  nodes (inner `neg a` → `TERM_2`, outer `neg (neg a)` → `TERM_3`).
 
 ---
 
@@ -238,7 +305,7 @@ v1.2.0 (which introduced the `∀:`/`λ:` prefix distinction).
 | Stage | Description | Provenance |
 |-------|-------------|------------|
 | 1 | Lean elaborated type string | Direct read — `corpus.jsonl` `.leanExpr` |
-| 2 | Raw internal Expr tree | Not available — requires live `MetaM` trace in Lean |
+| 2 | Raw internal Expr tree | Live run — `buildCorpus --trace neg_neg` |
 | 3 | Raw IR graph (MetaExtractor output) | Direct read — `corpus.jsonl` `.graph` |
 | 4 | Canonical graph (post-Normalizer) | Illustrative — reconstructed from `Normalizer.lean` sort logic |
 | 5 | Token sequence + integer IDs | Direct read — `corpus.jsonl` `.tokens` + `train_A.jsonl` `.input_ids` |
