@@ -74,3 +74,35 @@ Canonical record of experiment-critical decisions that affect interpretation and
   - `docs/CONTEXT_PACK_PROTOCOL.md`
   - `python/scaffold_context_artifacts.py`
   - `python/build_dependency_manifest.py`
+
+### DEC-006: Known confounds that disadvantage A's absolute perplexity
+- Date: 2026-07-27
+- Status: accepted
+- Scope: model architecture interpretation / training protocol
+- Decision:
+  - Two structural confounds must be ruled out before interpreting A vs B/C perplexity differences
+    as evidence for or against the representation hypothesis:
+
+  **Confound 1 — Randomly initialized embeddings (primary).**
+  Variant A's embedding and output (unembedding) layers are randomly initialized due to the vocab
+  resize from 151,643 to 4,495 tokens. Variants B and C retain Qwen's pretrained embeddings in
+  full. This gives B/C a substantial head start on next-token prediction that is unrelated to
+  representation quality, and the disadvantage is largest at small training-data scale where the
+  model has limited opportunity to recover. If A underperforms B/C on perplexity, random
+  initialization must be ruled out as the primary cause before concluding the representation
+  hypothesis is false.
+
+  **Confound 2 — Differing train sequence caps (secondary).**
+  Variant A trains with a 1,024-token sequence cap; variants B/C train with a 384-token cap. This
+  asymmetry is intentional — the tighter B/C cap was introduced as a memory-pressure fix for MPS
+  (BPE on IR text inflates sequence length ~2.6x). Eval uses a shared 512-token cap across all
+  three variants, so the final comparison metric is apples-to-apples. However, A receives longer
+  training context per example than B/C do, which is an uncontrolled variable in training exposure.
+  This is on record so it is not mistaken for a neutral design choice in future analysis.
+
+- Rationale:
+  - Naming confounds before results arrive prevents them from becoming convenient post-hoc
+    explanations in either direction. Consistent with the discipline established in DEC-002/003.
+- References:
+  - `docs/EXPERIMENT_DESIGN.md#known-confound-embedding-table-size`
+  - `python/train.py` (MAX_SEQ_LEN / MAX_SEQ_LEN_C constants)
