@@ -73,6 +73,44 @@ def processDeclaration (decl : ExtractedDeclaration) (encoder : Encoder) :
           tokens := tokens
         }
 
+/--
+Variant of processDeclaration that, when `traceDecl` matches this declaration's
+name, prints the raw elaborated Expr before any IR extraction runs.
+
+Three representations are printed:
+  [TRACE:leanExpr]   — `toString decl.info.type`, the same string stored in
+                        corpus.jsonl.  Readable but loses universe/mvar detail.
+  [TRACE:dbgToString] — `Expr.dbgToString decl.info.type`, the internal Lean
+                        kernel representation with de Bruijn indices and
+                        universe levels fully explicit.
+  [TRACE:reprStr]    — `reprStr decl.info.type`, Lean's Repr instance for Expr,
+                        showing the exact constructor tree (Expr.forallE,
+                        Expr.app, Expr.const, etc.).
+
+After printing the trace the declaration is processed normally and its result
+is returned, so --trace can be used without suppressing corpus output.
+-/
+def processDeclarationWithTrace
+    (decl : ExtractedDeclaration) (encoder : Encoder) (traceDecl : Option String) :
+    IO (ProcessingResult TrainingExample) := do
+  match traceDecl with
+  | some name =>
+    if decl.name.toString == name then do
+      IO.println s!"\n=== EXPR TRACE: {name} ==="
+      IO.println "[TRACE:leanExpr]"
+      IO.println (toString decl.info.type)
+      IO.println ""
+      IO.println "[TRACE:dbgToString]"
+      IO.println (Expr.dbgToString decl.info.type)
+      IO.println ""
+      IO.println "[TRACE:reprStr]"
+      IO.println (reprStr decl.info.type)
+      IO.println "=== END TRACE ==="
+      pure (processDeclaration decl encoder)
+    else
+      pure (processDeclaration decl encoder)
+  | none => pure (processDeclaration decl encoder)
+
 private def upsertFailureReason (reasons : List (String × Nat)) (reason : String) :
     List (String × Nat) :=
   let rec go (remaining : List (String × Nat)) (acc : List (String × Nat)) :=

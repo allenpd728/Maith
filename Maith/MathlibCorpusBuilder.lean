@@ -41,7 +41,8 @@ def buildMathlibIRCorpus
     (modules : List String)
     (enumerationConfig : EnumerationConfig := defaultEnumerationConfig)
     (serializationConfig : SerializationConfig := defaultSerializationConfig)
-    (encoder : Encoder := Lean.DSL.defaultEncoder) :
+    (encoder : Encoder := Lean.DSL.defaultEncoder)
+    (traceDecl : Option String := none) :
     IO Unit := do
   IO.println "=== Mathlib IR Training Corpus Builder ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
@@ -61,6 +62,29 @@ def buildMathlibIRCorpus
   let allDeclarations := extractAllDeclarations enumerationResults
   IO.println s!"Processing {allDeclarations.length} declarations..."
   IO.println ""
+
+  -- Optional: emit raw Expr trace for a named declaration before pipeline runs.
+  -- Activated by --trace <declName> from the command line.
+  match traceDecl with
+  | some name =>
+    match allDeclarations.find? (fun d => d.name.toString == name) with
+    | none =>
+      IO.println s!"[TRACE] Declaration '{name}' not found in selected modules."
+      IO.println s!"[TRACE] Available names (first 20):"
+      for d in allDeclarations.take 20 do
+        IO.println s!"  {d.name}"
+    | some decl =>
+      IO.println s!"\n=== EXPR TRACE: {name} ===\n"
+      IO.println "[TRACE:leanExpr]  (toString decl.info.type — readable, same as corpus.jsonl)"
+      IO.println (toString decl.info.type)
+      IO.println ""
+      IO.println "[TRACE:dbgToString]  (internal Lean Expr with de Bruijn indices)"
+      IO.println (Expr.dbgToString decl.info.type)
+      IO.println ""
+      IO.println "[TRACE:reprStr]  (constructor tree: Expr.forallE / Expr.app / Expr.const ...)"
+      IO.println (reprStr decl.info.type)
+      IO.println "\n=== END TRACE — corpus build continues below ===\n"
+  | none => pure ()
 
   -- Stage 2-9: Process all declarations through the pipeline
   IO.println "[Stage 2-9] Running processing pipeline..."
@@ -131,13 +155,15 @@ Build corpus with custom modules and default settings.
 -/
 def buildMathlibIRCorpusCustomModules
     (modules : List String)
-    (encoder : Encoder := Lean.DSL.defaultEncoder) :
+    (encoder : Encoder := Lean.DSL.defaultEncoder)
+    (traceDecl : Option String := none) :
     IO Unit :=
   buildMathlibIRCorpus
     modules
     defaultEnumerationConfig
     defaultSerializationConfig
     encoder
+    traceDecl
 
 /--
 Detailed execution trace for debugging and metrics.
