@@ -86,8 +86,8 @@ SEED            = 42
 # So they need smaller per-device batch size, compensated by higher grad accum
 VARIANT_BATCH_CONFIG = {
     "A": {"batch_size": 2, "grad_accum": 4},  # Effective batch = 8, small embeddings
-    "B": {"batch_size": 1, "grad_accum": 4},  # Effective batch = 4, tradeoff for stability/runtime
-    "C": {"batch_size": 1, "grad_accum": 4},  # Effective batch = 4, tradeoff for stability/runtime
+    "B": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, matched to A; warmup_steps proportionally smaller (~41 vs ~83 at ratio 0.15)
+    "C": {"batch_size": 1, "grad_accum": 8},  # Effective batch = 8, matched to A; warmup_steps proportionally smaller (~41 vs ~83 at ratio 0.15)
 }
 
 # Bounded full-run profile for current experiment pass:
