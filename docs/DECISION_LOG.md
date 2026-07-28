@@ -137,3 +137,38 @@ Canonical record of experiment-critical decisions that affect interpretation and
 - References:
   - python/train.py (VARIANT_BATCH_CONFIG, lines 88-90)
   - Full-run results 2026-07-27: A=1.39, B=1.14, C=1.13
+
+### DEC-008: DEC-006 cold-start test — 3-epoch variant A run
+- Date: 2026-07-28
+- Status: in progress
+- Scope: experiment interpretation / confound elimination
+- Decision:
+  - After the matched-batch rerun (2026-07-28: A=1.39, B=1.15, C=1.13), the A/B/C gap holds.
+    DEC-007 (unmatched batch sizes) is ruled out as the primary cause. DEC-006 (randomly
+    initialized embeddings for A vs pretrained for B/C) remains unaddressed.
+
+  **Test protocol:**
+  Run variant A for 3 epochs, all other hyperparameters unchanged, output to `runs/variant_A_3ep`.
+  Compare the 3-epoch A perplexity against the 1-epoch B/C baseline (1.15/1.13).
+
+  ```
+  python3 python/train.py --variant A --datasets datasets/ --out runs/variant_A_3ep --epochs 3
+  ```
+
+  **Interpretation:**
+  - If 3-epoch A perplexity drops substantially toward B/C (e.g., below 1.25): cold-start
+    embedding init is the dominant cause; IR representation not yet ruled out.
+  - If 3-epoch A perplexity remains near 1.39: cold-start is not the explanation; the IR
+    token representation itself underperforms at this scale — investigate vocab size,
+    sequence cap asymmetry, or representation design.
+
+  **Why 3 epochs (not embedding warm-start):**
+  3-epoch test is zero-code-change (uses new `--epochs` flag), self-contained, and interpretable.
+  Embedding warm-start (copying pretrained Qwen embeddings for overlapping tokens) would be a
+  cleaner structural fix but requires more code and a separate controlled comparison.
+  3 epochs is the lower-cost first probe; warm-start remains an option if 3 epochs is ambiguous.
+
+- References:
+  - Matched-batch rerun results 2026-07-28: A=1.39, B=1.15, C=1.13
+  - docs/PHASE_5_RESULTS.md
+  - python/train.py (`--epochs` flag, `epochs_override` parameter)
