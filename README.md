@@ -117,9 +117,7 @@ Run the full post-run publication pipeline:
 python3 python/run_postrun_pipeline.py --runs-dir runs/
 ```
 
-Artifact field contracts are documented in [`docs/ARTIFACT_SCHEMAS.md`](docs/ARTIFACT_SCHEMAS.md).
-Theorem-eval artifact contracts are documented in [`docs/THEOREM_EVAL_SCHEMAS.md`](docs/THEOREM_EVAL_SCHEMAS.md).
-Proof-context sidecar protocol is documented in [`docs/CONTEXT_PACK_PROTOCOL.md`](docs/CONTEXT_PACK_PROTOCOL.md).
+Phase 5 artifact field contracts and Phase 6 scaffold designs are documented in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
 
 Canonical experiment assumptions/interpretation decisions are tracked in
 [`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
@@ -189,8 +187,7 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 6. **Phase 5: Run A/B/C training experiment** — ✅ full run complete (2026-07-27: A=1.3922, B=1.142, C=1.1298); matched-batch rerun pending (DEC-007)
 7. **Phase 6: Measure theorem-proving performance** — not started
 
-Representation contingency planning is tracked in `docs/REPRESENTATION_EVOLUTION.md` so alternate
-IR candidates can be developed/evaluated quickly if the current semantic graph IR underperforms.
+Representation contingency planning and Phase 6 design notes are in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
 
 Remaining IR milestones with current size estimates:
 
@@ -272,16 +269,23 @@ python/
   tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
   spot_check.py            # manual corpus spot-checking helper
 docs/
-  ENCODER_FORMAT.md        # canonical token format spec (v1.0.0)
-  LATEST_FIXES.md          # changelog of IR fixes (through 70% coverage milestone)
-  SESSION_PROGRESS.md      # full session-by-session development log
+  Design.md                # architecture and design decisions
+  ENCODER_FORMAT.md        # canonical token format spec (v1.2.0)
+  EXPERIMENT_DESIGN.md     # A/B/C experiment design and results
+  DECISION_LOG.md          # experiment decisions and confound documentation
+  EXAMPLE_ROUNDTRIP.md     # full pipeline walkthrough for neg_neg
+  PHASE_5_RESULTS.md       # Phase 5 results (matched-batch rerun pending)
   CORPUS_PIPELINE_STATUS.md
-  TESTING_SUMMARY.md
-  Design.md
-  TEST.md
   PYTHON_PIPELINE.md       # python/ tooling reference
+  TESTING_SUMMARY.md       # test suite status
+  LATEST_FIXES.md          # recent session fixes (last 2 sessions)
+  CHANGELOG.md             # older fix history
+  SESSION_PROGRESS.md      # full session-by-session development log
+  REPRESENTATION_EVOLUTION.md  # IR candidate evolution strategy
+  FUTURE_WORK.md           # Phase 6+ scaffold designs (not yet implemented)
+  TEST.md                  # test run commands
 README.md
-CORPUS_SCHEMA.md           # JSONL schema contract (kept as-is)
+CORPUS_SCHEMA.md           # JSONL schema contract
 ```
 
 ## 13) License
