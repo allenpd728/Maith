@@ -168,10 +168,11 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 ## 8) Limitations
 
 - Validated across 4 Mathlib modules so far. Broader coverage (more modules, tactic-heavy declarations) may surface new `Expr` patterns.
-- Phase 5 A/B/C full run completed 2026-07-27 (A=1.3922, B=1.142, C=1.1298, all `smoke_test: false`).
-  Results carry two documented confounds (DEC-006: random embedding init disadvantages A; DEC-007:
-  effective batch size was 8 for A vs 4 for B/C). A matched-batch rerun (B/C grad_accum→8) is
-  pending before interpreting perplexity differences as hypothesis evidence.
+- Phase 5 matched-batch rerun complete (2026-07-28): A=1.39, B=1.15, C=1.13, all `smoke_test: false`,
+  all variants effective batch=8. DEC-007 (unmatched batch sizes) is resolved; the A/B/C gap holds.
+  DEC-006 (random embedding init for A vs pretrained embeddings for B/C) is the remaining confound.
+  A 3-epoch A run is the next step to rule it out before interpreting perplexity differences as
+  hypothesis evidence.
 - For the current authoritative experiment state, use:
   - `docs/DECISION_LOG.md` (DEC-006, DEC-007)
   - `python3 python/compare_results.py --runs-dir runs/`
@@ -184,7 +185,7 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.2.0, 7,867 tokens, FVAR/BVAR split, decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5: Run A/B/C training experiment** — ✅ full run complete (2026-07-27: A=1.3922, B=1.142, C=1.1298); matched-batch rerun pending (DEC-007)
+6. **Phase 5: Run A/B/C training experiment** — ✅ matched-batch rerun complete (2026-07-28: A=1.39, B=1.15, C=1.13); DEC-006 (embedding cold-start) still to be ruled out via 3-epoch A run
 7. **Phase 6: Measure theorem-proving performance** — not started
 
 Representation contingency planning and Phase 6 design notes are in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
@@ -274,7 +275,7 @@ docs/
   EXPERIMENT_DESIGN.md     # A/B/C experiment design and results
   DECISION_LOG.md          # experiment decisions and confound documentation
   EXAMPLE_ROUNDTRIP.md     # full pipeline walkthrough for neg_neg
-  PHASE_5_RESULTS.md       # Phase 5 results (matched-batch rerun pending)
+  PHASE_5_RESULTS.md       # Phase 5 results (matched-batch rerun complete 2026-07-28)
   CORPUS_PIPELINE_STATUS.md
   PYTHON_PIPELINE.md       # python/ tooling reference
   TESTING_SUMMARY.md       # test suite status

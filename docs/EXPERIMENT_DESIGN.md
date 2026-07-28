@@ -100,20 +100,27 @@ Secondary metrics (if time permits):
 
 ## Results
 
-Full run completed 2026-07-27. Results below are real (`smoke_test: false`) but carry two
-documented confounds — see DEC-006 and DEC-007 in `docs/DECISION_LOG.md` before drawing
-conclusions. A matched-batch rerun (B/C `grad_accum` 4→8) is the next required step.
+### Matched-batch rerun (2026-07-28 — authoritative)
+
+All variants at effective batch=8 (`grad_accum=8`). DEC-007 resolved.
 
 | Variant | Representation | Vocab | Perplexity | Train time | Grad steps | Eff. batch |
 |---------|---------------|-------|------------|------------|------------|------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | **1.3922** | 22.6 min | 277 | 8 |
-| B | Raw `leanExpr` → Qwen BPE | 151,936 | **1.1420** | 41.3 min | 554 | 4 ⚠ |
-| C | AST-style → Qwen BPE | 151,936 | **1.1298** | 44.3 min | 554 | 4 ⚠ |
+| A | Maith IR tokens (v1.2.0) | 4,495 | **1.39** | 22.7 min | 277 | 8 |
+| B | Raw `leanExpr` → Qwen BPE | 151,936 | **1.15** | 112.7 min | 277 | 8 |
+| C | AST-style → Qwen BPE | 151,936 | **1.13** | 50.0 min | 277 | 8 |
 
-⚠ B and C ran with `grad_accum=4` (effective batch 4) vs A's `grad_accum=4, batch_size=2`
-(effective batch 8), giving B/C twice as many gradient steps. This is an uncontrolled variable
-(DEC-007). The random-embedding-init confound (DEC-006) also disadvantages A independently.
-Neither confound has been ruled out as the primary cause of A's higher perplexity.
+A underperforms B and C. The gap holds after the DEC-007 fix. DEC-006 (A starts from randomly
+initialized embeddings vs B/C pretrained Qwen embeddings) is the remaining confound. A 3-epoch
+A run is the next step to rule it out. See `docs/PHASE_5_RESULTS.md` for full analysis.
+
+### Previous run (2026-07-27 — carries DEC-007 confound, superseded)
+
+| Variant | Perplexity | Eff. batch | Note |
+|---------|------------|------------|------|
+| A | 1.3922 | 8 | — |
+| B | 1.1420 | 4 | DEC-007 ⚠ |
+| C | 1.1298 | 4 | DEC-007 ⚠ |
 
 **Run profile:** Qwen2.5-Coder-0.5B (MPS), seed 42, 2,213 train / 246 eval, shared eval cap 512,
 encoder v1.2.0, 1 epoch. A: lr=2e-4, train cap 1024. B/C: lr=3e-5, train cap 384.
