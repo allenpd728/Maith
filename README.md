@@ -185,7 +185,7 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.2.0, 7,867 tokens, FVAR/BVAR split, decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5: Run A/B/C training experiment** — ✅ matched-batch rerun complete (2026-07-28: A=1.39, B=1.15, C=1.13); DEC-006 (embedding cold-start) still to be ruled out via 3-epoch A run
+6. **Phase 5: Run A/B/C training experiment** — 🔄 confound-elimination in progress. Matched-batch rerun complete (2026-07-28: A=1.39, B=1.15, C=1.13). DEC-008 complete: 3-epoch A=1.26 (cold-start is real but partial). DEC-009 in progress: embedding warm-start to fully isolate representation quality.
 7. **Phase 6: Measure theorem-proving performance** — not started
 
 Representation contingency planning and Phase 6 design notes are in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).

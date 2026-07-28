@@ -5,6 +5,32 @@ For the full session-by-session narrative log, see `docs/SESSION_PROGRESS.md`.
 
 ---
 
+## 2026-07-28 (session 2) — DEC-008 result, DEC-009 implementation
+
+### DEC-008 complete: 3-epoch variant A
+
+- 3-epoch variant A run complete: perplexity = **1.2598** (67.6 min, 831 steps).
+- Cold-start initialization (DEC-006) confirmed as a real factor — A improved 1.39 → 1.26.
+- Gap to B/C (1.15/1.13) persists; cold-start is not the complete explanation.
+- DEC-008 status updated to `complete` in `docs/DECISION_LOG.md`; result added to `docs/PHASE_5_RESULTS.md`.
+
+### DEC-009: embedding warm-start implementation
+
+- Added `--warm-start-embeddings` flag to `python/train.py`.
+- New `_apply_warm_start_embeddings()` function: finds tokens whose string form appears in both
+  the Qwen BPE vocabulary and `vocab_A.json`, copies pretrained embedding and lm_head vectors
+  for those tokens into the resized variant-A embedding table. All weights remain trainable.
+- Overlap count and fraction logged to `results.json` (`warm_start_overlap_count`,
+  `warm_start_overlap_fraction`).
+- DEC-009 drafted in `docs/DECISION_LOG.md` with full interpretation framework.
+
+### Documentation
+
+- `PHASE_5_COMPLETION_CHECKLIST.md` updated: DEC-008 marked complete, DEC-009 in progress.
+- `README.md` roadmap Phase 5 entry updated to reflect current confound-elimination state.
+
+---
+
 ## 2026-07-28 — Pre-flight checks, regression tests, --trace flag, documentation
 
 ### Experiment integrity
