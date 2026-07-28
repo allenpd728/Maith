@@ -1,5 +1,39 @@
 # Maith IR Pipeline — Session Progress
 
+## 2026-07-28 (session 7: regression tests, pre-flight check, matched-batch rerun)
+
+### What was done
+
+**Regression tests** — `python/test_train_regression.py` written: 6 tests covering the label-shift edge case (seq_len=2 that produces all-ignored labels after the internal causal-LM shift — the exact case that caused the original bug), NaN loss detection, and `VARIANT_BATCH_CONFIG` effective batch size matching across A/B/C. All 6 pass, CPU-only, no GPU needed.
+
+**Pre-flight check** — `python/preflight_check.py` written: 7 checks — effective batch size alignment across all variants, vocab size consistency (tokenizer vs model config vs embedding rows) for each variant, and finite loss verification on a small real forward pass. Passed 7/7 on the current checkout before the matched-batch rerun started.
+
+**Matched-batch rerun started** — all variants now `grad_accum=8` (effective batch=8). Currently in progress.
+
+**PHASE_5_RESULTS.md created** — shell document with `[PENDING]` placeholders for matched-batch results, previous run numbers with confound flags, known confounds section (DEC-006, DEC-007), and interpretation framework.
+
+**Documentation updates** — `PHASE_5_COMPLETION_CHECKLIST.md` updated to reflect rerun status and post-rerun steps; `LATEST_FIXES.md` updated with full 2026-07-28 entry; `PYTHON_PIPELINE.md` updated with `preflight_check.py`, `test_train_regression.py`, and `eval_completion.py` added to files table; `Modelfile` added to `.gitignore`.
+
+---
+
+## 2026-07-27 (session 6: DEC-007 fix, --trace flag, documentation)
+
+### What was done
+
+**DEC-007 identified and fixed** — B and C had `grad_accum=4` (effective batch 4) vs A at effective batch 8. An uncontrolled variable across A/B/C. Fixed `VARIANT_BATCH_CONFIG` in `python/train.py`: B and C `grad_accum` bumped from 4 to 8. Decision: bumped B/C rather than dropping A's `batch_size` — A was already stable, no reason to retest A's memory profile. Removed misleading `(all variants matched)` from the batch-size print. Documented in `DECISION_LOG.md` as DEC-007.
+
+**Full matched-batch run** — executed A/B/C with effective batch=8 across all variants (`smoke_test: false`). Results: A=1.3922 perplexity, 22.6 min, 277 steps; B=1.1420, 41.3 min, 554 steps; C=1.1298, 44.3 min, 554 steps. These carry DEC-006 (embedding cold-start) and DEC-007 confounds and are not final.
+
+**`--trace` flag** — added `--trace <declName>` to `Scripts/BuildCorpus.lean`, `Maith/MathlibCorpusBuilder.lean`, and `Maith/ProcessingPipeline.lean`. When passed, prints three representations of the named declaration's elaborated `Expr` before pipeline runs: `[TRACE:leanExpr]`, `[TRACE:dbgToString]`, `[TRACE:reprStr]` (full constructor tree). Used to capture real live `--trace neg_neg` output for Stage 2 of `EXAMPLE_ROUNDTRIP.md`.
+
+**EXAMPLE_ROUNDTRIP.md** — created: full pipeline walkthrough for `neg_neg` with explicit provenance labels on every stage (direct corpus read / live Lean run / illustrative). Stage 2 populated with real elaborated `Expr` data from `--trace` output.
+
+**Round-trip scope clarification** — additive edits to `EXAMPLE_ROUNDTRIP.md`, `Design.md`, and `README.md`: token↔graph losslessness is verified (2,554/2,554); graph→Lean-syntax reconstruction is not yet implemented (`Transpiler.lean` is debug-only display only).
+
+**Results tables updated** — `README.md` and `docs/EXPERIMENT_DESIGN.md` updated with real 2026-07-27 full-run numbers and confound flags.
+
+---
+
 ## 2026-07-25 (session 4: 100% corpus coverage + pipeline hardening)
 
 ### What was done
