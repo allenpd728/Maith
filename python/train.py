@@ -346,7 +346,7 @@ def assert_shared_eval_examples(datasets_dir: str, eval_path: str) -> None:
 # Training loop
 # ---------------------------------------------------------------------------
 
-def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None:
+def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, epochs_override: int = None) -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
 
@@ -392,7 +392,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     print()
 
     os.makedirs(out_dir, exist_ok=True)
-    epochs = 1 if smoke_test else VARIANT_EPOCHS[variant]
+    epochs = 1 if smoke_test else (epochs_override if epochs_override is not None else VARIANT_EPOCHS[variant])
     
     # Get variant-specific batch size and grad accum
     batch_cfg = VARIANT_BATCH_CONFIG.get(variant, {"batch_size": BATCH_SIZE, "grad_accum": GRAD_ACCUM})
@@ -549,9 +549,11 @@ if __name__ == "__main__":
     parser.add_argument("--variant",    required=True, choices=["A", "B", "C"])
     parser.add_argument("--datasets",   default="datasets/")
     parser.add_argument("--out",        default=None)
+    parser.add_argument("--epochs",     type=int, default=None,
+                        help="Override epoch count (default: use VARIANT_EPOCHS config)")
     parser.add_argument("--smoke-test", action="store_true",
                         help="Quick 1-epoch run on 50 examples to verify the pipeline")
     args = parser.parse_args()
 
     out = args.out or f"runs/variant_{args.variant}"
-    run(args.variant, args.datasets, out, args.smoke_test)
+    run(args.variant, args.datasets, out, args.smoke_test, epochs_override=args.epochs)
