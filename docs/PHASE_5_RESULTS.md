@@ -68,8 +68,28 @@ If the gap to B/C shrinks substantially with more training, the cold-start embed
 is the dominant effect. If the gap holds, the IR token representation itself is the issue —
 investigate vocab size, structural information loss, or sequence length cap.
 
+## DEC-008 Result: 3-epoch variant A (2026-07-28)
+
+| Variant | Epochs | Eval Perplexity | Training Minutes | Train Steps |
+|---------|--------|-----------------|------------------|-------------|
+| A | 3 | 1.2598 | 67.6 | 831 |
+| B | 1 | 1.15 | 112.7 | 277 |
+| C | 1 | 1.13 | 50.0 | 277 |
+
+3-epoch A dropped from 1.39 to 1.2598, confirming cold-start initialization (DEC-006) is a real
+factor. However the gap to B/C persists — 1.2598 vs 1.15/1.13. Cold-start is not the complete
+explanation.
+
+**Conclusion:** DEC-006 is partially confirmed as a confound. Both cold-start initialization and
+the representation itself may be contributing to A's underperformance. An embedding warm-start
+experiment (DEC-009) is required to isolate representation quality from initialization advantage.
+
 ## Outcome framework
 
-- **A gap shrinks at 3 epochs**: DEC-006 (cold-start) is the primary cause; IR tokens not yet ruled out
-- **A gap holds at 3 epochs**: IR tokens hurt at this scale; investigate vocab size or representation design
-- **A ≈ B/C at 3 epochs**: IR tokens are competitive once the embedding disadvantage is removed
+| Scenario | Interpretation |
+|----------|---------------|
+| 3-epoch A < 1.25 | Cold-start dominant; IR tokens not yet ruled out |
+| 3-epoch A ≈ 1.39 | Cold-start not the explanation; IR tokens underperform at this scale |
+| 3-epoch A ≈ B/C | IR tokens competitive once embedding disadvantage removed |
+
+**Actual result: 1.2598** — cold-start is real but partial. Warm-start (DEC-009) is next.
