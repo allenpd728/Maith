@@ -26,6 +26,10 @@ Usage:
 
     # Quick smoke test (1 epoch, 50 examples)
     python3 python/train.py --variant A --datasets datasets/ --out runs/smoke --smoke-test
+
+    # DEC-009: Variant A with embedding warm-start (copy pretrained Qwen embeddings
+    # for overlapping tokens into the resized embedding table)
+    python3 python/train.py --variant A --datasets datasets/ --out runs/variant_A_warmstart --warm-start-embeddings
 """
 
 import argparse
@@ -210,11 +214,69 @@ class PeriodicCacheClearCallback(TrainerCallback):
 # Model setup
 # ---------------------------------------------------------------------------
 
-def load_model_for_variant(variant: str, vocab_path: Optional[str]):
+def _apply_warm_start_embeddings(
+    model,
+    tokenizer,
+    vocab: dict,
+) -> dict:
+    """
+    DEC-009: Copy pretrained Qwen embedding vectors into the resized variant-A
+    embedding table for any token whose string representation appears in both
+    the Qwen BPE vocabulary and the custom IR vocabulary.
+
+    Only the input embedding (model.embed_tokens) and output projection
+    (model.lm_head) are updated; all other weights are untouched. Both tables
+    remain fully trainable so the model can adapt during fine-tuning.
+
+    Returns a dict of stats logged to results.json.
+    """
+    import torch.nn as nn
+
+    qwen_vocab: dict = tokenizer.get_vocab()  # str → int (Qwen BPE IDs)
+    # Invert custom IR vocab: str → IR ID
+    ir_vocab_by_str: dict = {token: ir_id for token, ir_id in vocab.items()}
+
+    embed_layer = model.get_input_embeddings()   # nn.Embedding
+    lm_head     = model.lm_head                  # nn.Linear (weight shape: [vocab, hidden])
+
+    overlapping = []
+    with torch.no_grad():
+        for token, ir_id in ir_vocab_by_str.items():
+            qwen_id = qwen_vocab.get(token)
+            if qwen_id is None:
+                continue
+            # Bounds check — both tables must contain the relevant rows
+            if qwen_id >= embed_layer.weight.shape[0] or ir_id >= embed_layer.weight.shape[0]:
+                continue
+            # Copy input embedding vector
+            embed_layer.weight[ir_id] = embed_layer.weight[qwen_id].clone()
+            # Copy output projection row (lm_head.weight shape: [vocab_size, hidden_size])
+            if lm_head.weight.shape[0] > ir_id and lm_head.weight.shape[0] > qwen_id:
+                lm_head.weight[ir_id] = lm_head.weight[qwen_id].clone()
+            overlapping.append(token)
+
+    n_overlap = len(overlapping)
+    n_custom  = len(ir_vocab_by_str)
+    print(f"  Warm-start: {n_overlap}/{n_custom} IR tokens matched Qwen vocab and were initialised from pretrained embeddings")
+    if n_overlap == 0:
+        print("  WARNING: no token overlap found — warm-start had no effect. Check vocab_A.json token strings vs Qwen BPE.")
+
+    return {
+        "warm_start_embeddings": True,
+        "warm_start_overlap_count": n_overlap,
+        "warm_start_total_ir_tokens": n_custom,
+        "warm_start_overlap_fraction": round(n_overlap / max(n_custom, 1), 4),
+    }
+
+
+def load_model_for_variant(variant: str, vocab_path: Optional[str], warm_start_embeddings: bool = False):
     """
     Load the configured Qwen2.5-Coder base model and adapt it for the chosen variant.
 
     Variant A: resize embeddings to custom IR vocab size (Option 1 from EXPERIMENT_DESIGN.md).
+               Optionally warm-start the resized embedding table from pretrained Qwen vectors
+               for any IR token whose string matches a Qwen BPE token (--warm-start-embeddings,
+               DEC-009).
     Variants B/C: use native BPE tokenizer and embedding table unchanged.
     """
     print(f"Loading base model: {BASE_MODEL}")
@@ -261,16 +323,25 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str]):
             f"Config vocab_size ({model.config.vocab_size}) != custom vocab size ({custom_vocab_size})"
         )
 
+        warm_start_meta = {}
+        if warm_start_embeddings:
+            warm_start_meta = _apply_warm_start_embeddings(model, tokenizer, vocab)
+        else:
+            warm_start_meta = {"warm_start_embeddings": False}
+
         return model, tokenizer, {
             "tokenizer_mode": "custom_ir_vocab",
             "custom_vocab_size": custom_vocab_size,
             "tokenizer_vocab_size": int(tokenizer.vocab_size),
             "model_vocab_size": int(model.config.vocab_size),
             "embedding_rows": embedding_rows,
+            **warm_start_meta,
         }
 
     else:
         # Variants B and C: native BPE, no resizing needed
+        if warm_start_embeddings:
+            print(f"  WARNING: --warm-start-embeddings has no effect for variant {variant} (only applies to A)")
         print(f"  Variant {variant}: native Qwen2.5-Coder BPE tokenizer")
         tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
         model = AutoModelForCausalLM.from_pretrained(
@@ -294,6 +365,7 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str]):
             "tokenizer_vocab_size": int(tokenizer.vocab_size),
             "model_vocab_size": int(model.config.vocab_size),
             "embedding_rows": embedding_rows,
+            "warm_start_embeddings": False,
         }
 
 
@@ -346,7 +418,7 @@ def assert_shared_eval_examples(datasets_dir: str, eval_path: str) -> None:
 # Training loop
 # ---------------------------------------------------------------------------
 
-def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, epochs_override: int = None) -> None:
+def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, epochs_override: int = None, warm_start_embeddings: bool = False) -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
 
@@ -385,7 +457,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, epochs_
         print(f"  Representation ID: {train_representation_id}")
     print()
 
-    model, tokenizer, model_meta = load_model_for_variant(variant, vocab_path)
+    model, tokenizer, model_meta = load_model_for_variant(variant, vocab_path, warm_start_embeddings=warm_start_embeddings)
     model = model.to(device)
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
     print(f"  Model parameters: {n_params:.1f}M")
@@ -520,6 +592,9 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, epochs_
         "seed": SEED,
         "base_model": BASE_MODEL,
         "smoke_test": smoke_test,
+        "warm_start_embeddings": model_meta.get("warm_start_embeddings", False),
+        "warm_start_overlap_count": model_meta.get("warm_start_overlap_count"),
+        "warm_start_overlap_fraction": model_meta.get("warm_start_overlap_fraction"),
     }
     results_path = os.path.join(out_dir, "results.json")
     with open(results_path, "w") as f:
@@ -553,7 +628,11 @@ if __name__ == "__main__":
                         help="Override epoch count (default: use VARIANT_EPOCHS config)")
     parser.add_argument("--smoke-test", action="store_true",
                         help="Quick 1-epoch run on 50 examples to verify the pipeline")
+    parser.add_argument("--warm-start-embeddings", action="store_true",
+                        help="DEC-009: copy pretrained Qwen embedding vectors for overlapping tokens "
+                             "into variant A's resized embedding table before training. No-op for B/C.")
     args = parser.parse_args()
 
     out = args.out or f"runs/variant_{args.variant}"
-    run(args.variant, args.datasets, out, args.smoke_test, epochs_override=args.epochs)
+    run(args.variant, args.datasets, out, args.smoke_test, epochs_override=args.epochs,
+        warm_start_embeddings=args.warm_start_embeddings)
