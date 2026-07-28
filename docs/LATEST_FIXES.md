@@ -4,6 +4,52 @@ For the full session-by-session development log, see `SESSION_PROGRESS.md`.
 
 ---
 
+## 2026-07-28 — Pre-flight checks, regression tests, --trace flag, documentation
+
+### Experiment integrity
+
+- Added `python/preflight_check.py` — pre-flight script to run before any A/B/C training run.
+  Checks: (1) effective batch sizes match across all variants, (2) vocab size consistency
+  (tokenizer vs model config vs embedding rows) for each variant, (3) forward pass produces
+  finite loss on a small real batch. Passed 7/7 checks before the matched-batch rerun started.
+- Added `python/test_train_regression.py` — regression tests for `train.py` targeting the
+  failure modes that have already cost multi-hour runs. Covers: `collate_fn` label invariant,
+  `seq_len=1` and `seq_len=2` edge cases (the original label-shift bug), NaN loss detection,
+  and `VARIANT_BATCH_CONFIG` effective batch size matching. 6/6 pass, CPU-only, no GPU needed.
+
+### Batch size fix (DEC-007)
+
+- `VARIANT_BATCH_CONFIG` in `train.py`: B and C bumped from `grad_accum=4` to `grad_accum=8`,
+  matching A's effective batch size of 8. Previous runs had B/C at effective batch 4 (twice as
+  many gradient steps as A), which was an uncontrolled variable. Documented in DEC-007.
+- Removed misleading `(all variants matched)` from the batch-size print in `train.py`.
+
+### Lean Expr trace flag
+
+- Added `--trace <declName>` flag to `Scripts/BuildCorpus.lean`. When passed, prints three
+  representations of the named declaration's elaborated `Expr` before pipeline runs:
+  `[TRACE:leanExpr]`, `[TRACE:dbgToString]`, `[TRACE:reprStr]` (full constructor tree).
+  Implementation spans `Scripts/BuildCorpus.lean` (arg parsing),
+  `Maith/MathlibCorpusBuilder.lean` (pre-pass before `processBatch`), and
+  `Maith/ProcessingPipeline.lean` (`processDeclarationWithTrace`).
+
+### Documentation
+
+- Added `docs/EXAMPLE_ROUNDTRIP.md` — full pipeline walkthrough for `neg_neg` with explicit
+  provenance labels on every stage (direct corpus read / live run / illustrative).
+- Updated `docs/DECISION_LOG.md` with DEC-007 (unmatched effective batch sizes).
+- Updated `README.md` and `docs/EXPERIMENT_DESIGN.md` results tables with real 2026-07-27
+  full-run numbers (A=1.3922, B=1.1420, C=1.1298, all `smoke_test: false`) and confound flags.
+- Added round-trip scope clarification to `docs/EXAMPLE_ROUNDTRIP.md`, `docs/Design.md`,
+  and `README.md`: token↔graph losslessness is verified; graph→Lean-syntax reconstruction
+  is not yet implemented (`Transpiler.lean` is debug-only).
+
+---
+
+## 2026-07-27 — Matched-batch fix, documentation hardening
+
+---
+
 ## 2026-07-26 — Experiment operations + gating scaffolds
 
 ### Run observability and dashboarding

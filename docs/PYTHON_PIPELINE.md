@@ -12,6 +12,9 @@ produced by the Lean pipeline into training-ready datasets for the A/B/C experim
 | `validate_roundtrip.py` | Decoder round-trip validator — confirms BVAR/TERM token stability |
 | `tokenizer_study.py` | BPE fragmentation study — compares IR tokens vs Qwen2.5-Coder BPE |
 | `train.py` | Fine-tuning script — runs one A/B/C variant, reports eval perplexity |
+| `preflight_check.py` | Pre-flight validator — vocab size, forward-pass sanity, effective batch match across A/B/C |
+| `test_train_regression.py` | Regression tests for `train.py` — label-shift edge cases, NaN detection, batch config |
+| `eval_completion.py` | Next-token top-1 completion accuracy across A/B/C variants (loads saved checkpoints) |
 | `compare_results.py` | Reads all three `runs/variant_*/results.json` and prints comparison table |
 | `run_full_experiment.py` | Sequential full/smoke A/B/C runner with shared log output |
 | `check_results_gate.py` | Fails unless A/B/C outputs are full (non-smoke) and eval-aligned |

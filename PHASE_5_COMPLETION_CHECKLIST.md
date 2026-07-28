@@ -1,86 +1,18 @@
 # Phase 5 Completion Checklist
 
-## Current Status (updated Jul 26, 22:46 UTC)
-- Variant A: ✅ Complete (1 epoch rerun: 22.2 min, 1.4781 perplexity, 361.9M params)
-- Variant B: 🔄 Running (use live tqdm ETA from `python3 python/watch_full_runs.py --log runs/full_abc_runs.log`)
-- Variant C: ⏳ Queued (starts after B; use live tqdm ETA once active)
+## Current Status (as of 2026-07-28)
 
-Note: the earlier A result (69.0 min, 1.297 perplexity from a 3-epoch run) is superseded for this
-comparison pass. Authoritative current baseline is `runs/variant_A/results.json` from the matched
-1-epoch restart.
+- **Matched-batch rerun** (all variants `grad_accum=8`, effective batch size=8) is in progress.
+- **Previous run** (2026-07-27) produced real full-run results (`smoke_test: false`):
+  - A: 1.3922 perplexity, 22.6 min
+  - B: 1.1420 perplexity, 41.3 min
+  - C: 1.1298 perplexity, 44.3 min
+  - These results carry confounds DEC-006 and DEC-007 and are not the final numbers.
+- **Pre-flight check** (`python/preflight_check.py`) passed 7/7 checks before this rerun started.
 
-## What to Do When All Three Finish
+## When Complete
 
-### Step 0: Verify split integrity (run once before final comparison)
-```bash
-python3 python/check_split_integrity.py --datasets datasets
-```
-
-### Step 1: Verify completion (run when `watch_full_runs.py` reports COMPLETE)
-```bash
-python3 python/watch_full_runs.py --log runs/full_abc_runs.log
-ls -lh runs/variant_{A,B,C}/results.json
-cat runs/variant_{A,B,C}/results.json | jq -s '.[] | {variant, eval_perplexity, training_minutes, batch_size}'
-```
-
-### Step 2: Run comparison
-```bash
-python3 python/compare_results.py --full-results
-```
-
-### Step 3: Capture results
-```bash
-cp runs/variant_*/results.json runs/comparison_$(date +%Y%m%d_%H%M%S).json
-mkdir -p artifacts/phase_5_results
-cp runs/comparison_*.json artifacts/phase_5_results/
-```
-
-### Step 4: Document findings
-- Create `docs/PHASE_5_RESULTS.md`
-- Include: perplexity table, training time comparison, batch config notes
-- Note: "This measures next-token prediction efficiency, not downstream task performance"
-
-### Step 5: Future work section
-Add to `docs/PHASE_5_RESULTS.md`:
-```markdown
-## Future Directions
-
-### Context-Pack Protocol (Phase 6a)
-Extract proof context (dependencies, scoped variables, type classes) 
-from Mathlib declarations. Enables semantic-aware training for variants.
-
-### Theorem-Proving Evaluation (Phase 6)
-Build harness to measure actual proof-finding ability on held-out theorems.
-Requires: Phase 5 baseline models + Phase 6a context packs (optional but recommended).
-
-### Corpus Expansion
-Current corpus: 4 Mathlib modules. Expand to full library (1000+ modules) 
-to measure generalization and improve sample efficiency.
-```
-
-### Step 6: Commit
-```bash
-git add runs/ docs/PHASE_5_RESULTS.md artifacts/ 
-git commit -m "Phase 5 complete: A/B/C perplexity comparison on canonical IR
-
-Results: [summary]
-
-Batch size tuning fixed OOM on variants B/C. All three variants trained
-to completion with identical held-out evaluation set (512-token cap).
-
-Primary finding: IR representation (A) shows [X]% better/worse perplexity
-than raw Lean baselines (B/C).
-
-This measures next-token prediction efficiency on isolated declarations.
-Future work: context-pack protocol + theorem-proving evaluation harness.
-
-Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
-```
-
-## Success Criteria
-- [ ] B completes without OOM (track via live tqdm ETA, not fixed timestamp)
-- [ ] C completes without OOM (track via live tqdm ETA, not fixed timestamp)
-- [ ] All three results.json files present with eval_perplexity values
-- [ ] Comparison shows clear A vs B/C delta (or no significant difference)
-- [ ] Documentation captures findings honestly (no overinterpretation)
-- [ ] Future work section positions context-packs + proving as separate projects
+1. Confirm `effective_batch_size=8` in all three `results.json` files.
+2. Run `python3 python/preflight_check.py --datasets datasets/` to validate post-rerun state.
+3. Update results tables in `README.md` and `docs/EXPERIMENT_DESIGN.md` with the new numbers.
+4. Rebuild datasets and fix `eval_completion.py` label bug, then run completion accuracy.
