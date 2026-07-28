@@ -100,17 +100,23 @@ Secondary metrics (if time permits):
 
 ## Results
 
-Current `runs/` contents include non-smoke restarts. Do **not** treat them as final until the
-active stabilized B/C pass completes and strict gates pass.
+Full run completed 2026-07-27. Results below are real (`smoke_test: false`) but carry two
+documented confounds — see DEC-006 and DEC-007 in `docs/DECISION_LOG.md` before drawing
+conclusions. A matched-batch rerun (B/C `grad_accum` 4→8) is the next required step.
 
-| Variant | Representation | Vocab | Perplexity | Training time |
-|---------|---------------|-------|------------|---------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | 1.4781 *(non-smoke, 1 epoch rerun)* | 22.2 min |
-| B | Raw `leanExpr` → Qwen BPE | 151,643 / 151,936 embeddings | NaN *(invalid prior run; rerunning stabilized pass)* | 183.8 min *(invalid run)* |
-| C | AST-style → Qwen BPE | 151,643 / 151,936 embeddings | pending *(stabilized rerun in progress)* | pending |
+| Variant | Representation | Vocab | Perplexity | Train time | Grad steps | Eff. batch |
+|---------|---------------|-------|------------|------------|------------|------------|
+| A | Maith IR tokens (v1.2.0) | 4,495 | **1.3922** | 22.6 min | 277 | 8 |
+| B | Raw `leanExpr` → Qwen BPE | 151,936 | **1.1420** | 41.3 min | 554 | 4 ⚠ |
+| C | AST-style → Qwen BPE | 151,936 | **1.1298** | 44.3 min | 554 | 4 ⚠ |
 
-**Current run profile:** Qwen2.5-Coder-0.5B (MPS), seed 42, effective batch size 8, 2,213 train / 246 eval,
-fixed eval cap 512, encoder v1.2.0. See `PHASE_5_COMPLETION_CHECKLIST.md` for authoritative live status.
+⚠ B and C ran with `grad_accum=4` (effective batch 4) vs A's `grad_accum=4, batch_size=2`
+(effective batch 8), giving B/C twice as many gradient steps. This is an uncontrolled variable
+(DEC-007). The random-embedding-init confound (DEC-006) also disadvantages A independently.
+Neither confound has been ruled out as the primary cause of A's higher perplexity.
+
+**Run profile:** Qwen2.5-Coder-0.5B (MPS), seed 42, 2,213 train / 246 eval, shared eval cap 512,
+encoder v1.2.0, 1 epoch. A: lr=2e-4, train cap 1024. B/C: lr=3e-5, train cap 384.
 
 ## Ordered execution checklist (build-out process)
 
