@@ -30,3 +30,6 @@ runs/
 *.tmp
 *.log
 *~
+
+# Local Ollama model definitions — not part of the repo
+Modelfile
