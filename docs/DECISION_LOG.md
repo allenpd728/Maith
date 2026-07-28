@@ -140,7 +140,7 @@ Canonical record of experiment-critical decisions that affect interpretation and
 
 ### DEC-008: DEC-006 cold-start test — 3-epoch variant A run
 - Date: 2026-07-28
-- Status: in progress
+- Status: complete
 - Scope: experiment interpretation / confound elimination
 - Decision:
   - After the matched-batch rerun (2026-07-28: A=1.39, B=1.15, C=1.13), the A/B/C gap holds.
@@ -155,20 +155,60 @@ Canonical record of experiment-critical decisions that affect interpretation and
   python3 python/train.py --variant A --datasets datasets/ --out runs/variant_A_3ep --epochs 3
   ```
 
+  **Result (2026-07-28):**
+  3-epoch variant A eval perplexity = **1.2598** (67.6 minutes, 831 train steps).
+
   **Interpretation:**
-  - If 3-epoch A perplexity drops substantially toward B/C (e.g., below 1.25): cold-start
-    embedding init is the dominant cause; IR representation not yet ruled out.
-  - If 3-epoch A perplexity remains near 1.39: cold-start is not the explanation; the IR
-    token representation itself underperforms at this scale — investigate vocab size,
-    sequence cap asymmetry, or representation design.
+  1.2598 is a meaningful drop from 1.39 (1-epoch), confirming that cold-start embedding
+  initialization is a real factor. However, it remains above the "cold-start dominant" threshold
+  of ~1.25, and the gap to B/C (1.15/1.13) persists. Cold-start accounts for a significant
+  portion of A's underperformance but not all of it. The representation may also be contributing.
+
+  **Conclusion:**
+  DEC-006 is partially confirmed as a confound. The cold-start penalty is real but not the
+  complete explanation. An embedding warm-start experiment (DEC-009) is required to isolate
+  representation quality from initialization advantage more cleanly.
 
   **Why 3 epochs (not embedding warm-start):**
-  3-epoch test is zero-code-change (uses new `--epochs` flag), self-contained, and interpretable.
-  Embedding warm-start (copying pretrained Qwen embeddings for overlapping tokens) would be a
-  cleaner structural fix but requires more code and a separate controlled comparison.
-  3 epochs is the lower-cost first probe; warm-start remains an option if 3 epochs is ambiguous.
+  3-epoch test was zero-code-change, self-contained, and interpretable as a first probe.
+  Embedding warm-start is the cleaner structural fix and is the recommended next step.
 
 - References:
   - Matched-batch rerun results 2026-07-28: A=1.39, B=1.15, C=1.13
+  - 3-epoch result 2026-07-28: A=1.2598
   - docs/PHASE_5_RESULTS.md
   - python/train.py (`--epochs` flag, `epochs_override` parameter)
+
+### DEC-009: Embedding warm-start to isolate representation quality
+- Date: 2026-07-28
+- Status: proposed
+- Scope: experiment interpretation / confound elimination
+- Decision:
+  - DEC-008 established that cold-start embedding initialization partially explains A's
+    underperformance but does not fully account for the gap to B/C. An embedding warm-start
+    experiment is the next step to separate representation quality from initialization advantage.
+
+  **Proposed protocol:**
+  Before training variant A, copy pretrained Qwen2.5-Coder embedding vectors for any tokens
+  whose string representation appears in both the Qwen vocabulary and the custom IR vocab
+  (e.g., numeric literals, common identifiers). Randomly initialize the remainder. All other
+  hyperparameters unchanged from the matched-batch rerun. Output to `runs/variant_A_warmstart`.
+
+  **Interpretation framework:**
+  - If warm-start A perplexity approaches B/C (≤1.15): embedding initialization was the
+    primary cause; IR representation is competitive once initialized fairly.
+  - If warm-start A perplexity remains above 1.25: the representation itself underperforms
+    at this scale; investigate vocab size (4,495 tokens may be too small), sequence cap
+    asymmetry, or structural information loss in the IR encoding.
+  - If warm-start A perplexity is between 1.15 and 1.25: both factors contribute; further
+    ablations needed.
+
+  **Prerequisites:**
+  - Identify token overlap between `vocab_A.json` and Qwen2.5-Coder BPE vocabulary.
+  - Implement warm-start weight copy in `python/train.py` (new `--warm-start-embeddings` flag).
+  - Verify that warm-started embeddings are trainable (not frozen) so A can still adapt.
+
+- References:
+  - DEC-006, DEC-008
+  - docs/PHASE_5_RESULTS.md
+  - python/train.py
