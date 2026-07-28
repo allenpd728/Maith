@@ -4,7 +4,8 @@
 
 - **Matched-batch rerun complete**: A=1.39, B=1.15, C=1.13 (all `smoke_test: false`, effective batch=8)
 - **DEC-007 resolved**: all variants at grad_accum=8; gap between A and B/C holds after fix
-- **DEC-006 outstanding**: A uses randomly initialized embeddings (4,495 tokens); B/C use pretrained Qwen embeddings (151,643 tokens); this cold-start disadvantage is uncontrolled
+- **DEC-008 complete**: 3-epoch A=1.26 — cold-start is a real factor but does not fully explain the gap
+- **DEC-009 in progress**: embedding warm-start experiment; code shipped in `train.py` (`--warm-start-embeddings`), run pending
 
 ## Completed
 
@@ -12,16 +13,24 @@
 - [x] Results tables updated in `README.md` and `docs/EXPERIMENT_DESIGN.md`
 - [x] `docs/PHASE_5_RESULTS.md` filled in with real numbers and interpretation
 - [x] DEC-007 documented and resolved
+- [x] DEC-008: 3-epoch variant A run complete (result: 1.2598)
+- [x] `--epochs` flag added to `train.py`
+- [x] `--warm-start-embeddings` flag added to `train.py` (DEC-009 implementation)
+- [x] DEC-009 drafted in `docs/DECISION_LOG.md`
 
-## Next Step
+## In Progress
 
-Rule out DEC-006 (embedding cold-start confound) by running variant A for 3 epochs:
+- [ ] **DEC-009**: run variant A with `--warm-start-embeddings`, compare to B/C baseline
 
-```bash
-# In python/train.py, temporarily set VARIANT_EPOCHS["A"] = 3, then:
-python3 python/run_full_experiment.py --variant A
-```
+  ```bash
+  python3 python/train.py --variant A --datasets datasets/ --out runs/variant_A_warmstart \
+    --warm-start-embeddings && \
+  cp -r ~/Projects/Maith/runs/ ~/Library/Caches/com.spotify.studio/.studio/artifacts/maith-runs/
+  ```
 
-If the gap to B/C (1.15/1.13) shrinks substantially, DEC-006 is the primary cause.
-If it holds, the IR token representation itself is the issue — investigate vocab size
-or representation design.
+## Remaining after DEC-009
+
+- [ ] Update `docs/DECISION_LOG.md` DEC-009 status to `complete`
+- [ ] Add warm-start result to `docs/PHASE_5_RESULTS.md`
+- [ ] Write final Phase 5 interpretation and update `README.md` roadmap entry to ✅
+- [ ] Decide on Phase 6 (theorem-proving evaluation) based on DEC-009 outcome
