@@ -136,15 +136,7 @@ To regenerate: `lake build buildCorpus && lake env ./.lake/build/bin/buildCorpus
 
 ## Next Steps
 
-1. **Run A/B/C training experiment** — `python3 python/train.py --variant A/B/C`; compare eval perplexity
+1. ✅ **Run A/B/C training experiment** — full run complete (2026-07-27: A=1.3922, B=1.1420, C=1.1298); matched-batch rerun in progress (DEC-007 fix)
 2. **Expand corpus** — add more Mathlib modules beyond the current 4
-3. **Expand evaluation depth** — run full (non-smoke) A/B/C training and record decision-grade perplexity
-4. **Use scaffolded experiment operations tooling** (safe while long runs are active):
-   - `python3 python/run_status_dashboard.py`
-   - `python3 python/run_postrun_pipeline.py --runs-dir runs/ --allow-incomplete`
-   - `python3 python/validate_experiment_artifacts.py --runs-dir runs/`
-   - `python3 python/check_publish_readiness.py --runs-dir runs/`
-5. **Track representation/theorem-eval scaffolds**:
-   - `python3 python/check_representation_matrix_gate.py --allow-incomplete`
-   - `python3 python/scaffold_theorem_eval.py`
-   - `python3 python/validate_theorem_eval_artifacts.py`
+3. ✅ **Expand evaluation depth** — full (non-smoke) A/B/C runs complete; see `docs/PHASE_5_RESULTS.md` for results and confound documentation
+4. **Interpret results and plan Phase 6** — see `docs/FUTURE_WORK.md` for Phase 6 scaffold design
