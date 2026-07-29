@@ -93,15 +93,30 @@ def load_eval_split(variant: str, datasets_dir: str, limit: Optional[int]) -> li
 def find_checkpoint_dir(model_dir: Path) -> Path:
     """
     Return the best checkpoint directory inside model_dir.
-    Trainer saves to checkpoint-<step>/ subdirectories; pick the highest-numbered one.
-    Falls back to model_dir itself if no checkpoint subdirs exist.
+
+    Priority order:
+      1. Highest-numbered checkpoint-<step>/ subdir (legacy step-based saves).
+      2. checkpoint-final/ — written by train.py v2+ (final-only save, no step number).
+      3. model_dir itself if no checkpoint subdirs exist.
     """
-    checkpoints = sorted(
-        [d for d in model_dir.iterdir() if d.is_dir() and d.name.startswith("checkpoint-")],
+    # Step-based checkpoints (checkpoint-277, checkpoint-554, etc.)
+    numeric_checkpoints = sorted(
+        [
+            d for d in model_dir.iterdir()
+            if d.is_dir()
+            and d.name.startswith("checkpoint-")
+            and d.name.split("-")[-1].isdigit()
+        ],
         key=lambda d: int(d.name.split("-")[-1]),
     )
-    if checkpoints:
-        return checkpoints[-1]
+    if numeric_checkpoints:
+        return numeric_checkpoints[-1]
+
+    # Final-only checkpoint written by train.py v2+
+    final = model_dir / "checkpoint-final"
+    if final.exists():
+        return final
+
     return model_dir
 
 

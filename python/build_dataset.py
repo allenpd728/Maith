@@ -12,7 +12,7 @@ Each variant is exported as a HuggingFace-compatible JSONL with fields:
   { "input_ids": [...], "labels": [...], "source": "A"|"B"|"C",
     "name": "<decl name>", "module": "<module>" }
 
-For variants B and C the tokenizer is Qwen2.5-Coder-1.5B BPE.
+For variants B and C the tokenizer is Qwen2.5-Coder-0.5B BPE.
 For variant A we build a custom vocab from the corpus and map tokens to integer IDs.
 
 Also outputs:
@@ -256,7 +256,7 @@ def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str =
         print("  Run: pip install transformers")
         tokenizer = None
     else:
-        model = "Qwen/Qwen2.5-Coder-1.5B"
+        model = "Qwen/Qwen2.5-Coder-0.5B"
         print(f"Loading tokenizer ({model}) ...")
         tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
         print(f"  Tokenizer vocab size: {tokenizer.vocab_size:,}")
@@ -327,7 +327,7 @@ def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str =
 
     print()
     print("Done. Next step: fine-tune a small model on each variant and compare perplexity.")
-    print("  Recommended: Qwen2.5-Coder-1.5B (variant A uses custom vocab; B/C use native BPE)")
+    print("  Recommended: Qwen2.5-Coder-0.5B (variant A uses custom vocab; B/C use native BPE)")
 
 
 if __name__ == "__main__":
