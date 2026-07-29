@@ -148,3 +148,51 @@ that the model relies on for accurate completion.
 
 **Next step:** Run with `--samples 200 --mask-last 10` for higher confidence, then decide
 whether to pursue IR vocab improvements or conclude B/C as the baseline for Phase 6.
+
+## Completion Accuracy — top-1, last 10 tokens masked, 200 examples (2026-07-29)
+
+| Variant | Top-1 Accuracy | Correct | Total Tokens | Examples |
+|---------|---------------|---------|--------------|----------|
+| A | 60.5% | 121 | 200 | 200 |
+| B | **96.8%** ← | 183 | 189 | 189 |
+| C | 94.9% | 187 | 197 | 197 |
+
+**The small-sample result holds at scale.** The pattern is confirmed — not sampling variance.
+B edges C at 10-token mask depth (96.8% vs 94.9%), reversing C's narrow win at 5 tokens, but
+both are well above 90%. A remains at ~60%, a stable floor across both sample sizes.
+
+**Notable: B slightly beats C at deeper mask depth.** At 5 tokens C was 100%, B was 94%. At
+10 tokens B is 97%, C is 95%. This suggests C's AST-style split may give a small advantage on
+short completions (cleaner token boundaries at sequence ends) but B's larger unmodified BPE
+context window gives it an edge when the model needs to track more tokens back.
+
+**Conclusion — Phase 5 finding:**
+
+The IR representation hypothesis is **falsified at this scale and dataset size**. Variant A's
+custom IR vocab (4,495 tokens) achieves ~60% top-1 completion accuracy vs ~95-97% for raw
+leanExpr BPE (B/C). This gap is robust across sample sizes and mask depths.
+
+**Root causes (in order of confidence):**
+1. **Vocab compression destroys surface regularity.** IR tokens collapse structural patterns
+   (e.g., `FORALL_OPEN`, `BVAR_0`) into a small discrete set. BPE preserves the literal text
+   of leanExpr strings, which have strong n-gram predictability the model can exploit directly.
+2. **Cross-graph BVAR identity loss.** `BVAR_0` in one declaration's graph has no fixed
+   meaning relative to another — positional encoding cannot distinguish them, so the model
+   cannot learn cross-declaration structural roles.
+3. **Cold-start embedding penalty (DEC-006).** Partially mitigated by 3-epoch training
+   (1.39 → 1.26 perplexity) but cannot be fully closed without vocab overlap for warm-start.
+
+**Options for Phase 6:**
+- **Option 1 (pursue B/C):** Accept that raw leanExpr BPE is the stronger representation at
+  this scale. Use Variant C as the Phase 6 baseline (best perplexity, near-best completion).
+  Focus on scaling data and model size rather than representation engineering.
+- **Option 2 (fix IR):** Redesign the IR vocab to preserve more surface regularity — larger
+  vocab, position-qualified BVAR tokens (`BVAR_0_D2` = bvar 0 at depth 2), or hybrid encoding
+  (IR structure tags interleaved with BPE sub-tokens). Higher engineering cost, uncertain payoff.
+- **Option 3 (hybrid):** Use B/C as the training backbone but add IR-derived features as
+  auxiliary inputs (e.g., graph depth, node type embeddings as positional signals). Best of
+  both worlds but requires architecture changes.
+
+**Recommendation:** Option 1. The BPE representation works. Scaling Variant C to more data
+and a larger model is the lowest-risk path to a useful proof-step predictor. IR encoding can
+be revisited if BPE hits a ceiling on structural generalization tasks.
