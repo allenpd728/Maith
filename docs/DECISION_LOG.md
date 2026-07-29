@@ -191,6 +191,52 @@ Canonical record of experiment-critical decisions that affect interpretation and
   - docs/PHASE_5_RESULTS.md
   - python/train.py (`--epochs` flag, `epochs_override` parameter)
 
+### DEC-011: eval_completion.py fix verification — corrected eval confirmed valid
+- Date: 2026-07-29
+- Status: accepted
+- Scope: evaluation pipeline / result validity
+
+**Bug recap (DEC-010):**
+The original `evaluate_completion` loop used a logit-position index (`logit_pos = prefix_len - 1 + k`)
+that immediately exceeded `logits.shape[0]` at k=1, causing a break after the first token.
+Every run evaluated exactly 1 prediction per example regardless of `--mask-last`.
+
+**Fix — autoregressive teacher-forcing loop:**
+The corrected loop iterates directly over `targets = input_ids[prefix_len : prefix_len + mask_last]`.
+At each step it:
+1. Feeds `current_ids` (initially `input_ids[:prefix_len]`) to the model
+2. Takes `logits[0, -1].argmax()` — the prediction for the next position
+3. Compares to `target_id` (ground truth)
+4. Appends `target_id` (not the prediction) to `current_ids` for the next step (teacher forcing)
+
+**Indexing math:**
+For a sequence of length L with `mask_last=10`:
+- `prefix_len = L - 10`
+- `targets = input_ids[L-10 : L]` — exactly 10 tokens
+- Loop runs 10 times; `ex_total` increments to 10
+- Grand total across N examples = N × 10 (minus examples with len ≤ mask_last)
+
+**Prediction scaling confirmed against actual output (2026-07-29 run):**
+- A: 200 examples × 10 = 2,000 total predictions reported ✓
+- B: 189 examples × 10 = 1,890 total predictions reported ✓  (11 examples too short, skipped)
+- C: 197 examples × 10 = 1,970 total predictions reported ✓  (3 examples too short, skipped)
+
+This matches exactly. The old buggy runs reported total_predictions = examples_evaluated (200/189/197),
+i.e., 1 prediction per example. The fixed runs report total_predictions = examples × 10. The scaling
+is confirmed.
+
+**Corrected results (89.7/94.1/94.6) — provisional status:**
+These results are valid under the fixed eval but carry one remaining caveat: Variant A used the
+3-epoch checkpoint (checkpoint-831) while B and C used 1-epoch checkpoints (checkpoint-554). The
+comparison is not matched on training budget. B and C at 3 epochs may score higher, potentially
+widening the gap. These numbers are the best available result for A vs B/C but must be treated as
+provisional until B and C are evaluated at matched epoch count.
+
+- References:
+  - python/eval_completion.py (corrected loop, lines ~216–230)
+  - DEC-010 (bug documentation)
+  - Corrected run output 2026-07-29: A=89.7%, B=94.1%, C=94.6%
+
 ### DEC-009: Embedding warm-start to isolate representation quality
 - Date: 2026-07-28
 - Status: complete
@@ -292,8 +338,26 @@ Canonical record of experiment-critical decisions that affect interpretation and
   **Rerun protocol:**
   python3 python/eval_completion.py --checkpoint-A runs/variant_A_3ep --samples 200 --mask-last 10
 
+  **Corrected result (2026-07-29):**
+  Variant A (3-epoch, checkpoint-831): 89.7%  (1,794 / 2,000 tokens, 200 examples)
+  Variant B (1-epoch, checkpoint-554): 94.1%  (1,779 / 1,890 tokens, 189 examples)
+  Variant C (1-epoch, checkpoint-554): 94.6%  (1,863 / 1,970 tokens, 197 examples)
+
+  **Key finding:**
+  A trails B and C but the gap is far smaller than the buggy numbers suggested — 89.7% vs 94–95%,
+  not 60% vs 95%. This materially changes the Phase 5 conclusion: the IR representation is
+  competitive at this task, not strongly inferior. A's deficit over B/C is ~5 percentage points,
+  which is consistent with the residual cold-start embedding penalty (DEC-006/008) rather than a
+  fundamental failure of the representation hypothesis.
+
+  **Comparison note:**
+  A used 3-epoch checkpoint-831 (more training); B/C used 1-epoch checkpoint-554 (less training).
+  This comparison still favors B/C — if A needed 3x the training to reach 89.7% while B/C hit
+  94–95% at 1 epoch, the representation advantage of B/C is real. But "real and ~5pp" is a very
+  different finding from "A is broken at 60%".
+
 - References:
   - python/eval_completion.py (fix commit following 83ded87)
-  - docs/PHASE_5_RESULTS.md (retracted results above)
+  - docs/PHASE_5_RESULTS.md (retracted results above, corrected results below)
   - DEC-008 (3-epoch A checkpoint)
   - DEC-009 (warm-start context)

@@ -120,6 +120,48 @@ whether the perplexity gap translates to completion accuracy.
 > must be re-run with the fixed eval before any conclusions are drawn.
 > See DEC-010 in DECISION_LOG.md.
 
+## Completion Accuracy — Corrected (2026-07-29, see DEC-010)
+
+Eval: `python3 python/eval_completion.py --checkpoint-A runs/variant_A_3ep --samples 200 --mask-last 10`
+
+Teacher-forced autoregressive eval — each of the last 10 tokens predicted independently with
+ground truth prefix. Total predictions = examples × 10 (minus examples too short to evaluate).
+
+| Variant | Checkpoint | Epochs | Top-1 Accuracy | Correct | Total Tokens | Examples |
+|---------|-----------|--------|---------------|---------|--------------|----------|
+| A | checkpoint-831 | 3 | 89.7% | 1,794 | 2,000 | 200 |
+| B | checkpoint-554 | 1 | 94.1% | 1,779 | 1,890 | 189 |
+| C | checkpoint-554 | 1 | **94.6%** ← | 1,863 | 1,970 | 197 |
+
+**Revised interpretation:**
+
+The corrected gap is ~5 percentage points (A=89.7% vs B/C=94–95%), not the 35pp gap the
+buggy eval reported. This is a materially different result.
+
+A is competitive but trails B/C. Given that A used 3× the training (3 epochs vs 1), the
+comparison is not perfectly fair to B/C — they would likely improve further with 3 epochs.
+Even so, a 5pp deficit with 3× the training is a signal, not noise.
+
+**Root cause assessment (revised):**
+
+The cold-start embedding penalty (DEC-006/008) remains the most likely explanation for the
+residual gap. A's embedding table was randomly initialized and required additional training
+to recover — DEC-008 showed perplexity dropping from 1.39 to 1.26 with 3 epochs. The
+completion accuracy gap is consistent with that trajectory.
+
+The representation hypothesis is **not falsified** by these results. A 5pp gap at 3× the
+training budget could close with a fair matched-epoch comparison (3 epochs each).
+
+**Recommended next step for Phase 6:**
+
+Run B and C for 3 epochs to produce a fair comparison at matched training budget. If A's
+gap narrows further, the representation is sound and scaling is the priority. If A remains
+5pp below at matched epochs, representation improvements (larger vocab, position-qualified
+BVAR tokens) are worth investigating.
+
+**Phase 5 final status:** complete. All confounds documented, all bugs fixed, corrected
+completion eval recorded. Phase 6 design should start from these numbers.
+
 ## Completion Accuracy — top-1, last 5 tokens masked (2026-07-29) [RETRACTED]
 
 Note: `eval_completion.py` had a one-position labels-offset bug (labels[i] = input_ids[i+1],
@@ -175,33 +217,13 @@ both are well above 90%. A remains at ~60%, a stable floor across both sample si
 short completions (cleaner token boundaries at sequence ends) but B's larger unmodified BPE
 context window gives it an edge when the model needs to track more tokens back.
 
-**Conclusion — Phase 5 finding:**
+**Conclusion — Phase 5 finding (based on retracted buggy results — see correction above):**
 
-The IR representation hypothesis is **falsified at this scale and dataset size**. Variant A's
-custom IR vocab (4,495 tokens) achieves ~60% top-1 completion accuracy vs ~95-97% for raw
-leanExpr BPE (B/C). This gap is robust across sample sizes and mask depths.
+> ⚠️ The conclusion below was drawn from invalid results (DEC-010). It is preserved for
+> audit trail only. See the "Completion Accuracy — Corrected" section above for the current
+> Phase 5 conclusion.
 
-**Root causes (in order of confidence):**
-1. **Vocab compression destroys surface regularity.** IR tokens collapse structural patterns
-   (e.g., `FORALL_OPEN`, `BVAR_0`) into a small discrete set. BPE preserves the literal text
-   of leanExpr strings, which have strong n-gram predictability the model can exploit directly.
-2. **Cross-graph BVAR identity loss.** `BVAR_0` in one declaration's graph has no fixed
-   meaning relative to another — positional encoding cannot distinguish them, so the model
-   cannot learn cross-declaration structural roles.
-3. **Cold-start embedding penalty (DEC-006).** Partially mitigated by 3-epoch training
-   (1.39 → 1.26 perplexity) but cannot be fully closed without vocab overlap for warm-start.
-
-**Options for Phase 6:**
-- **Option 1 (pursue B/C):** Accept that raw leanExpr BPE is the stronger representation at
-  this scale. Use Variant C as the Phase 6 baseline (best perplexity, near-best completion).
-  Focus on scaling data and model size rather than representation engineering.
-- **Option 2 (fix IR):** Redesign the IR vocab to preserve more surface regularity — larger
-  vocab, position-qualified BVAR tokens (`BVAR_0_D2` = bvar 0 at depth 2), or hybrid encoding
-  (IR structure tags interleaved with BPE sub-tokens). Higher engineering cost, uncertain payoff.
-- **Option 3 (hybrid):** Use B/C as the training backbone but add IR-derived features as
-  auxiliary inputs (e.g., graph depth, node type embeddings as positional signals). Best of
-  both worlds but requires architecture changes.
-
-**Recommendation:** Option 1. The BPE representation works. Scaling Variant C to more data
-and a larger model is the lowest-risk path to a useful proof-step predictor. IR encoding can
-be revisited if BPE hits a ceiling on structural generalization tasks.
+The IR representation hypothesis is ~~falsified at this scale and dataset size~~. **Retracted.**
+The corrected eval shows A=89.7% vs B/C=94–95%, a ~5pp gap at 3× the training budget for A.
+The hypothesis is not falsified — the gap is consistent with the cold-start embedding penalty
+and a fair matched-epoch comparison has not yet been run.

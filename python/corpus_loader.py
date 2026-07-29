@@ -126,6 +126,10 @@ def train_eval_split(
     eval_ratio: float = 0.2,
     seed: int = 0,
 ) -> Tuple[List[TrainingExample], List[TrainingExample]]:
+    # NOTE: build_dataset.py uses a 90/10 split (eval_ratio=0.1, seed=42).
+    # This function defaults to 80/20 — it is a standalone utility, not the
+    # canonical split used for A/B/C training. Do not use this to reproduce
+    # the training split.
     if not 0.0 < eval_ratio < 1.0:
         raise ValueError("eval_ratio must be between 0 and 1")
 

@@ -34,7 +34,7 @@ except ImportError:
     sys.exit(1)
 
 
-MODEL = "Qwen/Qwen2.5-Coder-1.5B"
+MODEL = "Qwen/Qwen2.5-Coder-0.5B"
 
 
 def load_sample(corpus_path: str, n: int) -> list[dict]:
