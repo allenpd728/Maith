@@ -173,6 +173,18 @@ Canonical record of experiment-critical decisions that affect interpretation and
   3-epoch test was zero-code-change, self-contained, and interpretable as a first probe.
   Embedding warm-start is the cleaner structural fix and is the recommended next step.
 
+  **Perplexity summary (on record before completion-eval result):**
+  - 1-epoch A (matched-batch): 1.39
+  - 3-epoch A: 1.2598
+  - Delta: −0.13 (~9% improvement)
+  - 1-epoch B/C baseline: 1.15 / 1.13
+  - Residual gap after 3 epochs: A still 0.11–0.13 above B/C
+  - Status: partial closure. Cold-start is a real factor. Gap persists. Representation
+    contribution cannot yet be separated from remaining initialization disadvantage.
+  - Completion accuracy against the 3-epoch checkpoint (checkpoint-831) is pending and
+    may change the interpretation of how much of the residual gap is representation vs
+    training exposure.
+
 - References:
   - Matched-batch rerun results 2026-07-28: A=1.39, B=1.15, C=1.13
   - 3-epoch result 2026-07-28: A=1.2598
