@@ -237,6 +237,57 @@ provisional until B and C are evaluated at matched epoch count.
   - DEC-010 (bug documentation)
   - Corrected run output 2026-07-29: A=89.7%, B=94.1%, C=94.6%
 
+### DEC-012: Regression test for DEC-010 eval_completion.py indexing bug
+- Date: 2026-07-29
+- Status: accepted
+- Scope: evaluation pipeline / test coverage
+
+**What the test covers:**
+`python/test_eval_regression.py` adds 6 tests targeting the two bugs documented in DEC-010:
+
+  1. **total_predictions scales with mask_last** — the single most direct regression guard.
+     With the old buggy code, total_predictions == n_examples always. With the fix,
+     total_predictions == n_examples * mask_last. This test asserts the correct invariant
+     at mask_last = 1, 3, 5, and 10.
+
+  2. **Short sequences skipped correctly** — examples with len(input_ids) <= mask_last
+     must be excluded entirely from total_predictions and examples_evaluated.
+
+  3. **Perfect predictor scores 100%** — end-to-end sanity check with a controlled model
+     that always predicts the correct next token.
+
+  4. **Worst predictor scores 0%** — complementary sanity check with a model that always
+     predicts token 0 against sequences starting at token 10.
+
+  5. **Teacher forcing uses ground truth** — RecordingModel logs every input_ids call.
+     Verifies that at each step the prefix is extended by the ground-truth token (not the
+     prediction), confirming that errors do not compound across the mask_last steps.
+
+  6. **mask_last=1 backward compat** — with mask_last=1 the fixed eval and old buggy eval
+     produce the same result (1 token per example). Confirms the fix is not a regression
+     for the single-token case.
+
+**Test design notes:**
+  - CPU-only, model-free (FakeCausalLM / RecordingModel). Runs in < 1 second.
+  - Same treatment as test_train_regression.py: imports only the function under test,
+    no GPU, no dataset files required.
+  - Test 1 would catch a DEC-010 regression immediately: if the break-on-first-token
+    bug re-appeared, total_predictions would equal n_examples (10) instead of
+    n_examples * mask_last (10, 30, 50, 100) for the four mask_last values tested.
+  - Test 5 (teacher forcing) catches the subtler failure mode where the prefix is
+    extended with the predicted token instead of the ground truth — which would make
+    accuracy sensitive to error compounding rather than per-position accuracy.
+
+**Run:**
+  python3 python/test_eval_regression.py
+
+**Result (2026-07-29):** 6/6 passed.
+
+- References:
+  - python/test_eval_regression.py
+  - DEC-010 (bug documentation)
+  - python/eval_completion.py (corrected evaluate_completion function)
+
 ### DEC-009: Embedding warm-start to isolate representation quality
 - Date: 2026-07-28
 - Status: complete
