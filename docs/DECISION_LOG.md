@@ -249,3 +249,51 @@ Canonical record of experiment-critical decisions that affect interpretation and
   - docs/PHASE_5_RESULTS.md
   - python/train.py
   - runs/variant_A_warmstart/results.json
+
+### DEC-010: eval_completion.py had two bugs — prior completion-accuracy results are invalid
+- Date: 2026-07-29
+- Status: accepted
+- Scope: evaluation validity / result retraction
+
+- Decision:
+  The completion-accuracy results previously reported (A=56%/60.5%, B=94%/96.8%, C=100%/94.9%)
+  are **invalid** and must not be used to support or refute the representation hypothesis.
+  Two bugs were identified:
+
+  **Bug 1 — Single-token-only evaluation (primary).**
+  The logit indexing loop used logit_pos = prefix_len - 1 + k, but the forward pass only
+  produced prefix_len logit rows (indices 0..prefix_len-1). At k=1, logit_pos = prefix_len,
+  which immediately triggered the break guard. Every run — regardless of --mask-last value
+  — evaluated exactly one token per example. The --mask-last flag changed only which
+  single position was tested, not how many tokens were evaluated. "200 examples, mask-last 10"
+  = 200 single-token predictions, not 2,000.
+
+  **Bug 2 — Structurally biased test position (secondary, Variant C specific).**
+  Token 13 (Qwen BPE structural delimiter) appeared at the tested position in 67/246 eval_C
+  examples (27%) and is a high-frequency token (12,790 occurrences in eval_C, 15.2% of all
+  tokens). Its preceding context is highly repetitive — 33/67 cases preceded by the exact same
+  3-token pattern [1523, 48765, 23684]. A model could inflate accuracy on these positions by
+  learning one n-gram. Variants A and B do not show equivalent concentration (A: token 98 at
+  0.6% corpus frequency). This independently inflated C's score regardless of Bug 1.
+
+  **Fix applied (2026-07-29):**
+  - Replaced single-pass logit loop with autoregressive teacher-forcing loop evaluating each
+    of the mask_last positions independently.
+  - Added --checkpoint-A flag for direct evaluation against runs/variant_A_3ep.
+  - Targets now read from input_ids[prefix_len:] directly, not the labels array.
+
+  **Results retracted from PHASE_5_RESULTS.md:**
+  - Completion accuracy, last 5 tokens, 50 examples: A=56%, B=94%, C=100%
+  - Completion accuracy, last 10 tokens, 200 examples: A=60.5%, B=96.8%, C=94.9%
+  - All interpretation and conclusions based on those numbers.
+  - The "Phase 5 finding: IR representation hypothesis falsified" conclusion is premature
+    and must be reassessed after the corrected eval.
+
+  **Rerun protocol:**
+  python3 python/eval_completion.py --checkpoint-A runs/variant_A_3ep --samples 200 --mask-last 10
+
+- References:
+  - python/eval_completion.py (fix commit following 83ded87)
+  - docs/PHASE_5_RESULTS.md (retracted results above)
+  - DEC-008 (3-epoch A checkpoint)
+  - DEC-009 (warm-start context)

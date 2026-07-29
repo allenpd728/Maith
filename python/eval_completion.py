@@ -105,13 +105,19 @@ def find_checkpoint_dir(model_dir: Path) -> Path:
     return model_dir
 
 
-def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device: str):
+def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device: str,
+                         checkpoint_override: str = None):
     """
     Load a fine-tuned model from runs/variant_X/ (or its latest checkpoint subdir).
+    Pass checkpoint_override to use a different run directory for this variant
+    (e.g. runs/variant_A_3ep instead of runs/variant_A).
     For variant A, also loads vocab_A.json to get the vocab size.
     Returns (model, vocab_size).
     """
-    model_dir = Path(runs_dir) / f"variant_{variant}"
+    if checkpoint_override:
+        model_dir = Path(checkpoint_override)
+    else:
+        model_dir = Path(runs_dir) / f"variant_{variant}"
     if not model_dir.exists():
         raise FileNotFoundError(
             f"No saved model at {model_dir} — run train.py --variant {variant} first"
@@ -174,35 +180,32 @@ def evaluate_completion(
 
             # Prefix: everything up to the last mask_last tokens
             prefix_len = len(input_ids) - mask_last
-            prefix = torch.tensor(input_ids[:prefix_len], dtype=torch.long).unsqueeze(0).to(device)
 
-            # Ground truth: the next mask_last tokens.
-            # labels[i] = input_ids[i+1] (shifted left by 1), so the token
-            # predicted by logit at position (prefix_len - 1 + k) is labels[prefix_len - 1 + k].
-            targets = [
-                labels[i] for i in range(prefix_len - 1, prefix_len - 1 + mask_last)
-                if i < len(labels) and labels[i] != -100
-            ]
+            # Ground truth: the mask_last tokens that follow the prefix.
+            # Read directly from input_ids (not labels) to avoid the labels-shift confusion.
+            # The last token in input_ids is always EOS; targets won't include it because
+            # prefix_len + mask_last == len(input_ids), so targets = input_ids[prefix_len:-0]
+            # which is input_ids[prefix_len:], stopping before the implicit EOS position.
+            targets = input_ids[prefix_len:prefix_len + mask_last]
             if not targets:
                 continue
 
-            # Run forward pass on prefix
-            outputs = model(input_ids=prefix)
-            # logits shape: (1, prefix_len, vocab_size)
-            logits = outputs.logits[0]  # (prefix_len, vocab_size)
-
-            # For each target position, check the last prefix_len - 1 + k logit
-            # The logit at position i predicts token i+1 in the original sequence
+            # Autoregressive multi-token eval with teacher forcing.
+            # At each step: feed current prefix, predict next token, compare to ground truth,
+            # then append the ground truth token (not the prediction) so errors don't compound.
+            # This measures per-position accuracy at each of the mask_last positions
+            # independently, which is what was intended.
             ex_correct = 0
             ex_total   = 0
-            for k, target_id in enumerate(targets):
-                logit_pos = prefix_len - 1 + k
-                if logit_pos >= logits.shape[0]:
-                    break
-                pred = int(logits[logit_pos].argmax().item())
+            current_ids = input_ids[:prefix_len]
+            for target_id in targets:
+                inp = torch.tensor(current_ids, dtype=torch.long).unsqueeze(0).to(device)
+                outputs = model(input_ids=inp)
+                pred = int(outputs.logits[0, -1].argmax().item())
                 if pred == target_id:
                     ex_correct += 1
                 ex_total += 1
+                current_ids = current_ids + [target_id]  # teacher forcing
 
             correct += ex_correct
             total   += ex_total
@@ -312,6 +315,8 @@ def main():
                         help="Number of tokens to mask at end of each sequence (default: 5)")
     parser.add_argument("--runs-dir",    default=DEFAULT_RUNS)
     parser.add_argument("--datasets",    default=DATASETS_DIR)
+    parser.add_argument("--checkpoint-A", default=None,
+                        help="Override checkpoint directory for variant A (e.g. runs/variant_A_3ep)")
     args = parser.parse_args()
 
     if not Path("lakefile.lean").exists():
@@ -330,7 +335,9 @@ def main():
     for variant in variants:
         print(f"── Variant {variant} ──")
         try:
-            model, _ = load_model_and_vocab(variant, args.runs_dir, args.datasets, device)
+            ckpt_override = getattr(args, f"checkpoint_{variant}", None)
+            model, _ = load_model_and_vocab(variant, args.runs_dir, args.datasets, device,
+                                            checkpoint_override=ckpt_override)
             examples  = load_eval_split(variant, args.datasets, limit=args.samples)
             print(f"    {len(examples)} eval examples loaded")
             result = evaluate_completion(model, examples, device, mask_last=args.mask_last)

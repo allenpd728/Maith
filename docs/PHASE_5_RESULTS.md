@@ -111,7 +111,16 @@ at 3 epochs) and B/C (1.15/1.13 at 1 epoch) reflects the IR representation itsel
 initialization alone. Next: run `eval_completion.py` on matched-batch B/C checkpoints to assess
 whether the perplexity gap translates to completion accuracy.
 
-## Completion Accuracy — top-1, last 5 tokens masked (2026-07-29)
+## Completion Accuracy — RETRACTED (see DEC-010)
+
+> **These results are invalid.** Two bugs were found in eval_completion.py: (1) the logit
+> indexing loop broke after the first token, so every run evaluated exactly one token per
+> example regardless of --mask-last; (2) Variant C's tested position was structurally biased
+> toward a high-frequency delimiter token (27% of examples, 15% corpus frequency). Results
+> must be re-run with the fixed eval before any conclusions are drawn.
+> See DEC-010 in DECISION_LOG.md.
+
+## Completion Accuracy — top-1, last 5 tokens masked (2026-07-29) [RETRACTED]
 
 Note: `eval_completion.py` had a one-position labels-offset bug (labels[i] = input_ids[i+1],
 targets slice was off by one). Fixed in commit 491d980 before these results were collected.
