@@ -176,11 +176,12 @@ def evaluate_completion(
             prefix_len = len(input_ids) - mask_last
             prefix = torch.tensor(input_ids[:prefix_len], dtype=torch.long).unsqueeze(0).to(device)
 
-            # Ground truth: the next mask_last tokens
-            # Labels use -100 for the final padding token — skip those
+            # Ground truth: the next mask_last tokens.
+            # labels[i] = input_ids[i+1] (shifted left by 1), so the token
+            # predicted by logit at position (prefix_len - 1 + k) is labels[prefix_len - 1 + k].
             targets = [
-                labels[i] for i in range(prefix_len, len(labels))
-                if labels[i] != -100
+                labels[i] for i in range(prefix_len - 1, prefix_len - 1 + mask_last)
+                if i < len(labels) and labels[i] != -100
             ]
             if not targets:
                 continue
