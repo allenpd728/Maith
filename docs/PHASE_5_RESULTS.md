@@ -93,3 +93,20 @@ experiment (DEC-009) is required to isolate representation quality from initiali
 | 3-epoch A ≈ B/C | IR tokens competitive once embedding disadvantage removed |
 
 **Actual result: 1.2598** — cold-start is real but partial. Warm-start (DEC-009) is next.
+
+## DEC-009 Result: Embedding warm-start variant A (2026-07-29)
+
+| Variant | Epochs | Warm Start | Overlap Tokens | Eval Perplexity | Training Minutes |
+|---------|--------|------------|----------------|-----------------|------------------|
+| A | 1 | yes | 23 / 4,495 (0.51%) | 1.4288 | 22.5 |
+| B | 1 | n/a | — | 1.15 | 112.7 |
+| C | 1 | n/a | — | 1.13 | 50.0 |
+
+Warm-start overlap was 0.51% — effectively a cold start. Perplexity of 1.43 is marginally worse
+than the cold-start 1-epoch result (1.39), consistent with mild interference from the 23
+mismatched pretrained vectors. Embedding transfer is not viable at this vocab overlap level.
+
+**Conclusion:** DEC-006 Confound 1 is fully characterized. The residual gap between A (best: 1.26
+at 3 epochs) and B/C (1.15/1.13 at 1 epoch) reflects the IR representation itself, not
+initialization alone. Next: run `eval_completion.py` on matched-batch B/C checkpoints to assess
+whether the perplexity gap translates to completion accuracy.

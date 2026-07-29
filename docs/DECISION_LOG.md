@@ -181,7 +181,7 @@ Canonical record of experiment-critical decisions that affect interpretation and
 
 ### DEC-009: Embedding warm-start to isolate representation quality
 - Date: 2026-07-28
-- Status: proposed
+- Status: complete
 - Scope: experiment interpretation / confound elimination
 - Decision:
   - DEC-008 established that cold-start embedding initialization partially explains A's
@@ -208,7 +208,32 @@ Canonical record of experiment-critical decisions that affect interpretation and
   - Implement warm-start weight copy in `python/train.py` (new `--warm-start-embeddings` flag).
   - Verify that warm-started embeddings are trainable (not frozen) so A can still adapt.
 
+  **Result (2026-07-29):**
+  Warm-start overlap: **23 tokens out of 4,495 (0.51%)**.
+  Warm-start variant A eval perplexity = **1.4288** (22.5 minutes, 1 epoch).
+
+  **Interpretation:**
+  The 0.51% overlap means the warm-start was effectively a cold start — 4,472 of 4,495 embedding
+  rows remained randomly initialized. Perplexity is 1.43, marginally *worse* than the cold-start
+  1-epoch result (1.39), consistent with mild interference from the 23 mismatched pretrained vectors.
+
+  The warm-start approach cannot address DEC-006 at this vocab overlap level. The Qwen BPE
+  vocabulary and Maith's custom IR vocabulary are structurally too different for embedding transfer
+  to be meaningful.
+
+  **Conclusion:**
+  DEC-006 Confound 1 (randomly initialized embeddings) is now fully characterized:
+  - Cold-start is a real factor (DEC-008: 3 epochs improved A from 1.39 → 1.26).
+  - Warm-start cannot close the gap due to near-zero vocab overlap.
+  - The residual gap between A (1.26 at 3 epochs) and B/C (1.15/1.13 at 1 epoch) is
+    attributable to the IR representation itself, not initialization alone.
+
+  **Next step:** Run `eval_completion.py` against the matched-batch B and C checkpoints to
+  evaluate whether B/C's perplexity advantage translates to completion accuracy. Perplexity
+  is an average-case metric; completion accuracy is a sharper, task-relevant signal.
+
 - References:
   - DEC-006, DEC-008
   - docs/PHASE_5_RESULTS.md
   - python/train.py
+  - runs/variant_A_warmstart/results.json
