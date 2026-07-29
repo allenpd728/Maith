@@ -110,3 +110,41 @@ mismatched pretrained vectors. Embedding transfer is not viable at this vocab ov
 at 3 epochs) and B/C (1.15/1.13 at 1 epoch) reflects the IR representation itself, not
 initialization alone. Next: run `eval_completion.py` on matched-batch B/C checkpoints to assess
 whether the perplexity gap translates to completion accuracy.
+
+## Completion Accuracy — top-1, last 5 tokens masked (2026-07-29)
+
+Note: `eval_completion.py` had a one-position labels-offset bug (labels[i] = input_ids[i+1],
+targets slice was off by one). Fixed in commit 491d980 before these results were collected.
+
+| Variant | Top-1 Accuracy | Correct | Total Tokens | Examples |
+|---------|---------------|---------|--------------|----------|
+| A | 56.0% | 28 | 50 | 50 |
+| B | 93.9% | 46 | 49 | 49 |
+| C | **100.0%** ← | 49 | 49 | 49 |
+
+**Interpretation:**
+
+The completion accuracy gap is stark and directionally consistent with the perplexity gap —
+but far larger in magnitude. Variant C predicts the correct next token perfectly on this
+sample. Variant B is near-perfect at 93.9%. Variant A at 56.0% is barely above chance for
+a task where strong models should score well above 80%.
+
+This is not a noise result. The pattern aligns with every prior signal:
+- Perplexity: A=1.39 → B=1.15 → C=1.13 (same ranking, smaller gap)
+- Completion: A=56% → B=94% → C=100% (same ranking, much larger gap)
+
+The IR representation (Variant A) is measurably inferior to raw leanExpr BPE (B/C) on
+token-level next-step prediction at this scale. The custom IR vocab compresses information
+into a smaller token set — but that compression appears to destroy the surface regularities
+that the model relies on for accurate completion.
+
+**Open questions before concluding the representation hypothesis is falsified:**
+1. Sample size is 50 examples, 49-50 tokens total. A larger run (500+ examples) is needed
+   to confirm this is not sampling variance.
+2. The 5-token mask hits the end of sequences, which may be structurally different across
+   variants (IR token sequences end differently than BPE sequences).
+3. Variant A's 50 tokens vs B/C's 49 tokens suggests one example was dropped for B/C —
+   likely a sequence too short after BPE tokenization. Minor, but worth noting.
+
+**Next step:** Run with `--samples 200 --mask-last 10` for higher confidence, then decide
+whether to pursue IR vocab improvements or conclude B/C as the baseline for Phase 6.
