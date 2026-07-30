@@ -57,7 +57,7 @@ try:
     from transformers import (
         AutoConfig, AutoModelForCausalLM, AutoTokenizer,
         PreTrainedTokenizerFast, TrainingArguments, Trainer,
-        DataCollatorForLanguageModeling,
+        DataCollatorForLanguageModeling, TrainerCallback,
     )
     from transformers import set_seed as hf_set_seed
 except ImportError:
@@ -89,6 +89,72 @@ SEED            = 42
 
 
 # ---------------------------------------------------------------------------
+# Dataset sample logger
+# ---------------------------------------------------------------------------
+
+def log_dataset_samples(
+    train_path: str,
+    variant: str,
+    tokenizer,
+    vocab_path: Optional[str] = None,
+    n_samples: int = 3,
+    out_dir: Optional[str] = None,
+) -> None:
+    """
+    Print and optionally save n_samples decoded examples from the raw JSONL
+    (before IRDataset truncation) so training inputs can be visually validated.
+
+    For variant A, decodes token IDs using vocab_A.json (id → token string).
+    For B/C, decodes using the Qwen BPE tokenizer.
+    """
+    # Build id→token map for variant A
+    id_to_token = {}
+    if variant == "A" and vocab_path and os.path.exists(vocab_path):
+        with open(vocab_path) as f:
+            vocab = json.load(f)
+        # vocab is token→id; invert it
+        id_to_token = {v: k for k, v in vocab.items()}
+
+    samples = []
+    with open(train_path) as f:
+        for i, line in enumerate(f):
+            if i >= n_samples:
+                break
+            row = json.loads(line)
+            ids = row["input_ids"]
+            if variant == "A":
+                decoded = " ".join(id_to_token.get(tid, f"<UNK:{tid}>") for tid in ids)
+            else:
+                decoded = tokenizer.decode(ids, skip_special_tokens=False)
+            samples.append({
+                "index": i,
+                "name": row.get("name", "?"),
+                "module": row.get("module", "?"),
+                "seq_len": row.get("seq_len", len(ids)),
+                "decoded": decoded,
+            })
+
+    sep = "=" * 60
+    print(f"\n{sep}")
+    print(f"DATASET SAMPLE VALIDATION — Variant {variant}")
+    print(f"Source: {train_path}")
+    print(sep)
+    for s in samples:
+        print(f"\n[{s['index']}] {s['name']} ({s['module']}) — {s['seq_len']} tokens")
+        print(f"  {s['decoded'][:300]}{'...' if len(s['decoded']) > 300 else ''}")
+    print(f"{sep}\n")
+
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+        out_path = os.path.join(out_dir, f"sample_validation_{variant}.json")
+        with open(out_path, "w") as f:
+            json.dump({"variant": variant, "samples": samples}, f, indent=2)
+        print(f"  Sample log saved → {out_path}")
+    else:
+        print("  (out_dir not set — sample log not saved to disk)")
+
+
+# ---------------------------------------------------------------------------
 # Dataset
 # ---------------------------------------------------------------------------
 
@@ -98,13 +164,24 @@ class IRDataset(Dataset):
     PyTorch Dataset. Truncates sequences to MAX_SEQ_LEN.
     """
 
-    def __init__(self, jsonl_path: str, max_len: int = MAX_SEQ_LEN, limit: Optional[int] = None):
+    def __init__(self, jsonl_path: str, max_len: int = MAX_SEQ_LEN, limit: Optional[int] = None, expected_source: Optional[str] = None):
         self.examples = []
         with open(jsonl_path) as f:
             for i, line in enumerate(f):
                 if limit and i >= limit:
                     break
                 row = json.loads(line)
+                # Guard: confirm each row's source field matches the expected variant.
+                # A mismatch means the wrong dataset file was loaded — catch it early
+                # before any training steps run on mismatched token spaces.
+                if expected_source is not None:
+                    row_source = row.get("source")
+                    assert row_source == expected_source, (
+                        f"Source mismatch in {jsonl_path} at line {i}: "
+                        f"expected source='{expected_source}' but got '{row_source}'. "
+                        f"Declaration: {row.get('name', '?')}. "
+                        f"Check that build_dataset.py wrote the correct files."
+                    )
                 ids    = row["input_ids"][:max_len]
                 labels = row["labels"][:max_len]
                 self.examples.append({
@@ -210,6 +287,48 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
 
 
 # ---------------------------------------------------------------------------
+# Thermal guard callback
+# ---------------------------------------------------------------------------
+
+class ThermalGuardCallback(TrainerCallback):
+    """
+    Monitors step time during training. If a step takes longer than
+    THROTTLE_THRESHOLD_SEC, the chip is likely thermal-throttling.
+    Inserts a COOLDOWN_SEC pause to let it recover before continuing.
+    Logs all step times so slowdowns are visible in the training output.
+    """
+    THROTTLE_THRESHOLD_SEC = 25   # flag if a step exceeds this
+    COOLDOWN_SEC           = 120  # pause this long when throttling detected
+    LOG_EVERY_N_STEPS      = 10   # print step time at this interval
+
+    def __init__(self):
+        self._step_start = None
+        self._throttle_count = 0
+
+    def on_step_begin(self, args, state, control, **kwargs):
+        self._step_start = time.time()
+
+    def on_step_end(self, args, state, control, **kwargs):
+        if self._step_start is None:
+            return
+        elapsed = time.time() - self._step_start
+        step = state.global_step
+
+        if step % self.LOG_EVERY_N_STEPS == 0:
+            print(f"  [thermal] step {step}: {elapsed:.1f}s/step", flush=True)
+
+        if elapsed > self.THROTTLE_THRESHOLD_SEC:
+            self._throttle_count += 1
+            print(
+                f"  [thermal] ⚠ step {step} took {elapsed:.1f}s — throttling detected "
+                f"(#{self._throttle_count}). Pausing {self.COOLDOWN_SEC}s to cool down ...",
+                flush=True,
+            )
+            time.sleep(self.COOLDOWN_SEC)
+            print(f"  [thermal] Resuming.", flush=True)
+
+
+# ---------------------------------------------------------------------------
 # Training loop
 # ---------------------------------------------------------------------------
 
@@ -232,9 +351,14 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     assert os.path.exists(eval_path),  f"Missing: {eval_path}"
 
     limit = 50 if smoke_test else None
+    # Variant A uses a compact custom IR vocab (mean ~212 tokens); cap at 512 to
+    # reduce MPS memory pressure and avoid thermal throttling on Apple Silicon.
+    # B/C use native BPE and keep the full 1024 cap.
+    seq_len = 512 if variant == "A" else MAX_SEQ_LEN
+    print(f"Sequence length cap: {seq_len} tokens")
     print(f"Loading datasets{' (smoke test: 50 examples)' if smoke_test else ''} ...")
-    train_dataset = IRDataset(train_path, limit=limit)
-    eval_dataset  = IRDataset(eval_path,  limit=limit)
+    train_dataset = IRDataset(train_path, max_len=seq_len, limit=limit, expected_source=variant)
+    eval_dataset  = IRDataset(eval_path,  max_len=seq_len, limit=limit, expected_source=variant)
     print(f"  Train: {len(train_dataset)} examples")
     print(f"  Eval:  {len(eval_dataset)} examples")
     print()
@@ -247,6 +371,16 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     print()
 
     os.makedirs(out_dir, exist_ok=True)
+
+    # Log decoded training samples for visual validation before training starts.
+    log_dataset_samples(
+        train_path=train_path,
+        variant=variant,
+        tokenizer=tokenizer,
+        vocab_path=vocab_path,
+        n_samples=3,
+        out_dir=out_dir,
+    )
     epochs = 1 if smoke_test else EPOCHS
     total_steps = max(1, (len(train_dataset) // (BATCH_SIZE * GRAD_ACCUM)) * epochs)
     warmup_steps = max(1, int(WARMUP_RATIO * total_steps))
@@ -281,6 +415,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=lambda batch: collate_fn(batch),
+        callbacks=[ThermalGuardCallback()],
     )
 
     print(f"Training variant {variant} for {epochs} epoch(s) ...")
