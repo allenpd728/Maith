@@ -412,3 +412,55 @@ provisional until B and C are evaluated at matched epoch count.
   - docs/PHASE_5_RESULTS.md (retracted results above, corrected results below)
   - DEC-008 (3-epoch A checkpoint)
   - DEC-009 (warm-start context)
+
+---
+
+### DEC-013: Training stability — batch size reduction, epoch checkpointing, gradient checkpointing
+
+**Date:** 2026-07-30
+**Status:** Applied
+
+**Context:**
+Variant A repeatedly died from thermal throttling on Apple Silicon (16 GB MPS). Root cause:
+BATCH_SIZE=2 with float32 forward+backward passes on a 361M-param randomly-initialized model
+saturated MPS compute units within 3-5 steps. The effective batch size (BATCH_SIZE x GRAD_ACCUM)
+was kept at 8 throughout to preserve training dynamics.
+
+**Changes applied:**
+
+1. BATCH_SIZE 2 to 1, GRAD_ACCUM 4 to 8 (effective batch unchanged at 8).
+   Halves peak per-step memory with no validity impact. Applies equally to A, B, and C.
+
+2. save_strategy "no" to "epoch", save_total_limit=3.
+   Saves a checkpoint after each epoch. A crash mid-epoch loses at most one epoch of progress.
+   A --resume flag was added to the CLI to pick up from the latest saved checkpoint.
+   Does not affect model outputs or comparisons.
+
+3. gradient_checkpointing_enable(use_reentrant=False).
+   Recomputes activations during backward pass instead of holding them in memory. Reduces peak
+   MPS memory at the cost of ~20-30% more compute per step. use_reentrant=False is the
+   MPS-safe variant.
+
+   WARNING - Unverified equivalence assumption: "statistically equivalent" is a general claim
+   about gradient checkpointing drawn from CUDA-scale literature. It has NOT been empirically
+   verified for this specific setup:
+   - Variant A: 361M params, randomly initialized embedding table
+   - Variants B/C: 494M params (Qwen2.5-Coder-0.5B), pretrained weights intact
+   - Dataset scale: ~2,200 training examples
+   - Hardware: Apple Silicon MPS (non-determinism characteristics differ from CUDA)
+
+   The non-determinism introduced by gradient checkpointing may manifest differently across A vs
+   B/C due to their asymmetric initialization. The comparison remains relative (all three variants
+   use gradient checkpointing), so the playing field is level. But absolute perplexity values
+   from DEC-013-onward runs are not directly comparable to prior float32 deterministic runs.
+
+**Impact on experimental validity:**
+- A/B/C remain comparable to each other (all three use identical training configuration).
+- Results from DEC-013-onward are not directly comparable to pre-DEC-013 runs (batch size
+  and gradient checkpointing both changed).
+- Prior results (DEC-008, DEC-010, DEC-012) used BATCH_SIZE=2, no gradient checkpointing.
+
+- References:
+  - python/train.py (this commit)
+  - DEC-007 (original batch-size mismatch fix)
+  - DEC-008 (3-epoch A results, pre-DEC-013 config)

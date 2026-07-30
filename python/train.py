@@ -79,8 +79,8 @@ if missing:
 
 BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
 MAX_SEQ_LEN     = 1024
-BATCH_SIZE      = 2
-GRAD_ACCUM      = 4
+BATCH_SIZE      = 1
+GRAD_ACCUM      = 8   # effective batch = BATCH_SIZE * GRAD_ACCUM = 8 (unchanged)
 LEARNING_RATE   = 2e-4
 EPOCHS          = 3
 WEIGHT_DECAY    = 0.01
@@ -332,7 +332,7 @@ class ThermalGuardCallback(TrainerCallback):
 # Training loop
 # ---------------------------------------------------------------------------
 
-def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None:
+def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, resume: bool = False) -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
 
@@ -364,10 +364,19 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
     print()
 
     model, tokenizer, vocab_size = load_model_for_variant(variant, vocab_path, device)
+    # DEC-013: gradient checkpointing enabled to reduce peak MPS memory and prevent
+    # thermal throttling. use_reentrant=False is the MPS-safe setting. Note: this
+    # introduces non-determinism on MPS. "Statistically equivalent" is a general
+    # claim about the technique — NOT verified empirically for this setup (361M
+    # random-init variant A vs 494M pretrained B/C at ~2,200 examples on Apple
+    # Silicon). The non-determinism may manifest differently across variants given
+    # the asymmetric initialization. Logged here rather than asserted as settled.
+    model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
     model = model.to(device)
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
     print(f"  vocab_size={vocab_size}")
     print(f"  params={n_params:.1f}M")
+    print(f"  gradient_checkpointing=True (use_reentrant=False, MPS-safe — see DEC-013)")
     print()
 
     os.makedirs(out_dir, exist_ok=True)
@@ -399,8 +408,9 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         warmup_steps=warmup_steps,
         lr_scheduler_type="cosine",
         eval_strategy="epoch",
-        save_strategy="no",           # no intermediate checkpoints
-        load_best_model_at_end=False, # requires save_strategy != "no" — keep False
+        save_strategy="epoch",        # checkpoint after each epoch for crash recovery
+        save_total_limit=3,           # keep all 3 epoch checkpoints
+        load_best_model_at_end=False,
         logging_steps=10,
         seed=SEED,
         report_to="none",
@@ -418,9 +428,20 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool) -> None
         callbacks=[ThermalGuardCallback()],
     )
 
+    # Resolve resume checkpoint — find the latest epoch checkpoint in out_dir.
+    resume_from = None
+    if resume:
+        import glob
+        ckpt_dirs = sorted(glob.glob(os.path.join(out_dir, "_trainer_tmp", "checkpoint-*")))
+        if ckpt_dirs:
+            resume_from = ckpt_dirs[-1]
+            print(f"Resuming from checkpoint: {resume_from}")
+        else:
+            print("--resume set but no checkpoint found in out_dir — starting fresh.")
+
     print(f"Training variant {variant} for {epochs} epoch(s) ...")
     t0 = time.time()
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume_from)
     elapsed = time.time() - t0
     print(f"Training complete in {elapsed/60:.1f} minutes.")
     print()
@@ -504,6 +525,8 @@ if __name__ == "__main__":
     parser.add_argument("--out",        default=None)
     parser.add_argument("--smoke-test", action="store_true",
                         help="Quick 1-epoch run on 50 examples to verify the pipeline")
+    parser.add_argument("--resume",     action="store_true",
+                        help="Resume from the latest epoch checkpoint in --out if one exists")
     args = parser.parse_args()
 
     # Default output goes directly into the Studio artifacts directory so Kit
@@ -516,4 +539,4 @@ if __name__ == "__main__":
     else:
         out = f"runs/variant_{args.variant}"
 
-    run(args.variant, args.datasets, out, args.smoke_test)
+    run(args.variant, args.datasets, out, args.smoke_test, resume=args.resume)
