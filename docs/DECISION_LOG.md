@@ -464,3 +464,41 @@ was kept at 8 throughout to preserve training dynamics.
   - python/train.py (this commit)
   - DEC-007 (original batch-size mismatch fix)
   - DEC-008 (3-epoch A results, pre-DEC-013 config)
+
+---
+
+## DEC-014: Proof-Term Completion Deferred to Phase 7; Next-Tactic Prediction Ruled Out
+
+**Date:** 2026-07-31
+**Status:** Recorded. No action taken on codebase.
+
+**Decision:**
+Full Mathlib coverage for proof autocompletion is a Phase 7 concern, not a Phase 5/6
+concern. The IR is intentionally left unchanged. Three blockers were identified and
+documented. Next-tactic prediction is ruled out permanently on architectural grounds.
+
+**Summary of blockers:** See docs/PHASE_7_DESIGN.md for the full three-blocker table
+and IR change requirements.
+
+**Why next-tactic prediction is ruled out:**
+Tactics exist only in the Syntax layer, which is discarded before elaboration. By the
+time MetaExtractor.lean runs, there is no tactic string to recover. Supporting it would
+require a completely separate extraction path intercepting the elaborator mid-run. This is
+not an extension of Maith — it is a different project.
+
+**Why proof-term completion is the right path:**
+The current IR already extracts type structure correctly. Proof-term completion (type to
+proof term) requires only targeted IR additions: remove the .thmInfo skip, raise the
+tactic density filter, extend OperationOp for proof combinators. These changes are scoped
+and do not invalidate Phase 5/6 results.
+
+**What is not changing now:**
+- MetaExtractor.lean — no changes
+- maxTacticDensity filter — remains at 0.8
+- constantValueExpr? — .thmInfo skip remains in place
+- Phase 6 corpus expansion targets — unchanged
+
+**References:**
+- docs/PHASE_7_DESIGN.md (full design doc)
+- Maith/MetaExtractor.lean (extraction logic)
+- Maith/MathlibLoader.lean (tactic density filter)
