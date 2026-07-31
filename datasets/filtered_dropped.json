@@ -1,5 +1,10 @@
 [
   {
+    "name": "zero_geom_sum._f",
+    "module": "Mathlib.Algebra.Ring.GeomSum",
+    "term_many_count": 2502
+  },
+  {
     "name": "mul_pow._f",
     "module": "Mathlib.Algebra.Group.Basic",
     "term_many_count": 1486
@@ -8,6 +13,11 @@
     "name": "nsmul_add._f",
     "module": "Mathlib.Algebra.Group.Basic",
     "term_many_count": 1486
+  },
+  {
+    "name": "Int.cast_npow._f",
+    "module": "Mathlib.Algebra.Group.NatPowAssoc",
+    "term_many_count": 1399
   },
   {
     "name": "pow_mul_pow_eq_one._f",
@@ -95,6 +105,11 @@
     "term_many_count": 491
   },
   {
+    "name": "_private.Mathlib.Topology.Basic.0.TopologicalSpace.ext.match_1_1",
+    "module": "Mathlib.Topology.Basic",
+    "term_many_count": 466
+  },
+  {
     "name": "CommRing.mk._flat_ctor",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 461
@@ -150,6 +165,16 @@
     "term_many_count": 322
   },
   {
+    "name": "AddMonoidHom.liftOfRightInverse_comp_apply",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 319
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverse_comp_apply",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 319
+  },
+  {
     "name": "Semiring.mk.noConfusion",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 315
@@ -180,6 +205,26 @@
     "term_many_count": 287
   },
   {
+    "name": "MonoidHom.eq_liftOfRightInverse",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 275
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverse_comp",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 275
+  },
+  {
+    "name": "AddMonoidHom.eq_liftOfRightInverse",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 275
+  },
+  {
+    "name": "AddMonoidHom.liftOfRightInverse_comp",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 275
+  },
+  {
     "name": "_private.Mathlib.Algebra.Group.Defs.0.npowRec_eq.match_1_1",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 264
@@ -205,8 +250,28 @@
     "term_many_count": 251
   },
   {
+    "name": "MonoidHom.liftOfRightInverse",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 251
+  },
+  {
+    "name": "AddMonoidHom.liftOfRightInverse",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 251
+  },
+  {
     "name": "NonUnitalRing.mk._flat_ctor",
     "module": "Mathlib.Algebra.Ring.Defs",
+    "term_many_count": 240
+  },
+  {
+    "name": "AddMonoidHom.liftOfRightInverse._proof_3",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 240
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverse._proof_3",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
     "term_many_count": 240
   },
   {
@@ -223,6 +288,16 @@
     "name": "NonUnitalNonAssocRing.mk._flat_ctor",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 225
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverse._proof_4",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 221
+  },
+  {
+    "name": "AddMonoidHom.liftOfRightInverse._proof_4",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 221
   },
   {
     "name": "NonAssocSemiring.mk._flat_ctor",
@@ -243,6 +318,21 @@
     "name": "NonAssocSemiring.mk.noConfusion",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 175
+  },
+  {
+    "name": "_private.Mathlib.Topology.Basic.0.TopologicalSpace.ofClosed.match_3",
+    "module": "Mathlib.Topology.Basic",
+    "term_many_count": 174
+  },
+  {
+    "name": "AddMonoidHom.liftOfRightInverse.eq_1",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 170
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverse.eq_1",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 170
   },
   {
     "name": "SubtractionCommMonoid.mk._flat_ctor",
@@ -320,6 +410,11 @@
     "term_many_count": 135
   },
   {
+    "name": "MonoidHom.liftOfRightInverseAux.congr_simp",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 134
+  },
+  {
     "name": "SubNegZeroMonoid.mk._flat_ctor",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 133
@@ -375,6 +470,21 @@
     "term_many_count": 117
   },
   {
+    "name": "_private.Mathlib.Algebra.Group.Subgroup.Basic.0.Subgroup.normal_iff_map_conj_eq._simp_1_3",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 117
+  },
+  {
+    "name": "AddSubgroup.mem_normalizer_iff_map_addConj_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 117
+  },
+  {
+    "name": "Subgroup.mem_normalizer_iff_map_conj_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 117
+  },
+  {
     "name": "NonUnitalNonAssocSemiring.mk._flat_ctor",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 113
@@ -385,9 +495,54 @@
     "term_many_count": 111
   },
   {
+    "name": "Subgroup.normalCore_eq_iInf_comap_conj",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 111
+  },
+  {
+    "name": "Subgroup.normalCore_eq_iInf_map_conj",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 111
+  },
+  {
+    "name": "AddSubgroup.normalCore_eq_iInf_map_addConj",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 111
+  },
+  {
+    "name": "AddSubgroup.normalCore_eq_iInf_comap_addConj",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 111
+  },
+  {
     "name": "_private.Mathlib.Order.Basic.0.Preorder.toLE_injective.match_1_1",
     "module": "Mathlib.Order.Basic",
     "term_many_count": 109
+  },
+  {
+    "name": "AddSubgroup.normal_iff_map_addConj_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 109
+  },
+  {
+    "name": "Subgroup.normal_iff_map_conj_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 109
+  },
+  {
+    "name": "Subgroup.Normal.map_conj_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 108
+  },
+  {
+    "name": "AddSubgroup.Normal.map_addConj_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 108
+  },
+  {
+    "name": "DistribLattice.ofInfSupLe._proof_4",
+    "module": "Mathlib.Order.Lattice",
+    "term_many_count": 107
   },
   {
     "name": "NonUnitalNonAssocRing.casesOn",
@@ -397,6 +552,11 @@
   {
     "name": "Ring.noConfusionType",
     "module": "Mathlib.Algebra.Ring.Defs",
+    "term_many_count": 105
+  },
+  {
+    "name": "DistribLattice.mk._flat_ctor",
+    "module": "Mathlib.Order.Lattice",
     "term_many_count": 105
   },
   {
@@ -410,14 +570,49 @@
     "term_many_count": 103
   },
   {
+    "name": "TopologicalSpace.ofClosed",
+    "module": "Mathlib.Topology.Basic",
+    "term_many_count": 103
+  },
+  {
+    "name": "AddMonoidHom.mul",
+    "module": "Mathlib.Algebra.Ring.Basic",
+    "term_many_count": 101
+  },
+  {
     "name": "Semiring.recOn",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 99
   },
   {
+    "name": "AddMonoidHom.liftOfRightInverseAux",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 97
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverseAux",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 97
+  },
+  {
     "name": "NonAssocRing.noConfusionType",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 91
+  },
+  {
+    "name": "Prod.instDistribLattice._proof_4",
+    "module": "Mathlib.Order.Lattice",
+    "term_many_count": 89
+  },
+  {
+    "name": "AddMonoidHom.map_mul_iff",
+    "module": "Mathlib.Algebra.Ring.Basic",
+    "term_many_count": 87
+  },
+  {
+    "name": "DistribLattice.mk.noConfusion",
+    "module": "Mathlib.Order.Lattice",
+    "term_many_count": 87
   },
   {
     "name": "Ring.recOn",
@@ -427,6 +622,21 @@
   {
     "name": "_private.Mathlib.Order.Basic.0.\u00ab_aux_Mathlib_Order_Basic___macroRules__private_Mathlib_Order_Basic_0_term_\u227a__1\u00bb",
     "module": "Mathlib.Order.Basic",
+    "term_many_count": 81
+  },
+  {
+    "name": "AddSubgroup.mem_normalizer_iff_conj_image_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 81
+  },
+  {
+    "name": "AddSubgroup.mem_normalizer_iff_addConj_image_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 81
+  },
+  {
+    "name": "Subgroup.mem_normalizer_iff_conj_image_eq",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
     "term_many_count": 81
   },
   {
@@ -440,14 +650,39 @@
     "term_many_count": 76
   },
   {
+    "name": "AddSubgroup.comap_normalClosure",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 75
+  },
+  {
+    "name": "Subgroup.comap_normalClosure",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 75
+  },
+  {
     "name": "Ring.noConfusion",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 74
   },
   {
+    "name": "AddMonoidHom.liftOfSurjective",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 73
+  },
+  {
+    "name": "MonoidHom.liftOfSurjective",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 73
+  },
+  {
     "name": "NonAssocRing.recOn",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 72
+  },
+  {
+    "name": "AddMonoidHom.mul_apply",
+    "module": "Mathlib.Algebra.Ring.Basic",
+    "term_many_count": 69
   },
   {
     "name": "DivisionMonoid.mk.noConfusion",
@@ -465,13 +700,53 @@
     "term_many_count": 62
   },
   {
+    "name": "IsConj.normalClosure_eq_top_of",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 60
+  },
+  {
     "name": "NonUnitalNonAssocRing.noConfusionType",
     "module": "Mathlib.Algebra.Ring.Defs",
+    "term_many_count": 58
+  },
+  {
+    "name": "AddMonoidHom.coe_flip_mul",
+    "module": "Mathlib.Algebra.Ring.Basic",
+    "term_many_count": 58
+  },
+  {
+    "name": "AddSubgroup.prodEquiv",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 58
+  },
+  {
+    "name": "Subgroup.prodEquiv",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
     "term_many_count": 58
   },
   {
     "name": "\u00ab_aux_Mathlib_Order_Basic___macroRules_term_\u207b\u00b9'o__1\u00bb",
     "module": "Mathlib.Order.Basic",
     "term_many_count": 56
+  },
+  {
+    "name": "MonoidHom.liftOfRightInverseAux._proof_1",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 52
+  },
+  {
+    "name": "AddMonoidHom.liftOfRightInverseAux._proof_1",
+    "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+    "term_many_count": 52
+  },
+  {
+    "name": "invOf_two_smul_add_invOf_two_smul",
+    "module": "Mathlib.Algebra.Module.Basic",
+    "term_many_count": 52
+  },
+  {
+    "name": "inv_intCast_smul_comm",
+    "module": "Mathlib.Algebra.Module.Basic",
+    "term_many_count": 51
   }
 ]
