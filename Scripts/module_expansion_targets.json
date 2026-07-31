@@ -6,15 +6,20 @@
     "Mathlib.Order.Basic"
   ],
   "expansion_candidates": [
-    "Mathlib.Algebra.GroupPower.Basic",
+    "Mathlib.Algebra.Group.NatPowAssoc",
     "Mathlib.Algebra.Ring.Basic",
-    "Mathlib.Algebra.Field.Defs",
-    "Mathlib.Algebra.Field.Basic",
-    "Mathlib.Order.Lattice",
-    "Mathlib.Order.CompleteLattice",
+    "Mathlib.Algebra.Ring.GeomSum",
+    "Mathlib.Algebra.Group.Subgroup.Basic",
     "Mathlib.Data.Nat.Basic",
     "Mathlib.Data.Int.Basic",
+    "Mathlib.Order.Lattice",
     "Mathlib.Algebra.Module.Basic",
     "Mathlib.Topology.Basic"
-  ]
+  ],
+  "notes": {
+    "Mathlib.Algebra.GroupPower.Basic": "Removed — does not exist in Mathlib v4.31.0. Superseded by Algebra.Group.NatPowAssoc and Ring.GeomSum.",
+    "Mathlib.Algebra.Field.Defs": "Removed — Field typeclasses now live in Algebra.Ring.Defs in v4.31.0.",
+    "Mathlib.Algebra.Field.Basic": "Removed — merged into Algebra.Ring.Basic in v4.31.0.",
+    "Mathlib.Order.CompleteLattice": "Deferred — likely too large and tactic-heavy for current IR."
+  }
 }
