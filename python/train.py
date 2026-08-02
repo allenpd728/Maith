@@ -221,7 +221,7 @@ def collate_fn(batch: list[dict], pad_id: int = 0) -> dict:
 # Perplexity evaluation
 # ---------------------------------------------------------------------------
 
-def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int = 4) -> float:
+def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int = 1) -> float:
     """Compute perplexity on a dataset. Lower is better."""
     model.eval()
     total_loss = 0.0
@@ -233,12 +233,18 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
             batch_tensors = collate_fn(batch)
             batch_tensors = {k: v.to(device) for k, v in batch_tensors.items()}
 
+            # Count non-padding label tokens; skip degenerate examples (<2 tokens)
+            n_tokens = (batch_tensors["labels"] != -100).sum().item()
+            if n_tokens < 2:
+                continue
+
             outputs = model(**batch_tensors)
             loss = outputs.loss
+            loss_val = loss.item()
+            if math.isnan(loss_val) or math.isinf(loss_val):
+                continue
 
-            # Count non-padding label tokens
-            n_tokens = (batch_tensors["labels"] != -100).sum().item()
-            total_loss   += loss.item() * n_tokens
+            total_loss   += loss_val * n_tokens
             total_tokens += n_tokens
 
     avg_loss = total_loss / max(total_tokens, 1)
@@ -297,8 +303,8 @@ class ThermalGuardCallback(TrainerCallback):
     Inserts a COOLDOWN_SEC pause to let it recover before continuing.
     Logs all step times so slowdowns are visible in the training output.
     """
-    THROTTLE_THRESHOLD_SEC = 25   # flag if a step exceeds this
-    COOLDOWN_SEC           = 120  # pause this long when throttling detected
+    THROTTLE_THRESHOLD_SEC = 90   # flag if a step exceeds this (normal variance is 17-60s; 90s signals real pressure)
+    COOLDOWN_SEC           = 30   # pause this long when throttling detected
     LOG_EVERY_N_STEPS      = 10   # print step time at this interval
 
     def __init__(self):
@@ -353,8 +359,10 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, resume:
     limit = 50 if smoke_test else None
     # Variant A uses a compact custom IR vocab (mean ~212 tokens); cap at 512 to
     # reduce MPS memory pressure and avoid thermal throttling on Apple Silicon.
-    # B/C use native BPE and keep the full 1024 cap.
-    seq_len = 512 if variant == "A" else MAX_SEQ_LEN
+    # B/C also capped at 512 to prevent thermal throttling on Apple Silicon MPS.
+    # DEC-014: seq_len for B/C reduced from 1024 to 512 on 2026-07-31 due to
+    # sustained thermal throttling on C (36 events in first 39 steps, >50h projected).
+    seq_len = 512
     print(f"Sequence length cap: {seq_len} tokens")
     print(f"Loading datasets{' (smoke test: 50 examples)' if smoke_test else ''} ...")
     train_dataset = IRDataset(train_path, max_len=seq_len, limit=limit, expected_source=variant)
@@ -478,6 +486,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, resume:
     print()
 
     print("Computing final perplexity on eval split ...")
+    if device == "mps":
+        import gc; gc.collect(); torch.mps.empty_cache()
     ppl = evaluate_perplexity(model, eval_dataset, device)
     print(f"  Variant {variant} eval perplexity: {ppl:.2f}")
     print()

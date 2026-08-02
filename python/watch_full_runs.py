@@ -12,7 +12,12 @@ Usage:
 
 import argparse
 import ast
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+try:
+    from datetime import UTC
+except ImportError:
+    from datetime import timezone
+    UTC = timezone.utc
 import re
 from pathlib import Path
 
