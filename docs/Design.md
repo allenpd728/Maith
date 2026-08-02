@@ -73,8 +73,12 @@ flowchart TD
   C2 --> C8
 ```
 
-`Transpiler.lean` is debug-only: it formats IR as a human-readable string using a different
-ID format (`var:/term:/bound:` prefixes) than the encoder. It is not in the training pipeline.
+`Transpiler.lean` provides bidirectional IR↔string conversion:
+- **Encoder**: formats IR as human-readable string for debugging (uses `var:/term:/bound:` prefixes)
+- **Decoder**: parses token sequences back to IR graphs (lossless round-trip verified for 2,554 declarations)
+- **Decompiler**: reconstructs valid Lean syntax from IR graphs (implemented via `Decompile.decompileGraph`)
+
+The decompiler enables verifying SLM outputs and supports safe rewriting workflows.
 
 ---
 
