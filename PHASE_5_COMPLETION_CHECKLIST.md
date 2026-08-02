@@ -1,13 +1,18 @@
 # Phase 5 Completion Checklist
 
-## Current Status (as of 2026-07-28)
+> ⚠️ **DEPRECATED** — This file is archived. All Phase 5 items are complete.
+> See `docs/DECISION_LOG.md` for current experiment decisions.
+> See `docs/PHASE_5_RESULTS.md` for authoritative results.
+> See `README.md` Section 9 for roadmap status.
 
-- **Matched-batch rerun complete**: A=1.39, B=1.15, C=1.13 (all `smoke_test: false`, effective batch=8)
-- **DEC-007 resolved**: all variants at grad_accum=8; gap between A and B/C holds after fix
-- **DEC-008 complete**: 3-epoch A=1.26 — cold-start is a real factor but does not fully explain the gap
-- **DEC-009 in progress**: embedding warm-start experiment; code shipped in `train.py` (`--warm-start-embeddings`), run pending
+## Final Status (as of 2026-08-02)
 
-## Completed
+- **Phase 5 complete**: DEC-016/017/018 resolved
+- **Final results**: A=1.489, B=1.180, C=1.207 (512-token cap)
+- **Completion accuracy**: A=86.2%, B=92.8%, C=91.4%
+- **DEC-006 open**: cold-start embedding confound unresolved
+
+## All Items Complete
 
 - [x] Full matched-batch A/B/C run (2026-07-28)
 - [x] Results tables updated in `README.md` and `docs/EXPERIMENT_DESIGN.md`
@@ -16,21 +21,12 @@
 - [x] DEC-008: 3-epoch variant A run complete (result: 1.2598)
 - [x] `--epochs` flag added to `train.py`
 - [x] `--warm-start-embeddings` flag added to `train.py` (DEC-009 implementation)
-- [x] DEC-009 drafted in `docs/DECISION_LOG.md`
-
-## In Progress
-
-- [ ] **DEC-009**: run variant A with `--warm-start-embeddings`, compare to B/C baseline
-
-  ```bash
-  python3 python/train.py --variant A --datasets datasets/ --out runs/variant_A_warmstart \
-    --warm-start-embeddings && \
-  cp -r ~/Projects/Maith/runs/ ~/Library/Caches/com.spotify.studio/.studio/artifacts/maith-runs/
-  ```
-
-## Remaining after DEC-009
-
-- [ ] Update `docs/DECISION_LOG.md` DEC-009 status to `complete`
-- [ ] Add warm-start result to `docs/PHASE_5_RESULTS.md`
-- [ ] Write final Phase 5 interpretation and update `README.md` roadmap entry to ✅
-- [ ] Decide on Phase 6 (theorem-proving evaluation) based on DEC-009 outcome
+- [x] DEC-009 complete (warm-start achieved 0.51% overlap, effectively cold-start)
+- [x] DEC-010: eval_completion.py bugs fixed
+- [x] DEC-011/012: corrected completion accuracy results recorded
+- [x] DEC-013: training stability improvements
+- [x] DEC-015: corpus expansion (4 to 14 modules)
+- [x] DEC-016: Phase 5 conclusion — matched 3-epoch rerun on expanded corpus
+- [x] DEC-017: stratified perplexity and completion accuracy follow-ups
+- [x] DEC-018: equal-sequence-length perplexity rerun — Phase 5 gate resolved
+- [x] README.md Phase 5 entry marked ✅ complete
