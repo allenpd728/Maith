@@ -10,7 +10,9 @@ Usage:
 """
 
 import argparse
+from typing import Optional
 import json
+from typing import Optional
 import os
 import sys
 
@@ -19,7 +21,7 @@ def run_quality(result: dict) -> str:
     return "SMOKE" if result.get("smoke_test") else "FULL"
 
 
-def load_result(runs_dir: str, variant: str) -> dict | None:
+def load_result(runs_dir: str, variant: str) -> Optional[dict]:
     path = os.path.join(runs_dir, f"variant_{variant}", "results.json")
     if not os.path.exists(path):
         return None

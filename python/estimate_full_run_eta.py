@@ -7,6 +7,7 @@ runs/full_abc_runs.log. Read-only and safe during training.
 """
 
 import argparse
+from typing import Optional, List
 import datetime as dt
 import re
 from pathlib import Path
@@ -16,7 +17,7 @@ PROGRESS_RE = re.compile(r"(\d+)%\|.*?\|\s*(\d+)/(\d+)\s*\[")
 START_RE = re.compile(r"^\[start\]\s+([0-9T:\-]+Z)")
 
 
-def parse_start_time(lines: list[str]) -> dt.datetime | None:
+def parse_start_time(lines: List[str]) -> Optional[dt.datetime]:
     for line in lines:
         m = START_RE.match(line.strip())
         if m:
@@ -27,7 +28,7 @@ def parse_start_time(lines: list[str]) -> dt.datetime | None:
     return None
 
 
-def parse_progress_points(text: str) -> list[tuple[int, int, int]]:
+def parse_progress_points(text: str) -> List[tuple[int, int, int]]:
     points = []
     normalized = text.replace("\r", "\n")
     for m in PROGRESS_RE.finditer(normalized):
