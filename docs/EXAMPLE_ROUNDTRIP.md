@@ -4,9 +4,17 @@
 
 ---
 
+## The Research Question
+
+**Can language models become better theorem provers if trained on a representation of mathematics that exposes semantic structure rather than source syntax?**
+
+This document traces a single mathematical statement (`neg_neg`) through Maith's pipeline—from Lean source to a canonical semantic representation—to show how that representation is built and verified.
+
+---
+
 ## What This Document Explains
 
-This document traces a single mathematical statement (`neg_neg`) through the Maith pipeline—from human-readable math to machine learning training data and back. We show side-by-side comparisons at each step so you can see:
+We show side-by-side comparisons at each step so you can see:
 
 1. **What the code looks like** (Lean 4 internals)
 2. **What it means** (standard mathematical notation)
