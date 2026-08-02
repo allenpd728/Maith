@@ -158,6 +158,47 @@ def decompTest4 : TestResult :=
     s!"Should produce valid Lean syntax with all components. Got: {result}"
 
 /--
+Test 7: FULL neg_neg graph from docs/EXAMPLE_ROUNDTRIP.md Stage 3.
+This is the exact graph structure from the documentation.
+-/
+def decompTest7 : TestResult :=
+  let g : Graph := {
+    entities := [
+      { id := EntityId.bound "∀:neg_neg/0/G", polarity := Polarity.neut },
+      { id := EntityId.bound "∀:neg_neg/1/inst._@.Mathlib.Algebra.Group.Defs.567151492._hygCtx._hyg.3", polarity := Polarity.neut },
+      { id := EntityId.bound "∀:neg_neg/2/a", polarity := Polarity.neut },
+      { id := EntityId.term 0, polarity := Polarity.neut },
+      { id := EntityId.term 1, polarity := Polarity.neut },
+      { id := EntityId.term 2, polarity := Polarity.neut },
+      { id := EntityId.term 3, polarity := Polarity.neut }
+    ]
+    attributes := [
+      { target := EntityId.bound "∀:neg_neg/1/inst._@.Mathlib.Algebra.Group.Defs.567151492._hygCtx._hyg.3", key := "typeclass", value := "InvolutiveNeg", polarity := Polarity.neut },
+      { target := EntityId.term 0, key := "sort", value := "u_1 + 1", polarity := Polarity.neut }
+    ]
+    relations := [
+      { src := EntityId.bound "∀:neg_neg/0/G", tgt := EntityId.term 0, op := RelationOp.eq, polarity := Polarity.neut },
+      { src := EntityId.bound "∀:neg_neg/2/a", tgt := EntityId.bound "∀:neg_neg/0/G", op := RelationOp.eq, polarity := Polarity.neut },
+      { src := EntityId.term 3, tgt := EntityId.bound "∀:neg_neg/2/a", op := RelationOp.eq, polarity := Polarity.neut }
+    ]
+    operations := [
+      { inputs := [EntityId.bound "∀:neg_neg/0/G"], output := EntityId.term 1, op := OperationOp.generic "InvolutiveNeg", polarity := Polarity.neut },
+      { inputs := [EntityId.bound "∀:neg_neg/2/a"], output := EntityId.term 2, op := OperationOp.neg, polarity := Polarity.neut },
+      { inputs := [EntityId.term 2], output := EntityId.term 3, op := OperationOp.neg, polarity := Polarity.neut }
+    ]
+  }
+  let result := Decompile.decompileGraph g
+  -- Verify the output contains the key components
+  let hasG := result.contains "G"
+  let hasA := result.contains "a"
+  let hasEq := result.contains "Eq"
+  let hasNeg := result.contains "Neg.neg"
+  -- Force fail to show decompilation result
+  runTest "Decompile full neg_neg from Stage 3 graph"
+    (hasG && hasA && hasEq && hasNeg)
+    s!"FULL neg_neg decompilation: {result}"
+
+/--
 Test 5: Verify decompiler output is valid Lean-like syntax.
 -/
 def decompTest5 : TestResult :=
@@ -207,7 +248,8 @@ def decompilerTests : List TestResult := [
   decompTest3,
   decompTest4,
   decompTest5,
-  decompTest6
+  decompTest6,
+  decompTest7
 ]
 
 def runAllDecompilerTests : IO Unit := do
