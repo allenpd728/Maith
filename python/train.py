@@ -255,12 +255,16 @@ def evaluate_perplexity(model, dataset: IRDataset, device: str, batch_size: int 
 # Model setup
 # ---------------------------------------------------------------------------
 
-def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str):
+def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str,
+                                  embed_project_path: str = ""):
     """
     Load Qwen2.5-Coder-0.5B and adapt it for the chosen variant.
 
     Variant A: resize embeddings to custom IR vocab size (Option 1 from EXPERIMENT_DESIGN.md).
     Variants B/C: use native BPE tokenizer and embedding table unchanged.
+
+    If embed_project_path is provided and exists, load the embedding projection matrix
+    and apply it to initialize Variant A's embedding table.
     """
     print(f"Loading base model: {BASE_MODEL}")
 
@@ -279,6 +283,21 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str)
         )
         model.resize_token_embeddings(vocab_size)
         print(f"  Resized embedding table: {tokenizer.vocab_size} → {vocab_size}")
+
+        # DEC-006: Load embedding projection matrix if provided
+        if embed_project_path and os.path.exists(embed_project_path):
+            print(f"  Loading embedding projection from {embed_project_path} ...")
+            E_proj = torch.load(embed_project_path, map_location="cpu")
+            assert E_proj.shape == (vocab_size, model.config.hidden_size), \
+                f"Projection shape mismatch: {E_proj.shape} vs ({vocab_size}, {model.config.hidden_size})"
+            with torch.no_grad():
+                model.model.embed_tokens.weight.copy_(E_proj)
+                # Initialize lm_head to the transpose of the embedding projection
+                # (weight tying convention — same as Qwen's original design)
+                if model.lm_head.weight.shape == E_proj.shape:
+                    model.lm_head.weight.copy_(E_proj)
+            print(f"  Embedding projection applied. Norm: {E_proj.norm():.2f}")
+
         return model, tokenizer, vocab_size
 
     else:
@@ -339,14 +358,24 @@ class ThermalGuardCallback(TrainerCallback):
 # ---------------------------------------------------------------------------
 
 def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
-         resume: bool = False, embed_pretrain: bool = False) -> None:
+         resume: bool = False, embed_pretrain: bool = False,
+         embed_project: str = "") -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
+
+    # DEC-006: Mutual exclusivity check for embed_project and embed_pretrain
+    if embed_project and embed_pretrain:
+        print("ERROR: --embed-project and --embed-pretrain are mutually exclusive.")
+        print("  Use --embed-project for projection-based initialization,")
+        print("  or --embed-pretrain for embedding-only pretraining, not both.")
+        sys.exit(1)
 
     device = "mps" if torch.backends.mps.is_available() else \
              "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Device: {device}")
     print(f"Variant: {variant}")
+    if embed_project:
+        print(f"Embed project: {embed_project}")
     print(f"Output: {out_dir}")
     print()
 
@@ -372,7 +401,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
     print(f"  Eval:  {len(eval_dataset)} examples")
     print()
 
-    model, tokenizer, vocab_size = load_model_for_variant(variant, vocab_path, device)
+    model, tokenizer, vocab_size = load_model_for_variant(
+        variant, vocab_path, device, embed_project_path=embed_project)
     # DEC-013: gradient checkpointing enabled to reduce peak MPS memory and prevent
     # thermal throttling. use_reentrant=False is the MPS-safe setting. Note: this
     # introduces non-determinism on MPS. "Statistically equivalent" is a general
@@ -585,6 +615,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         "base_model": BASE_MODEL,
         "smoke_test": smoke_test,
         "embed_pretrain": embed_pretrain,
+        "embed_project": embed_project,
     }
     if embed_pretrain and not smoke_test:
         results["embed_pretrain_eval_ppl"] = round(embed_ppl, 4)
@@ -624,6 +655,10 @@ if __name__ == "__main__":
                              "Freezes transformer layers; trains embeddings/lm_head for 1 epoch, "
                              "then unfreezes and trains normally. Neutralises the cold-start "
                              "embedding confound for Variant A.")
+    parser.add_argument("--embed-project", type=str, default="",
+                        help="Path to embedding projection matrix (.pt file) for Variant A. "
+                             "If provided, loads the projection and applies it to initialize "
+                             "the embedding table. Mutually exclusive with --embed-pretrain.")
     args = parser.parse_args()
 
     # Default output goes directly into the Studio artifacts directory so Kit
@@ -637,4 +672,4 @@ if __name__ == "__main__":
         out = f"runs/variant_{args.variant}"
 
     run(args.variant, args.datasets, out, args.smoke_test, resume=args.resume,
-        embed_pretrain=args.embed_pretrain)
+        embed_pretrain=args.embed_pretrain, embed_project=args.embed_project)

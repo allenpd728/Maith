@@ -8,7 +8,7 @@
 
 ## 1. DEC-006 Isolation — Cold-Start Embedding Confound (Highest Priority)
 
-**Status:** Open. Not started.
+**Status:** Implementation complete — ready to run.
 
 Phase 5 and Phase 6 both used embed-pretrain warm-start (DEC-009) to mitigate the
 cold-start disadvantage for Variant A. This helped (A improved from 1.39 → 1.28 after
@@ -30,9 +30,10 @@ B/C could mean:
 These are different conclusions with different implications for the hypothesis.
 
 **Implementation notes:**
-- `python/train.py` already has `--embed-pretrain` support. A proper projection would
-  require a new flag, e.g. `--embed-project`, with a projection script to build the
-  initialization matrix from Qwen's embedding weights.
+- `python/embed_project.py` — builds the embedding projection matrix using exact or mean subword strategy
+- `python/train.py` now has `--embed-project` flag that loads the projection matrix at startup
+- `--embed-project` and `--embed-pretrain` are mutually exclusive (use one or the other)
+- Run `python3 python/validate_dec006_setup.py` before the training run
 - The controlled comparison: run A with embed-project vs. embed-pretrain side by side.
   If the gap to B/C narrows substantially, cold-start was the dominant factor.
 
