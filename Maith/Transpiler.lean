@@ -118,7 +118,7 @@ inductive Expr
   | forallBinder (name : String) (type : Expr) (body : Expr)
   | eq (type : Expr) (lhs : Expr) (rhs : Expr)
   | const (name : String)
-  deriving Repr
+  deriving Repr, BEq
 
 -- Extract the binder name and index from a bound scope string like "∀:neg_neg/0/G"
 private def parseScopeInfo (scope : String) : (Nat × String) :=
@@ -259,7 +259,14 @@ def decompileGraph (g : Graph) : String :=
     )
   )
 
-  -- Step 2: Build a map from entity ID to expression
+  -- Step 2: Initialize expr map with bound entities FIRST (so operations can reference them)
+  let initialExprMap := forallBounds.foldl (fun acc e =>
+    match e.id with
+    | EntityId.bound scope => acc ++ [(e.id, Expr.var (getBinderName scope))]
+    | _ => acc
+  ) []
+
+  -- Step 3: Build expressions for all operation outputs (in dependency order)
   let rec buildExprMap (ops : List Operation) (acc : List (EntityId × Expr)) : List (EntityId × Expr) :=
     match ops with
     | [] => acc
@@ -267,30 +274,40 @@ def decompileGraph (g : Graph) : String :=
       let expr := buildOpExpr g acc op
       buildExprMap rest (acc ++ [(op.output, expr)])
 
-  -- First pass: build expressions for all operation outputs
-  let exprMap := buildExprMap g.operations []
+  let exprMap := buildExprMap g.operations initialExprMap
 
-  -- Step 3: Add sort expressions for entities that have sort attributes
+  -- Step 4: Add sort expressions for entities that have sort attributes
   let exprMapWithSorts := g.entities.foldl (fun acc e =>
     match getSortLevel g e.id with
     | some level => acc ++ [(e.id, Expr.sort level)]
     | none => acc
   ) exprMap
 
-  -- Step 4: Add variable expressions for bound entities
-  let exprMapFinal := forallBounds.foldl (fun acc e =>
-    match e.id with
-    | EntityId.bound scope => acc ++ [(e.id, Expr.var (getBinderName scope))]
-    | _ => acc
-  ) exprMapWithSorts
+  let exprMapFinal := exprMapWithSorts
 
-  -- Step 5: Find the main body expression (look for an eq relation where src is a term)
+  -- Step 5: Find the main body expression
+  -- Look for an eq relation where src is a term entity
+  -- If the target of the eq is different from src, construct an Eq expression
   let bodyExpr : Expr :=
     match g.relations.find? (fun r => r.op = RelationOp.eq && match r.src with | EntityId.term _ => true | _ => false) with
     | some r =>
-      match findInMap exprMapFinal r.src with
-      | some e => e
-      | none => Expr.const "ERROR_body"
+      let lhsExpr := match findInMap exprMapFinal r.src with
+        | some e => e
+        | none => Expr.const "ERROR_body"
+      let rhsExpr := match findInMap exprMapFinal r.tgt with
+        | some e => e
+        | none => Expr.const "ERROR_rhs"
+      let typeExpr : Expr :=
+        match getEntityType g r.tgt with
+        | some typeId => match findInMap exprMapFinal typeId with
+          | some te => te
+          | none => Expr.sort ""
+        | none => Expr.sort ""
+      -- If lhs != rhs, this is an equality goal; otherwise just use lhs
+      if lhsExpr != rhsExpr then
+        Expr.eq typeExpr lhsExpr rhsExpr
+      else
+        lhsExpr
     | none => Expr.const "ERROR_no_eq"
 
   -- Step 6: Build forall structure
