@@ -160,12 +160,14 @@ def decompTest4 : TestResult :=
 /--
 Test 8: Verify decompiled Lean code actually type-checks via `lean --make`.
 
+STATUS: structural skeleton — pending validation against actual Lean 4 compiler.
+
 This test decodes a graph, decompiles it to Lean syntax, writes it to a 
 temporary file, and runs `lean --make` to verify the code is syntactically 
 and type-correct Lean.
 
-This is a critical validation: decompilation produces syntactically correct
-Lean that the Lean 4 compiler can process.
+The decompiler produces a structural skeleton that should express the correct
+theorem. This test validates that the skeleton is well-formed Lean.
 -/
 def decompTest8 : IO TestResult := do
   -- Build the neg_neg graph
@@ -222,7 +224,7 @@ def decompTest8 : IO TestResult := do
   let name := "Decompiled Lean code type-checks"
   
   if procResult.exitCode == 0 then
-    return TestResult.pass name (s!"Generated valid Lean: {leanCode}")
+    return TestResult.pass name (s!"Generated structural Lean: {leanCode}")
   else
     return TestResult.fail name 
       (s!"Lean compilation failed:\nstdout: {procResult.stdout}\nstderr: {procResult.stderr}\ngenerated code:\n{fullFile}")
