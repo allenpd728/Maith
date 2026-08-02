@@ -82,7 +82,7 @@ MAX_SEQ_LEN     = 1024
 BATCH_SIZE      = 1
 GRAD_ACCUM      = 8   # effective batch = BATCH_SIZE * GRAD_ACCUM = 8 (unchanged)
 LEARNING_RATE   = 2e-4
-EPOCHS          = 3
+EPOCHS          = 2
 WEIGHT_DECAY    = 0.01
 WARMUP_RATIO    = 0.05  # converted to warmup_steps at runtime
 SEED            = 42
