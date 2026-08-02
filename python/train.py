@@ -338,7 +338,8 @@ class ThermalGuardCallback(TrainerCallback):
 # Training loop
 # ---------------------------------------------------------------------------
 
-def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, resume: bool = False) -> None:
+def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
+         resume: bool = False, embed_pretrain: bool = False) -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
 
@@ -385,7 +386,85 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, resume:
     print(f"  vocab_size={vocab_size}")
     print(f"  params={n_params:.1f}M")
     print(f"  gradient_checkpointing=True (use_reentrant=False, MPS-safe — see DEC-013)")
-    print()
+
+    # -------------------------------------------------------------------------
+    # Phase 6 / DEC-006: Option 2 — embedding-only pretrain pass
+    # -------------------------------------------------------------------------
+    # Before the standard fine-tune, run a 1-epoch pass with all transformer
+    # layers frozen. Only the embedding table and lm_head train. This gives the
+    # embedding layer a meaningful initialisation on the IR distribution before
+    # the full model starts training. Neutralises the cold-start confound so that
+    # any remaining gap to B/C is attributable to representation quality rather
+    # than initialisation.
+    if embed_pretrain and not smoke_test:
+        print()
+        print("=" * 60)
+        print("PHASE 6 — DEC-006: Embedding-only pretrain (Option 2)")
+        print("=" * 60)
+        print("Freezing all transformer layers; training embeddings/lm_head for 1 epoch ...")
+
+        # Freeze everything
+        for name, param in model.named_parameters():
+            param.requires_grad = False
+
+        # Unfreeze embedding and lm_head
+        model.model.embed_tokens.requires_grad_(True)
+        model.lm_head.requires_grad_(True)
+
+        embed_params = sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6
+        print(f"  Trainable params (embed-only): {embed_params:.1f}M")
+
+        # 1-epoch embed-only trainer
+        embed_trainer_tmp = os.path.join(out_dir, "_embed_pretrain_tmp")
+        embed_args = TrainingArguments(
+            output_dir=embed_trainer_tmp,
+            num_train_epochs=1,
+            per_device_train_batch_size=BATCH_SIZE,
+            per_device_eval_batch_size=BATCH_SIZE,
+            gradient_accumulation_steps=GRAD_ACCUM,
+            learning_rate=LEARNING_RATE,
+            weight_decay=WEIGHT_DECAY,
+            warmup_steps=1,
+            lr_scheduler_type="linear",
+            eval_strategy="no",
+            save_strategy="no",
+            logging_steps=20,
+            seed=SEED,
+            report_to="none",
+            fp16=False,
+            bf16=False,
+            dataloader_pin_memory=False,
+        )
+
+        embed_trainer = Trainer(
+            model=model,
+            args=embed_args,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
+            data_collator=lambda batch: collate_fn(batch),
+        )
+
+        t0 = time.time()
+        embed_trainer.train()
+        elapsed_ep = time.time() - t0
+        print(f"  Embedding pretrain complete in {elapsed_ep/60:.1f} min.")
+
+        # Quick eval perplexity after embed pretrain
+        print("  Eval perplexity after embed pretrain ...")
+        if device == "mps":
+            import gc; gc.collect(); torch.mps.empty_cache()
+        embed_ppl = evaluate_perplexity(model, eval_dataset, device)
+        print(f"  Embed-pretrain eval perplexity: {embed_ppl:.3f}")
+
+        # Unfreeze everything for fine-tune
+        for param in model.parameters():
+            param.requires_grad = True
+        print("  Unfrozen all layers — ready for fine-tune.")
+        print("=" * 60)
+        print()
+    elif embed_pretrain and smoke_test:
+        print("  Note: --embed-pretrain skipped in smoke-test mode.")
+        print()
 
     os.makedirs(out_dir, exist_ok=True)
 
@@ -505,7 +584,10 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool, resume:
         "seed": SEED,
         "base_model": BASE_MODEL,
         "smoke_test": smoke_test,
+        "embed_pretrain": embed_pretrain,
     }
+    if embed_pretrain and not smoke_test:
+        results["embed_pretrain_eval_ppl"] = round(embed_ppl, 4)
     results_path = os.path.join(out_dir, "results.json")
     with open(results_path, "w") as f:
         json.dump(results, f, indent=2)
@@ -537,6 +619,11 @@ if __name__ == "__main__":
                         help="Quick 1-epoch run on 50 examples to verify the pipeline")
     parser.add_argument("--resume",     action="store_true",
                         help="Resume from the latest epoch checkpoint in --out if one exists")
+    parser.add_argument("--embed-pretrain", action="store_true",
+                        help="Phase 6 DEC-006: 1-epoch embedding-only pretrain before fine-tune. "
+                             "Freezes transformer layers; trains embeddings/lm_head for 1 epoch, "
+                             "then unfreezes and trains normally. Neutralises the cold-start "
+                             "embedding confound for Variant A.")
     args = parser.parse_args()
 
     # Default output goes directly into the Studio artifacts directory so Kit
@@ -549,4 +636,5 @@ if __name__ == "__main__":
     else:
         out = f"runs/variant_{args.variant}"
 
-    run(args.variant, args.datasets, out, args.smoke_test, resume=args.resume)
+    run(args.variant, args.datasets, out, args.smoke_test, resume=args.resume,
+        embed_pretrain=args.embed_pretrain)
