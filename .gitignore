@@ -30,6 +30,12 @@ runs/
 *.tmp
 *.log
 *~
+nohup.out
+
+# Local backup artifacts — regenerable, not tracked
+Corpus/*.bak
+datasets_phase5_backup/
+datasets_phase5_v1/
 
 # Local Ollama model definitions — not part of the repo
 Modelfile
