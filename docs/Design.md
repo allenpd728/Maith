@@ -89,9 +89,9 @@ flowchart TD
 `Transpiler.lean` provides bidirectional IR↔string conversion:
 - **Encoder**: formats IR as human-readable string for debugging (uses `var:/term:/bound:` prefixes)
 - **Decoder**: parses token sequences back to IR graphs (lossless round-trip verified for 2,554 declarations)
-- **Decompiler**: reconstructs Lean syntax from IR graphs (structural skeleton; pending Lean compiler validation via `decompTest8`)
+- **Decompiler**: structural skeleton scaffold (`Decompile.decompileGraph`) — does not yet produce valid Lean; graph→Lean direction is future work
 
-The decompiler enables verifying SLM outputs and supports safe rewriting workflows.
+Verifiable SLM outputs and safe rewriting depend on a correct graph→Lean implementation and are not yet available.
 
 ---
 
@@ -127,19 +127,14 @@ Every IR token must map back to a Lean construct. This ensures:
 
 The token↔graph direction of this round-trip is implemented and verified
 (2,554/2,554 declarations pass `validate_roundtrip.py`). The graph→Lean-syntax
-direction — reconstructing Lean from an IR graph — is implemented via
-`Transpiler.lean`'s `Decompile.decompileGraph` function (structural skeleton;
-pending Lean compiler validation via `decompTest8`). This enables verifiable
-SLM outputs and supports safe rewriting workflows.
-
-The decompiler handles:
-- Forall binders with implicit/instance-implicit/explicit kinds
-- Typeclass instances
-- Sort annotations (Type.{u})
-- Arithmetic operations (neg, add, sub, mul, div, pow)
-- Generic operations (gen:<name>)
-- Equality relations
-- Nested forall structure
+direction — reconstructing valid Lean from an IR graph — is not yet implemented
+as a valid Lean producer. `Transpiler.lean`'s `Decompile.decompileGraph` exists
+as a structural scaffold: it reconstructs binder names, operation trees, and
+typeclass annotations into a human-readable skeleton, but the output is not
+parseable by Lean's elaborator. Specifically: the `Eq` emission format is
+malformed, universe level syntax is invalid, and forall binders are emitted
+without the `∀` keyword. "Verifiable SLM outputs" and "safe rewriting" depend
+on a correct graph→Lean direction and remain future work.
     
 
 ### **3\. Graphs are the universal representation**
