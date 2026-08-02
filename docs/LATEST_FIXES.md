@@ -72,9 +72,74 @@ For the full session-by-session narrative log, see `docs/SESSION_PROGRESS.md`.
 
 ---
 
-## 2026-07-27 — Matched-batch fix, documentation hardening
+## 2026-08-02 — DEC-018 resolved, Phase 5 closed, documentation cleanup
 
-- Full matched-batch A/B/C rerun initiated after DEC-007 fix.
-- Results tables updated in `README.md` and `docs/EXPERIMENT_DESIGN.md`.
-- `docs/PHASE_5_RESULTS.md` created with `[PENDING]` placeholders for clean rerun numbers.
-- `PHASE_5_COMPLETION_CHECKLIST.md` updated to reflect current rerun status.
+### DEC-018 complete: equal-sequence-length perplexity rerun
+
+- Equal-sequence-length evaluation confirms B/C lead A is not a truncation artifact.
+- Matched 512-token cap results: A=1.489, B=1.180, C=1.207.
+- Long-bucket (512+ tokens): A=1.168, B=1.077, C=1.083 — gap persists.
+- Provisional warnings removed from `README.md` and `docs/EXPERIMENT_DESIGN.md`.
+- DEC-018 status updated to `resolved` in `docs/DECISION_LOG.md`.
+
+### Phase 5 final picture
+
+- **Perplexity (matched 512-token cap)**: A 1.489, B 1.180, C 1.207 — B/C lead in every bucket
+- **Completion accuracy**: A 86.2%, B 92.8%, C 91.4% — same direction, same gap
+- **DEC-006 still open**: whether the advantage reflects representation quality or warm-start is unresolved
+
+### Documentation updates
+
+- `README.md` Phase 5 entry marked ✅ complete.
+- `PHASE_5_COMPLETION_CHECKLIST.md` deprecated, all items marked complete.
+- `docs/PHASE_5_RESULTS.md` DEC-017/018 sections filled in.
+- `docs/DECOMPILER_HANDOVER.md` created with full decompiler implementation details.
+
+### Python compatibility fixes
+
+- Fixed Python 3.9 compatibility across all Python scripts: replaced PEP 604 union types (`dict | None`) with `Optional[dict]`, added `List` imports, UTC fallback.
+- Committed as `d486cd0`.
+
+---
+
+## 2026-08-01 — DEC-017 follow-up eval, DEC-016 corpus expansion
+
+### DEC-017: stratified perplexity and completion accuracy
+
+- Follow-up eval on expanded corpus checkpoints (variant_A_v3, variant_B2, variant_C_v2).
+- Stratified perplexity by sequence length bucket (short/medium/long at 512 cap).
+- Completion accuracy (200 examples, mask_last=10): A=86.2%, B=92.8%, C=91.4%.
+- Results recorded in `docs/DECISION_LOG.md` and `docs/PHASE_5_RESULTS.md`.
+
+### Corpus expansion (DEC-015)
+
+- Expanded from 4 to 14 Mathlib modules (2,554 → ~8,000 declarations).
+- Vocab A expanded from 4,495 to 8,102 tokens.
+- Datasets rebuilt: `datasets/train_A.jsonl`, `datasets/eval_A.jsonl`, etc.
+- DEC-015 status: complete.
+
+---
+
+## 2026-07-29 — DEC-010/011/012 eval_completion.py fixes
+
+### DEC-010: eval_completion.py bugs identified and fixed
+
+- Bug 1: logit indexing loop broke after first token — every run evaluated exactly one token.
+- Bug 2: Variant C's tested position biased toward high-frequency delimiter token.
+- Both bugs fixed in `python/eval_completion.py`.
+- Prior results retracted; corrected results obtained.
+
+### DEC-011/012: corrected completion accuracy
+
+- Corrected results: A=89.7%, B=94.1%, C=94.6% (200 examples, mask_last=10).
+- Gap reduced from ~35pp (buggy) to ~5pp (corrected).
+- DEC-011/012 status: complete in `docs/DECISION_LOG.md`.
+
+### DEC-013: training stability
+
+- Added batch=1 edge case handling.
+- Added epoch checkpointing (`--save-per-epoch`).
+- Added gradient checkpointing support.
+- Committed as `3a30019`.
+
+
