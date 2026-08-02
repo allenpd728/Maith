@@ -1,5 +1,10 @@
 # Maith: Semantic IR for Lean Mathematics
 
+> **Phase 5 complete (DEC-018 resolved, 2026-08-02).** At a shared 512-token evaluation
+> cap, A trails B and C on both perplexity and completion accuracy. The representation
+> hypothesis is not supported by Phase 5 results. DEC-006 (cold-start embedding confound)
+> remains open. Phase 6 design may proceed.
+
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
 ## 1) Research Question

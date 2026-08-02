@@ -7,11 +7,12 @@ Writes runs/publish_readiness.json by default.
 """
 
 import argparse
+from typing import Optional
 import json
 from pathlib import Path
 
 
-def load_json(path: Path) -> dict | None:
+def load_json(path: Path) -> Optional[dict]:
     if not path.exists():
         return None
     with open(path) as f:
