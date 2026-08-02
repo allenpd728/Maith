@@ -86,28 +86,21 @@ end Lean.DSL
 namespace Lean.DSL.Decompile
 
 /--
-Decompiler: reconstructs valid Lean syntax from an IR graph.
+Decompiler: reconstructs a structural skeleton from an IR graph.
 
-Given an IR graph (as produced by Decoder.lean from a token sequence),
-the decompiler:
-1. Extracts forall binders from FVAR (bound) entities
-2. Builds application trees from operations
-3. Emits well-formed Lean syntax
-
-The decompiler handles:
-- Forall binders with implicit/instance-implicit/explicit kinds
-- Typeclass instances
-- Sort annotations (Type.{u})
-- Arithmetic operations (neg, add, sub, mul, div, pow)
-- Generic operations (gen:<name>)
-- Equality relations
-- Nested forall structure
-
-Limitations:
+STATUS: produces a human-readable skeleton, NOT valid Lean syntax.
+The output is not parseable by Lean's elaborator. Known issues:
+- `Eq` is emitted as `Eq.<type>` which is malformed Lean
+- Universe levels are emitted as raw strings (e.g. `u_1 + 1`), not valid
+  universe level expressions
+- Forall binders are emitted without the `∀` keyword; the `(name : type),`
+  format is a tuple expression, not a binder
 - Lambda/fun binders (BVAR) are not yet supported
-- Some complex typeclass applications may require additional handling
-- Universe constraints are not fully preserved
-- Anonymous term reconstruction may vary from original source formatting
+
+This function is a scaffold for future work. Do not treat its output as
+valid Lean until elaboration has been verified (e.g. by running output
+through `lean --stdin` and checking for errors). "Verifiable SLM outputs"
+and "safe rewriting" depend on a correct implementation and remain future work.
 -/
 
 -- Lean syntax expression types for the decompiled output
@@ -244,10 +237,11 @@ private def sortByIndex (entities : List Entity) : List Entity :=
   entities.foldl (fun acc e => insert e acc) []
 
 /--
-Decompile an IR graph to Lean syntax.
+Decompile an IR graph to a structural skeleton string.
 
-Returns a string containing valid Lean syntax, or an error message
-if decompilation fails.
+Returns a human-readable skeleton of the IR graph structure. The output
+is NOT valid Lean syntax — see the `Decompiler` docstring above for known
+issues. Returns an error string if the graph cannot be traversed.
 -/
 def decompileGraph (g : Graph) : String :=
   -- Step 1: Get forall (FVAR) bound entities sorted by their index
