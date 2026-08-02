@@ -33,8 +33,10 @@ High-level flow:
 - Encode canonical graph to tokens (`Encoder.lean`) — v1.2.0, `FVAR_N`/`BVAR_N`/`TERM_N` positional tokens
 - Serialize examples to JSONL (`CorpusSerializer.lean`)
 - Consume JSONL in `python/` for vocab/tokenizer, splits, and dataset objects
+- Decode tokens back to graph (`Decoder.lean`)
+- Decompile graph to Lean syntax (`Transpiler.lean` — `Decompile.decompileGraph`)
 
-The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode (see `python/validate_roundtrip.py`), confirming token/graph losslessness; this does not include reconstruction back to Lean syntax, which is not yet implemented. Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
+The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
 
 ## 5) Why Not Train Directly on Lean Source?
 
@@ -173,15 +175,17 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 ## 8) Limitations
 
 - Validated across 4 Mathlib modules so far. Broader coverage (more modules, tactic-heavy declarations) may surface new `Expr` patterns.
-- Phase 5 matched-batch rerun complete (2026-07-28): A=1.39, B=1.15, C=1.13, all `smoke_test: false`,
-  all variants effective batch=8. DEC-007 (unmatched batch sizes) is resolved; the A/B/C gap holds.
-  DEC-006 (random embedding init for A vs pretrained embeddings for B/C) is the remaining confound.
-  A 3-epoch A run is the next step to rule it out before interpreting perplexity differences as
-  hypothesis evidence.
+- Phase 5 final (2026-08-02): At a shared 512-token eval cap, A=1.489, B=1.180, C=1.207.
+  Completion accuracy: A=86.2%, B=92.8%, C=91.4%. B/C lead A in every perplexity bucket and
+  on completion accuracy. The B/C advantage is confirmed as real (not a truncation artifact).
+  DEC-006 (cold-start embedding confound) remains open: we cannot separate "IR representation
+  is worse" from "random initialization is worse." Phase 6 design may proceed.
 - For the current authoritative experiment state, use:
-  - `docs/DECISION_LOG.md` (DEC-006, DEC-007)
+  - `docs/DECISION_LOG.md` (DEC-016, DEC-017, DEC-018)
+  - `docs/EXPERIMENT_DESIGN.md`
   - `python3 python/compare_results.py --runs-dir runs/`
-- `Transpiler.lean` is debug-only: its `formatEntityId` output format differs from `Encoder.lean` and is not in the training pipeline. It is retained as a human-readable diagnostic tool only.
+- `Transpiler.lean` provides both debug formatting and Lean syntax decompilation via
+  `Decompile.decompileGraph`. See `docs/DECOMPILER_HANDOVER.md`.
 
 ## 9) Research Roadmap
 
@@ -190,8 +194,8 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.2.0, 7,867 tokens, FVAR/BVAR split, decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5: Run A/B/C training experiment** — 🔄 confound-elimination in progress. Matched-batch rerun complete (2026-07-28: A=1.39, B=1.15, C=1.13). DEC-008 complete: 3-epoch A=1.26 (cold-start is real but partial). DEC-009 in progress: embedding warm-start to fully isolate representation quality.
-7. **Phase 6: Measure theorem-proving performance** — not started
+6. **Phase 5: Run A/B/C training experiment** — ✅ complete (2026-08-02). Matched 512-token cap: A=1.489, B=1.180, C=1.207. B/C lead A on both perplexity and completion accuracy. DEC-006 remains open; Phase 6 design may proceed.
+7. **Phase 6: Measure theorem-proving performance** — design in progress (see `docs/FUTURE_WORK.md`)
 
 Representation contingency planning and Phase 6 design notes are in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
 

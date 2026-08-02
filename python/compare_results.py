@@ -10,7 +10,6 @@ Usage:
 """
 
 import argparse
-from typing import Optional
 import json
 from typing import Optional
 import os

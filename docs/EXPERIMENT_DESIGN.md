@@ -11,11 +11,11 @@ Controlled comparison of three input representations for next-token prediction o
 
 | Variant | Representation | Tokenizer | Vocab size |
 |---------|---------------|-----------|------------|
-| A | Maith IR tokens (v1.2.0) | Custom (`vocab_A.json`) | 4,495 |
+| A | Maith IR tokens (v1.2.0) | Custom (`vocab_A.json`) | 8,102 |
 | B | Raw `leanExpr` string | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 | C | AST-style split `leanExpr` | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 
-Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (2,213 train / 246 eval, seed=42).
+Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (3,375 train / 376 eval, seed=42).
 
 Clarification: C is a representation baseline (AST-style split input), not "B with a different context cap."
 B and C intentionally share tokenizer/model family while changing representation; eval perplexity uses a
@@ -23,7 +23,7 @@ shared fixed eval cap for A/B/C comparability.
 
 ## Known confound: embedding table size
 
-Variant A uses a 4,495-token embedding table. Variants B and C use a 151,643-token table.
+Variant A uses an 8,102-token embedding table. Variants B and C use a 151,643-token table.
 A model trained on A with a small embedding table is not the same total parameter count as
 one trained on B/C with the full Qwen vocab.
 
@@ -31,7 +31,7 @@ one trained on B/C with the full Qwen vocab.
 
 **Option 1: Hold architecture fixed (recommended for first run)**
 Use the same base model architecture for all three variants. For variant A, replace only the
-tokenizer and embedding/unembedding layers with ones sized to 4,495 tokens. All other layers
+tokenizer and embedding/unembedding layers with ones sized to 8,102 tokens. All other layers
 (attention, FFN, norms) are identical. This controls for architecture while allowing the
 embedding table to differ — which is exactly the variable being tested.
 
@@ -128,21 +128,22 @@ See DEC-016 in DECISION_LOG.md for full methodology and follow-up requirements.
 
 **Phase 5 finding:** A trails B and C on both metrics. The gap is real (~0.18 perplexity
 points, ~5pp completion accuracy) and materially smaller than earlier mismatched estimates.
+DEC-017/018 confirmed the gap persists at matched 512-token cap and across all sequence length
+buckets. DEC-006 (cold-start confound) remains unresolved.
 
 **Open confound — DEC-006:** A uses a randomly initialized embedding table (8,102 tokens).
 B and C use Qwen pretrained embeddings (151,643 tokens). The warm-start attempt (DEC-009)
 achieved only 0.51% token overlap and did not isolate the confound. DEC-006 remains open:
 we cannot cleanly separate "IR representation is worse" from "random initialization is worse."
 
-**Required follow-ups before Phase 6 (not optional):**
-1. DEC-002 stratified perplexity analysis — stratify by sequence length bucket (short/medium/long)
+**Required follow-ups before Phase 6 — COMPLETE:**
+1. ✅ DEC-017: stratified perplexity analysis — stratify by sequence length bucket (short/medium/long)
    to confirm B/C's advantage is not an artifact of asymmetric truncation at the 512-token cap.
-2. Higher-confidence completion eval — run eval_completion.py with --samples 200 --mask-last 10
-   against variant_A_v3, variant_B2, variant_C_v2. All variants are already at 3 epochs; the
-   distinction is sample size and mask depth (2,000 predictions vs 250, reaching deeper into
-   sequence bodies past the closing-bracket tail). A 24-example spot-check showed B and C
-   essentially tied at the token level (95.8% vs 95.0%), raising doubt about whether the
-   aggregate 5pp B/C gap is stable. The higher-sample eval is required to resolve this.
+   **Result:** B/C lead A in every bucket. Gap is not a truncation artifact.
+2. ✅ Higher-confidence completion eval — run eval_completion.py with --samples 200 --mask-last 10
+   against variant_A_v3, variant_B2, variant_C_v2. **Result:** A=86.2%, B=92.8%, C=91.4%.
+
+**Phase 5 is complete. Phase 6 design may proceed.**
 
 ### Matched-batch rerun (2026-07-28 — superseded by 2026-08-01 run above)
 
