@@ -325,7 +325,9 @@ The vocabulary file (`vocab_A.json`) maps common tokens to IDs. Dynamic tokens l
 
 ---
 
-## Stage 6 — Round-Trip Verification
+## Stage 6 — Round-Trip Verification (structural skeleton)
+
+**STATUS:** Decompiler produces structural skeleton, not yet validated Lean.
 
 **Provenance: live output of `validate_roundtrip.py`**
 
@@ -354,7 +356,9 @@ Eq.G (Neg.neg (Neg.neg a)) a
 | Binder names | Internal full names | Short names |
 | Typeclass projection | Explicit `toNeg` | Implicit |
 
-**Semantic equivalence: VERIFIED** — Both express "negation is involutive"
+**Status: structural skeleton** — The decompiler produces a structural 
+representation that should express the correct theorem. Lean compiler validation 
+is pending (see `decompTest8` in `Tests/DecompilerTests.lean`).
 
 ---
 

@@ -89,7 +89,7 @@ flowchart TD
 `Transpiler.lean` provides bidirectional IR↔string conversion:
 - **Encoder**: formats IR as human-readable string for debugging (uses `var:/term:/bound:` prefixes)
 - **Decoder**: parses token sequences back to IR graphs (lossless round-trip verified for 2,554 declarations)
-- **Decompiler**: reconstructs valid Lean syntax from IR graphs (implemented via `Decompile.decompileGraph`)
+- **Decompiler**: reconstructs Lean syntax from IR graphs (structural skeleton; pending Lean compiler validation via `decompTest8`)
 
 The decompiler enables verifying SLM outputs and supports safe rewriting workflows.
 
@@ -127,8 +127,9 @@ Every IR token must map back to a Lean construct. This ensures:
 
 The token↔graph direction of this round-trip is implemented and verified
 (2,554/2,554 declarations pass `validate_roundtrip.py`). The graph→Lean-syntax
-direction — reconstructing valid Lean from an IR graph — is now implemented via
-`Transpiler.lean`'s `Decompile.decompileGraph` function. This enables verifiable
+direction — reconstructing Lean from an IR graph — is implemented via
+`Transpiler.lean`'s `Decompile.decompileGraph` function (structural skeleton;
+pending Lean compiler validation via `decompTest8`). This enables verifiable
 SLM outputs and supports safe rewriting workflows.
 
 The decompiler handles:

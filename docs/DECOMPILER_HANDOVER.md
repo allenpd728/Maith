@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-Implemented a graph‚ÜíLean-syntax decompiler in `Maith/Transpiler.lean` that reconstructs valid Lean syntax from an IR graph. This completes the final leg of the Maith round-trip pipeline:
+Implemented a graph‚ÜíLean-syntax decompiler in `Maith/Transpiler.lean` that produces a structural Lean skeleton from an IR graph. This completes the final leg of the Maith round-trip pipeline:
 
 ```
 Lean source ‚Üí MetaExtractor (Expr ‚Üí IR graph) ‚Üí Normalizer ‚Üí Encoder (graph ‚Üí tokens)
@@ -127,7 +127,7 @@ forall {G : Type.{u_1}} [inst : InvolutiveNeg.{u_1} G] (a : G),
 | Aspect | Decompiled | Expected | Impact |
 |--------|------------|----------|--------|
 | Universe level | `u_1 + 1` | `succ u_1` | None (equivalent) |
-| Binder names | Full scope string | Short name | None (valid Lean) |
+| Binder names | Full scope string | Short name | None (structural Lean) |
 | Typeclass projection | Omitted | `InvolutiveNeg.toNeg` | None (implicit in instance) |
 | Eq universe | Omitted | `{succ u_1}` | Minor (type inference works) |
 
@@ -186,7 +186,7 @@ is syntactically correct Lean that the Lean 4 compiler can process:
 # You should see output like:
 # === Lean Validity Check ===
 # ✓ Decompiled Lean code type-checks
-#   Generated valid Lean: (G : Type.u_1 + 1), ...
+#   Generated structural Lean: (G : Type.u_1 + 1), ...
 ```
 
 **Note:** This test requires `lake` and `lean` to be available in the environment.
@@ -222,8 +222,8 @@ let exprMapFinal := forallBounds.foldl (fun acc e => ...) exprMap
 ## Verification Checklist
 
 - [x] All 71 tests pass
-- [x] neg_neg graph decompiles to valid Lean
-- [x] Semantic equivalence verified (both express same theorem)
+- [x] neg_neg graph decompiles to structural Lean skeleton
+- [x] both express the same theorem (pending Lean validation) (both express same theorem)
 - [x] Documentation updated
 - [x] PR created
 - [x] Lean validity test added (decompTest8 - pending execution with lake)
