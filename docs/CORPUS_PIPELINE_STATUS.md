@@ -3,8 +3,9 @@
 **Last updated**: July 26, 2026
 **Status**: ✅ **PRODUCTION READY — 100% coverage across 4 Mathlib modules (2554 declarations)**
 
-Encoder, Decoder, and MetaExtractor are fully implemented. Transpiler is a debug-only
-display utility — not in the training path. See `SESSION_PROGRESS.md` for full changelog.
+Encoder, Decoder, and MetaExtractor are fully implemented. Transpiler provides bidirectional
+IR conversion: debug formatting for human readability, and graph→Lean decompilation via
+`Decompile.decompileGraph`. See `SESSION_PROGRESS.md` for full changelog.
 
 ## Overview
 
@@ -47,7 +48,7 @@ Step 6 uses Encoder v1.2.0: positional `FVAR_N`/`BVAR_N`/`TERM_N` tokens, cap 63
 | `MathlibCorpusBuilder.lean` | ✅ Complete | Top-level orchestration |
 | `Encoder.lean` | ✅ v1.2.0 | Graph → token sequence (positional FVAR_N/BVAR_N/TERM_N, cap 63) |
 | `Decoder.lean` | ✅ Complete | Token → graph (v0.1.0 + v1.2.0 backward compat, total function) |
-| `Transpiler.lean` | 🔧 Debug-only | Human-readable IR formatter, not in training path |
+| `Transpiler.lean` | ✅ Complete | IR ↔ string (debug format + graph→Lean decompilation) |
 
 ## Core Data Structures
 

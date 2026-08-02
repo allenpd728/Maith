@@ -68,7 +68,7 @@ For the full session-by-session narrative log, see `docs/SESSION_PROGRESS.md`.
   full-run numbers (A=1.3922, B=1.1420, C=1.1298, all `smoke_test: false`) and confound flags.
 - Added round-trip scope clarification to `docs/EXAMPLE_ROUNDTRIP.md`, `docs/Design.md`,
   and `README.md`: token↔graph losslessness is verified; graph→Lean-syntax reconstruction
-  is not yet implemented (`Transpiler.lean` is debug-only).
+  is now implemented via `Transpiler.lean`'s `Decompile.decompileGraph` function.
 
 ---
 
