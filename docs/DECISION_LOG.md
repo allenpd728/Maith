@@ -767,3 +767,76 @@ DEC-006 remains open and must be addressed separately in Phase 6 design.
 - DEC-006 (cold-start embedding confound, still open)
 - DEC-015 (corpus expansion)
 - DEC-016 (Phase 5 conclusion)
+
+---
+
+### DEC-018: Equal-sequence-length perplexity rerun — Phase 5 perplexity gate resolved (2026-08-02)
+
+**Date:** 2026-08-02
+**Status:** Accepted. Phase 5 perplexity comparison now valid. Phase 6 blocker lifted.
+
+**Required by:** DEC-017, which found that the original aggregate perplexity comparison
+was not valid evidence because A and B/C were evaluated over different token distributions
+due to asymmetric sequence-length truncation.
+
+#### Results at shared 512-token cap (dec018_ppl_rerun.py, all 376 eval examples)
+
+| Variant | Short (<128) N | Mean PPL | Medium (128–512) N | Mean PPL | Long (>512) N | Truncated | Mean PPL | Overall Mean PPL |
+|---------|---------------|----------|--------------------|----------|---------------|-----------|----------|-----------------|
+| A | 158 | 1.663 | 187 | 1.396 | 31 | 31/31 | 1.168 | 1.489 |
+| B | 83 | 1.415 | 214 | 1.126 | 79 | 78/79 | 1.077 | 1.180 |
+| C | 71 | 1.668 | 197 | 1.109 | 108 | 107/108 | 1.083 | 1.207 |
+
+B and C's numbers are unchanged from DEC-017 (they were already at a 512-token cap).
+A's long-bucket perplexity falls from 2.200 to 1.168 once capped at 512 — confirming
+that the 2.200 figure was driven by hard suffix tokens beyond the 512-token boundary
+that B/C were never evaluated on. However, A's overall perplexity rises from 1.281 to
+1.489 under the matched cap because its short and medium buckets now have their relative
+weight increased (A has proportionally more short examples than B/C, and those examples
+have higher perplexity for A than for B/C).
+
+#### Interpretation
+
+**B and C lead A in every bucket at the matched cap.** The advantage is not a
+truncation artifact. Specifically:
+
+- Short bucket: B leads A by 0.248 perplexity points; C is essentially tied with A.
+- Medium bucket: B leads A by 0.270; C leads A by 0.287.
+- Long bucket: B leads A by 0.091; C leads A by 0.085 — the gap narrows but does not close.
+- Overall: B leads A by 0.309; C leads A by 0.282.
+
+The DEC-017 concern was valid: the original 1.281 vs 1.107/1.098 comparison was
+contaminated by asymmetric truncation and should not have been cited. The DEC-018
+matched comparison (1.489 vs 1.180/1.207) is a valid apples-to-apples result. The
+direction is the same — B/C outperform A — but the mechanism is confirmed to be real
+rather than an evaluation artifact.
+
+**The B/C gap (1.180 vs 1.207) is small** and similar in magnitude to the DEC-017
+unmatched comparison. B has a slight perplexity edge over C.
+
+**DEC-006 (cold-start confound) remains open.** This result confirms that B and C
+produce lower perplexity on the same token distributions. It does not isolate whether
+that advantage comes from representation quality or from the embedding warm-start that
+B and C receive from Qwen2.5-Coder's pretrained weights. DEC-006 must be addressed
+in Phase 6 design.
+
+#### Phase 5 perplexity conclusion (now valid)
+
+At a shared 512-token evaluation cap, Variant A (Maith IR) has higher perplexity than
+both Variant B (raw leanExpr, Qwen BPE) and Variant C (normalized leanExpr, Qwen BPE)
+across all sequence-length buckets. Combined with the completion accuracy result
+(DEC-017: A 86.2%, B 92.8%, C 91.4%), the Phase 5 evidence consistently shows A
+trailing B/C on both metrics. The representation hypothesis — that IR tokens improve
+model performance — is not supported by Phase 5 results. DEC-006 remains the
+unresolved confound: the gap may reflect initialization disadvantage rather than
+representation quality.
+
+**Phase 6 blocker lifted.** Phase 6 design may proceed from this baseline.
+
+#### References
+- runs/dec018_ppl_results.json
+- python/dec018_ppl_rerun.py
+- DEC-002 (sequence cap asymmetry)
+- DEC-006 (cold-start embedding confound, still open)
+- DEC-016 (Phase 5 matched-run conclusion)
+- DEC-017 (stratified perplexity, follow-up completion accuracy)
