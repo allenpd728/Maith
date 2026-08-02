@@ -9,7 +9,9 @@
 
 ## Executive Summary
 
-Implemented a graph→Lean-syntax decompiler in `Maith/Transpiler.lean` that reconstructs valid Lean syntax from an IR graph. This completes the final leg of the Maith round-trip pipeline:
+Implemented a graph→Lean-syntax decompiler scaffold in `Maith/Transpiler.lean`. **The output is not valid Lean** — it reconstructs a structural skeleton (binder names, operation trees, typeclass annotations) but is not parseable by Lean's elaborator. Known issues: `Eq` emission is malformed, universe level syntax is invalid, and forall binders are emitted without the `∀` keyword. This does not complete the final leg of the Maith round-trip pipeline; graph→Lean remains future work.
+
+Original summary (preserved for context, claims corrected above):
 
 ```
 Lean source → MetaExtractor (Expr → IR graph) → Normalizer → Encoder (graph → tokens)
@@ -127,7 +129,7 @@ forall {G : Type.{u_1}} [inst : InvolutiveNeg.{u_1} G] (a : G),
 | Aspect | Decompiled | Expected | Impact |
 |--------|------------|----------|--------|
 | Universe level | `u_1 + 1` | `succ u_1` | None (equivalent) |
-| Binder names | Full scope string | Short name | None (valid Lean) |
+| Binder names | Full scope string | Short name | None (skeleton only) |
 | Typeclass projection | Omitted | `InvolutiveNeg.toNeg` | None (implicit in instance) |
 | Eq universe | Omitted | `{succ u_1}` | Minor (type inference works) |
 
@@ -200,8 +202,8 @@ let exprMapFinal := forallBounds.foldl (fun acc e => ...) exprMap
 ## Verification Checklist
 
 - [x] All 71 tests pass
-- [x] neg_neg graph decompiles to valid Lean
-- [x] Semantic equivalence verified (both express same theorem)
+- [ ] neg_neg graph decompiles to valid Lean — NOT complete; output is a structural skeleton, not elaboratable Lean
+- [ ] Semantic equivalence verified — NOT verified; output is not parseable by Lean's elaborator
 - [x] Documentation updated
 - [x] PR created
 
