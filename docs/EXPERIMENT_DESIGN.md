@@ -11,11 +11,11 @@ Controlled comparison of three input representations for next-token prediction o
 
 | Variant | Representation | Tokenizer | Vocab size |
 |---------|---------------|-----------|------------|
-| A | Maith IR tokens (v1.2.0) | Custom (`vocab_A.json`) | 4,495 |
+| A | Maith IR tokens (v1.2.0) | Custom (`vocab_A.json`) | 8,102 |
 | B | Raw `leanExpr` string | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 | C | AST-style split `leanExpr` | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 
-Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (2,213 train / 246 eval, seed=42).
+Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (3,375 train / 376 eval, seed=42).
 
 Clarification: C is a representation baseline (AST-style split input), not "B with a different context cap."
 B and C intentionally share tokenizer/model family while changing representation; eval perplexity uses a
@@ -23,7 +23,7 @@ shared fixed eval cap for A/B/C comparability.
 
 ## Known confound: embedding table size
 
-Variant A uses a 4,495-token embedding table. Variants B and C use a 151,643-token table.
+Variant A uses an 8,102-token embedding table. Variants B and C use a 151,643-token table.
 A model trained on A with a small embedding table is not the same total parameter count as
 one trained on B/C with the full Qwen vocab.
 
@@ -31,7 +31,7 @@ one trained on B/C with the full Qwen vocab.
 
 **Option 1: Hold architecture fixed (recommended for first run)**
 Use the same base model architecture for all three variants. For variant A, replace only the
-tokenizer and embedding/unembedding layers with ones sized to 4,495 tokens. All other layers
+tokenizer and embedding/unembedding layers with ones sized to 8,102 tokens. All other layers
 (attention, FFN, norms) are identical. This controls for architecture while allowing the
 embedding table to differ — which is exactly the variable being tested.
 
