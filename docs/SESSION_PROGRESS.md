@@ -28,7 +28,7 @@
 
 **EXAMPLE_ROUNDTRIP.md** — created: full pipeline walkthrough for `neg_neg` with explicit provenance labels on every stage (direct corpus read / live Lean run / illustrative). Stage 2 populated with real elaborated `Expr` data from `--trace` output.
 
-**Round-trip scope clarification** — additive edits to `EXAMPLE_ROUNDTRIP.md`, `Design.md`, and `README.md`: token↔graph losslessness is verified (2,554/2,554); graph→Lean-syntax reconstruction is not yet implemented (`Transpiler.lean` is debug-only display only).
+**Round-trip completeness** — additive edits to `EXAMPLE_ROUNDTRIP.md`, `Design.md`, and `README.md`: token↔graph losslessness is verified (2,554/2,554); graph→Lean-syntax reconstruction is now implemented via `Transpiler.lean`'s `Decompile.decompileGraph` function.
 
 **Results tables updated** — `README.md` and `docs/EXPERIMENT_DESIGN.md` updated with real 2026-07-27 full-run numbers and confound flags.
 
