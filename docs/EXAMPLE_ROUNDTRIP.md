@@ -332,12 +332,16 @@ The vocabulary file (`vocab_A.json`) maps common tokens to IDs. Dynamic tokens l
 ### What is Round-Trip Testing?
 
 Round-trip testing verifies that:
-1. Graph -> Tokens -> Graph produces the same graph (lossless encoding)
-2. The decompiler can reconstruct Lean syntax from the graph
+1. Graph → Tokens → Graph produces the same graph (lossless encoding)
 
-### The Decompiler Output
+Stage 6 covers only the token↔graph direction. That direction is verified
+(2,554/2,554 declarations pass `validate_roundtrip.py`).
 
-The `Decompile.decompileGraph` function reconstructs Lean syntax:
+### Graph → Lean Syntax: Not Yet Implemented
+
+**STATUS: the graph→Lean direction is not complete.** `Decompile.decompileGraph`
+exists as a structural scaffold but does not produce valid Lean. The current
+output for the `neg_neg` graph is:
 
 ```
 (G : Type.u_1 + 1), 
@@ -346,15 +350,20 @@ The `Decompile.decompileGraph` function reconstructs Lean syntax:
 Eq.G (Neg.neg (Neg.neg a)) a
 ```
 
-### Side-by-Side: Original vs. Decompiled
+This is not parseable by Lean's elaborator. Known issues:
 
-| Aspect | Original (Stage 1) | Decompiled (Stage 6) |
-|--------|-------------------|---------------------|
-| Universe levels | `succ u_1` | `u_1 + 1` |
-| Binder names | Internal full names | Short names |
-| Typeclass projection | Explicit `toNeg` | Implicit |
+- `Eq.G` is malformed — valid Lean uses `@Eq G` or infix `=`
+- `Type.u_1 + 1` is not valid universe level syntax
+- `(G : Type.u_1 + 1),` is a tuple expression, not a `∀` binder
+- No `∀` or `theorem` keyword wrapping the binder chain
 
-**Semantic equivalence: VERIFIED** — Both express "negation is involutive"
+The test suite (7/7 passing) checks token presence and non-emptiness, not
+Lean elaboration. A real validity check requires running the output through
+`lean --stdin` and verifying zero errors.
+
+Completing this stage requires fixing the `exprToString` emitter to produce
+syntactically correct Lean for `Eq`, universe levels, and `∀` binders.
+Until then, "verifiable SLM outputs" and "safe rewriting" are not available.
 
 ---
 
@@ -367,7 +376,7 @@ Eq.G (Neg.neg (Neg.neg a)) a
 | 3 | IR graph | Canonical graph representation |
 | 4 | Normalized graph | Sorted, canonical form |
 | 5 | Token sequence | ML-ready format |
-| 6 | Round-trip + decompile | Verified lossless, reconstructable |
+| 6 | Round-trip (token↔graph) | Token↔graph verified lossless; graph→Lean not yet valid |
 
 ### The Pipeline in One Sentence
 
