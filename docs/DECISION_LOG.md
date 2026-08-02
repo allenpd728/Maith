@@ -840,3 +840,98 @@ representation quality.
 - DEC-006 (cold-start embedding confound, still open)
 - DEC-016 (Phase 5 matched-run conclusion)
 - DEC-017 (stratified perplexity, follow-up completion accuracy)
+
+---
+
+### DEC-019: Corpus expansion — planning entry (2026-08-02)
+
+**Date:** 2026-08-02
+**Status:** Planned. Not started. Awaiting decision on which hypothesis to prioritize
+and GPU time to commit before execution.
+
+#### Background
+
+Phase 5 (DEC-016 through DEC-018) established that A trails B/C on both perplexity and
+completion accuracy at matched evaluation conditions. DEC-006 identifies the unresolved
+confound: A's embedding table is randomly initialized at training time, while B and C
+begin from Qwen2.5-Coder's pretrained weights. Two Phase 6 attempts to close this
+confound have so far been inconclusive:
+
+- **Attempt 1 (warm-start):** embedding warm-start via vocabulary projection — marginal
+  or negative result; did not close the gap.
+- **Attempt 2 (embed-pretrain):** longer pretraining of A's embeddings — similarly
+  inconclusive.
+
+Corpus expansion is a potential **Attempt 3** on the DEC-006 confound, but it is also
+a separate and distinct hypothesis about generalization. These two motivations call for
+different module choices and produce different experiments; they must not be conflated.
+
+#### The two separate claims
+
+**Claim 1 — Volume (DEC-006 lineage):**
+More training examples give A's randomly-initialized embeddings more gradient signal,
+potentially allowing A to partially close the initialization gap with B/C. Mechanism:
+A requires more signal to organize its embedding space from scratch; B/C start from an
+organized state and need less signal per example. Prediction: increasing volume in
+algebra-adjacent modules may narrow A's gap, particularly in short/medium sequences
+where cold-start effects dominate.
+
+*Important caveat:* this is not guaranteed. B/C also benefit from additional data and
+start from a stronger position. The gap may stay proportionally similar or widen. This
+is an empirical question, not a given.
+
+**Claim 2 — Diversity (generalization):**
+Broader domains test whether the IR representation transfers outside the algebraic
+modules the baseline was trained on. This is a different and valid experiment: does
+Maith IR generalize to, e.g., topological or lattice structures? This does not directly
+address DEC-006 — B/C would be expected to benefit at least as much from domain
+diversity, given their tokenizers already cover diverse Lean syntax from pretraining.
+
+#### Module choices implied by each claim
+
+| Claim | Module priority | Rationale |
+|-------|----------------|-----------|
+| Volume (DEC-006) | Algebra-adjacent: NatPowAssoc, Ring.Basic, Ring.GeomSum, Subgroup.Basic, Data.Nat.Basic, Data.Int.Basic, Algebra.Module.Basic | Similar IR graph structure to baseline; more examples in the same distribution |
+| Diversity (generalization) | Topology.Basic, Order.Lattice | Meaningfully out-of-distribution relative to baseline algebra modules; tests transfer |
+
+Both sets are in `Scripts/module_expansion_targets.json` under `expansion_candidates`.
+
+#### Required pre-execution steps (in order)
+
+1. **Dry-run (print-only):** confirm module list and generated Lean runner — no
+   extraction runs.
+   ```
+   python3 python/corpus_expansion_dry_run.py --set candidates --print-only
+   ```
+
+2. **Dry-run (real counts):** get actual declaration counts and success rates from
+   Mathlib directly, replacing any secondhand estimates with verified ground truth.
+   (~10–15 min Lean build time, no training.)
+   ```
+   python3 python/corpus_expansion_dry_run.py --set candidates
+   ```
+
+3. **Decide the hypothesis explicitly** before running extraction or training. Log the
+   choice as a follow-up DEC entry (DEC-020 or similar) before proceeding. This is the
+   step that makes the eventual result interpretable. Expansion run without an explicit
+   hypothesis choice cannot be cleanly interpreted either way.
+
+4. **Extract, rebuild datasets, retrain** — only after steps 1–3 are complete. Same
+   order of time commitment as the Phase 5 matched rerun (extraction + full A/B/C
+   retrain at 3 epochs each).
+
+#### What this entry does not decide
+
+- Which hypothesis to prioritize (volume vs. diversity).
+- Whether expansion is the right next Phase 6 step relative to other approaches.
+- Module subset selection within the candidate list.
+
+Those decisions require the dry-run numbers and an explicit hypothesis choice first.
+
+#### References
+- Scripts/module_expansion_targets.json
+- python/corpus_expansion_dry_run.py
+- DEC-006 (cold-start embedding confound, still open)
+- DEC-016 (Phase 5 conclusion)
+- DEC-018 (perplexity gate resolved)
+
