@@ -180,19 +180,24 @@ encoder v1.2.0, 1 epoch. A: lr=2e-4, train cap 1024. B/C: lr=3e-5, train cap 384
    - `python3 python/check_results_gate.py --runs-dir runs/`
 5. Once gate passes, record final A/B/C conclusions in this document.
 
-## Phase 6 (conditional — not required for this experiment)
+## Phase 6 — Results (DEC-020, 2026-08-02)
 
-Proceed only if A/B/C results show a clear, decision-grade perplexity advantage for variant A over B and C.
+Phase 6 ran an expanded-corpus A/B/C rerun (14 modules, 3,375 train / 376 eval examples)
+with embed-pretrain warm-start applied to all variants. The gap did not close.
 
-1. Scaffold theorem-proving evaluation artifacts for Phase 6:
-   - `python3 python/scaffold_theorem_eval.py`
-   - `python3 python/validate_theorem_eval_artifacts.py`
-2. Scaffold proof-context sidecar protocol artifacts:
-   - `python3 python/scaffold_context_artifacts.py`
-   - `python3 python/build_dependency_manifest.py`
-   - `python3 python/validate_context_artifacts.py --datasets-dir datasets/`
-   - `python3 python/context_pack_stats.py --datasets-dir datasets/`
-3. Implement/plug real prover benchmark harness into the generated theorem-eval templates.
+| Variant | Vocab | Params | Epochs | Eval Perplexity | Training time |
+|---------|-------|--------|--------|----------------|--------------|
+| A (IR tokenization) | 8,144 | 365M | 3 | 1.2792 | 105 min |
+| B (BPE, standard FT) | 151,643 | 494M | 2 | 1.1295 | 181 min |
+| C (BPE, embed-pretrain) | 151,643 | 494M | 2 | 1.1102 | 189 min |
+
+A trails B/C by 0.15–0.17pp — identical margin to Phase 5. The gap is stable across corpus sizes.
+Phase 6 is complete. See DEC-020 in `docs/DECISION_LOG.md` for full interpretation.
+
+**Open items carrying forward:**
+- DEC-006 (cold-start embedding confound) — not yet definitively isolated
+- DEC-019 diversity track (topology/lattice generalization) — not yet run
+- Decompiler Lean validity (Phase 7 concern, see `docs/DECOMPILER_HANDOVER.md`)
 
 Representation IDs are recorded in dataset rows and `runs/variant_*/results.json` so future IR
 candidate families can be compared without changing the reporting pipeline.
