@@ -16,9 +16,9 @@ Three variants compared on next-token prediction perplexity (lower is better) on
 
 | Variant | Token Type | Vocab Size | Parameters | Train Seq Cap | Eval Seq Cap |
 |---------|------------|------------|------------|---------------|--------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | 361.9M | 1024 | 512 |
-| B | Raw `leanExpr` string | 151,643 | 494.0M | 384 | 512 |
-| C | AST-style split `leanExpr` | 151,643 | 494.0M | 384 | 512 |
+| A | Maith IR tokens (v1.2.0) | 8,102 | 365M | 512 | 512 |
+| B | Raw `leanExpr` string | 151,643 | 494M | 512 | 512 |
+| C | AST-style split `leanExpr` | 151,643 | 494M | 512 | 512 |
 
 ---
 
