@@ -84,6 +84,23 @@ The full pipeline is implemented and validated. See section 7 for corpus results
 - `lake build tests` passes (0 failures).
 - All tests pass (**66+ unit tests + corpus-pipeline/serializer integration checks**).
 
+**Python test suite** — all passing, 0 failures:
+
+| File | Tests | Coverage |
+|------|-------|----------|
+| `python/test_train_regression.py` | 6 | `collate_fn`, `evaluate_perplexity`, `BATCH_SIZE`/`GRAD_ACCUM` constants |
+| `python/test_build_dataset.py` | 14 | Dataset construction, tokenization, splits |
+| `python/test_variant_config.py` | 6 | Variant A/B/C configuration validation |
+| `python/test_pipeline_integration.py` | 1 | End-to-end pipeline smoke test |
+
+Run with:
+```bash
+python3 python/test_train_regression.py
+python3 python/test_build_dataset.py
+python3 python/test_variant_config.py
+python3 python/test_pipeline_integration.py
+```
+
 ### While full A/B/C runs are active
 
 Use these read-only monitoring helpers (safe during active training):
