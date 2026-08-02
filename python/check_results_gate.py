@@ -14,11 +14,13 @@ Writes gate summary to runs/full_results_gate.json by default.
 """
 
 import argparse
+from typing import Optional
 import json
+from typing import Optional
 from pathlib import Path
 
 
-def load_result(path: Path) -> dict | None:
+def load_result(path: Path) -> Optional[dict]:
     if not path.exists():
         return None
     with open(path) as f:

@@ -7,6 +7,7 @@ Read-only with respect to training runs.
 """
 
 import argparse
+from typing import Optional, List
 import json
 import re
 from dataclasses import dataclass
@@ -28,14 +29,14 @@ class Finding:
     message: str
 
 
-def list_doc_files(repo_root: Path) -> list[Path]:
+def list_doc_files(repo_root: Path) -> List[Path]:
     files: list[Path] = []
     for pattern in DOC_GLOBS:
         files.extend(repo_root.glob(pattern))
     return sorted(set(p for p in files if p.is_file()))
 
 
-def load_vocab_size(vocab_path: Path) -> int | None:
+def load_vocab_size(vocab_path: Path) -> Optional[int]:
     if not vocab_path.exists():
         return None
     with open(vocab_path) as f:
@@ -45,7 +46,7 @@ def load_vocab_size(vocab_path: Path) -> int | None:
     return len(payload)
 
 
-def scan_docs(files: list[Path], expected_vocab_size: int | None) -> list[Finding]:
+def scan_docs(files: list[Path], expected_vocab_size: int | None) -> List[Finding]:
     findings: list[Finding] = []
     for path in files:
         text = path.read_text(errors="replace")
