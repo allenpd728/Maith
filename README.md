@@ -1,18 +1,9 @@
 # Maith: Semantic IR for Lean Mathematics
 
-> **⚠ PROVISIONAL RESULTS — DEC-018 PENDING**
->
-> The Phase 5 perplexity comparison (A: 1.281, B: 1.107, C: 1.098) is **not valid evidence**
-> for or against the representation hypothesis. DEC-017 established that B/C's perplexity
-> advantage is substantially driven by asymmetric sequence-length truncation: B/C are
-> evaluated at a 512-token cap while A is evaluated at 1024 tokens, and 78/79 of B's
-> "long" examples and 107/108 of C's are silently truncated. The aggregate numbers
-> measure different token distributions and cannot be directly compared.
->
-> **The completion accuracy result stands (A trails B/C by ~5–6pp) and is unaffected.**
->
-> **DEC-018 (equal-sequence-length perplexity rerun) is a required gate before Phase 6.**
-> This warning will be removed once DEC-018 is resolved.
+> **Phase 5 complete (DEC-018 resolved, 2026-08-02).** At a shared 512-token evaluation
+> cap, A trails B and C on both perplexity and completion accuracy. The representation
+> hypothesis is not supported by Phase 5 results. DEC-006 (cold-start embedding confound)
+> remains open. Phase 6 design may proceed.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 

@@ -1,19 +1,9 @@
 # A/B/C Experiment Design
 
-> **⚠ PROVISIONAL RESULTS — DEC-018 PENDING**
->
-> The Phase 5 perplexity numbers currently on this branch are **not a valid baseline**
-> for Phase 6 design. DEC-017 (2026-08-02) found that B/C's aggregate perplexity
-> advantage over A is substantially driven by asymmetric truncation: B and C are
-> evaluated at a 512-token cap while A runs to 1024, truncating 78/79 of B's long
-> examples and 107/108 of C's. The numbers do not measure the same token distribution
-> and cannot support a conclusion about representation quality.
->
-> Completion accuracy (A: 86.2%, B: 92.8%, C: 91.4%) is unaffected and stands as a
-> valid Phase 5 result.
->
-> **Phase 6 design must not begin until DEC-018 (equal-sequence-length perplexity
-> rerun) is complete and documented.** This warning will be removed at that point.
+> **Phase 5 complete (DEC-018 resolved, 2026-08-02).** Matched perplexity (shared
+> 512-token cap): A 1.489, B 1.180, C 1.207. Completion accuracy: A 86.2%, B 92.8%,
+> C 91.4%. B/C advantage confirmed as real, not a truncation artifact. Phase 6 may
+> proceed. DEC-006 (cold-start confound) remains open.
 
 Controlled comparison of three input representations for next-token prediction on Mathlib IR.
 
