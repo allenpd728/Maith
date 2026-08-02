@@ -660,3 +660,110 @@ but until it is measured under matched conditions it is not a conclusion.
 - DEC-010 (eval_completion bug fix)
 - DEC-015 (corpus expansion, matched rerun requirement)
 - docs/PHASE_5_RESULTS.md (full results history)
+
+---
+
+### DEC-017: Follow-up eval results — stratified perplexity and high-confidence completion accuracy (2026-08-02)
+
+**Date:** 2026-08-02
+**Status:** Accepted. Phase 6 design blocked pending equal-sequence-length perplexity rerun (see required gate below).
+
+#### Follow-up 1: Stratified perplexity (DEC-002 resolution)
+
+**Results (followup_eval.py, all 376 eval examples, seq_cap per variant):**
+
+| Variant | Short (<128) N | Mean PPL | Medium (128–512) N | Mean PPL | Long (>512) N | Truncated | Mean PPL |
+|---------|---------------|----------|--------------------|----------|---------------|-----------|----------|
+| A | 158 | 1.663 | 187 | 1.396 | 31 | 5/31 | 2.200 |
+| B | 83 | 1.415 | 214 | 1.126 | 79 | 78/79 | 1.077 |
+| C | 71 | 1.668 | 197 | 1.109 | 108 | 107/108 | 1.083 |
+
+**Finding:**
+The stratification reveals that B/C's aggregate perplexity advantage over A is
+substantially driven by asymmetric truncation, not solely by representation quality.
+
+B's 79 "long" examples are truncated in 78/79 cases to 512 tokens — the model never
+sees the hard part of those sequences. C truncates 107/108. A's 31 long examples are
+truncated in only 5/31 — it is evaluated on sequences up to its full 1024-token training
+cap, including the structurally complex tails that B/C never process.
+
+B and C's long-bucket perplexity (1.077/1.083) is their *best* performing bucket, not
+their worst. This is consistent with truncation artificially removing the harder suffix
+tokens from their eval loss. A's long-bucket perplexity (2.200) is its worst — it is
+penalized for tokens that B/C's eval cap silently drops.
+
+**Implication:**
+The current aggregate perplexity comparison (A: 1.2812, B: 1.107, C: 1.098) should not
+be treated as valid evidence for or against the representation hypothesis. The numbers
+are not measuring the same thing: A and B/C are evaluated over materially different
+token distributions. The perplexity comparison cannot support a conclusion about
+representation quality until it is re-run with matched sequence caps.
+
+This does not affect the short and medium buckets, where all three variants are
+unadjusted and directly comparable. In those buckets B and C still lead A (short: A 1.663
+vs B 1.415 vs C 1.668; medium: A 1.396 vs B 1.126 vs C 1.109), so the advantage is not
+entirely an artifact. But the aggregate headline numbers are contaminated and should not
+be cited as a primary result.
+
+#### Follow-up 2: Completion accuracy (DEC-016 required follow-up)
+
+**Results (followup_eval.py, 200 examples, mask_last=10, single-pass teacher-forced):**
+
+| Variant | Top-1 Accuracy | Correct / Total | Examples evaluated |
+|---------|---------------|-----------------|-------------------|
+| A | 86.2% | 1723 / 2000 | 200 |
+| B | 92.8% | 1792 / 1930 | 193 |
+| C | 91.4% | 1800 / 1970 | 197 |
+
+**Finding:**
+A trails B and C by ~5–6 percentage points. The gap from the 50-example run (A: 89.6%,
+B: 94.4%, C: 90.8%) survives at scale with tighter confidence: 2,000 predictions for A,
+~1,950 for B and C. The B/C gap narrows from 3.6pp to 1.4pp and is not a reliable
+signal — within expected variance at this sample size.
+
+This result is not affected by the sequence-cap asymmetry identified in Follow-up 1.
+Completion accuracy is computed from the full uncapped sequence for each example
+(the model sees the entire sequence; only the final mask_last tokens are evaluated),
+so B/C are not receiving any truncation benefit here. The 5–6pp A deficit is a clean
+result that stands on its own.
+
+**Methodological note:**
+The completion eval uses a single-pass teacher-forced method (DEC-017 / followup_eval.py)
+replacing the original token-by-token loop. The two methods were verified to produce
+bit-identical predictions on 5 examples per variant before the full run
+(check_completion_indexing.py, all variants PASS). The token count difference across
+variants (B: 1930, C: 1970 vs A: 2000) reflects examples skipped for being shorter than
+mask_last=10, not a sampling difference.
+
+#### Required gate before Phase 6: equal-sequence-length perplexity rerun
+
+**This is a Phase 6 blocker, not an open question.**
+
+Phase 6 design must not proceed until perplexity is re-evaluated with a matched sequence
+cap across all three variants. The current perplexity numbers are not a valid baseline
+for a Phase 6 comparison.
+
+**What is required:**
+Re-run perplexity evaluation for all three variants with a single shared sequence cap —
+either 512 tokens (B/C's current cap, meaning A is evaluated under A's training cap for
+the long bucket) or a cap chosen to equalize the truncation fraction across variants.
+The goal is that the "long" bucket truncation rate is comparable across A, B, and C so
+that the per-bucket and aggregate perplexity numbers reflect the same token distribution.
+
+**What this will and will not resolve:**
+It will produce a perplexity comparison that is not confounded by asymmetric truncation,
+making it valid evidence for or against the representation hypothesis at the sequence
+lengths where all variants are compared on equal footing.
+
+It will not resolve DEC-006 (cold-start embedding confound). Even a clean perplexity
+comparison may still conflate representation quality with initialization disadvantage.
+DEC-006 remains open and must be addressed separately in Phase 6 design.
+
+**References:**
+- runs/followup_eval_results.json
+- python/followup_eval.py
+- python/check_completion_indexing.py
+- DEC-002 (sequence cap asymmetry, original)
+- DEC-006 (cold-start embedding confound, still open)
+- DEC-015 (corpus expansion)
+- DEC-016 (Phase 5 conclusion)
