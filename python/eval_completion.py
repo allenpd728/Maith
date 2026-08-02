@@ -331,7 +331,11 @@ def main():
     parser.add_argument("--runs-dir",    default=DEFAULT_RUNS)
     parser.add_argument("--datasets",    default=DATASETS_DIR)
     parser.add_argument("--checkpoint-A", default=None,
-                        help="Override checkpoint directory for variant A (e.g. runs/variant_A_3ep)")
+                        help="Override checkpoint directory for variant A (e.g. runs/variant_A_v3)")
+    parser.add_argument("--checkpoint-B", default=None,
+                        help="Override checkpoint directory for variant B (e.g. runs/variant_B2)")
+    parser.add_argument("--checkpoint-C", default=None,
+                        help="Override checkpoint directory for variant C (e.g. runs/variant_C_v2)")
     args = parser.parse_args()
 
     if not Path("lakefile.lean").exists():
@@ -350,7 +354,7 @@ def main():
     for variant in variants:
         print(f"── Variant {variant} ──")
         try:
-            ckpt_override = getattr(args, f"checkpoint_{variant}", None)
+            ckpt_override = getattr(args, f"checkpoint_{variant.upper()}", None)
             model, _ = load_model_and_vocab(variant, args.runs_dir, args.datasets, device,
                                             checkpoint_override=ckpt_override)
             examples  = load_eval_split(variant, args.datasets, limit=args.samples)

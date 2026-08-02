@@ -100,19 +100,56 @@ Secondary metrics (if time permits):
 
 ## Results
 
-### Matched-batch rerun (2026-07-28 — authoritative)
+### Phase 5 final — expanded corpus, matched 3-epoch rerun (2026-08-01, authoritative)
 
-All variants at effective batch=8 (`grad_accum=8`). DEC-007 resolved.
+All three variants: 3,375 train / 376 eval, 3 epochs, seed=42. DEC-007 and DEC-015 resolved.
+See DEC-016 in DECISION_LOG.md for full methodology and follow-up requirements.
+
+**Perplexity:**
+
+| Variant | Representation | Vocab | Perplexity | Train time | Params |
+|---------|---------------|-------|------------|------------|--------|
+| A | Maith IR tokens (v1.2.0) | 8,102 | 1.2812 | 77.4 min | 365M |
+| B | Raw leanExpr → Qwen BPE | 151,643 | 1.107 | 523.0 min | 494M |
+| C | AST-style → Qwen BPE | 151,643 | 1.098 | 272.8 min | 494M |
+
+**Completion accuracy (eval_completion.py, 50 examples, mask_last=5, teacher-forced):**
+
+| Variant | Top-1 Accuracy | Correct / Total |
+|---------|---------------|-----------------|
+| A | 89.6% | 224 / 250 |
+| B | 94.4% | 236 / 250 |
+| C | 90.8% | 227 / 250 |
+
+**Phase 5 finding:** A trails B and C on both metrics. The gap is real (~0.18 perplexity
+points, ~5pp completion accuracy) and materially smaller than earlier mismatched estimates.
+
+**Open confound — DEC-006:** A uses a randomly initialized embedding table (8,102 tokens).
+B and C use Qwen pretrained embeddings (151,643 tokens). The warm-start attempt (DEC-009)
+achieved only 0.51% token overlap and did not isolate the confound. DEC-006 remains open:
+we cannot cleanly separate "IR representation is worse" from "random initialization is worse."
+
+**Required follow-ups before Phase 6 (not optional):**
+1. DEC-002 stratified perplexity analysis — stratify by sequence length bucket (short/medium/long)
+   to confirm B/C's advantage is not an artifact of asymmetric truncation at the 512-token cap.
+2. Higher-confidence completion eval — run eval_completion.py with --samples 200 --mask-last 10
+   against variant_A_v3, variant_B2, variant_C_v2. All variants are already at 3 epochs; the
+   distinction is sample size and mask depth (2,000 predictions vs 250, reaching deeper into
+   sequence bodies past the closing-bracket tail). A 24-example spot-check showed B and C
+   essentially tied at the token level (95.8% vs 95.0%), raising doubt about whether the
+   aggregate 5pp B/C gap is stable. The higher-sample eval is required to resolve this.
+
+### Matched-batch rerun (2026-07-28 — superseded by 2026-08-01 run above)
+
+All variants at effective batch=8 (grad_accum=8). DEC-007 resolved.
 
 | Variant | Representation | Vocab | Perplexity | Train time | Grad steps | Eff. batch |
 |---------|---------------|-------|------------|------------|------------|------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | **1.39** | 22.7 min | 277 | 8 |
-| B | Raw `leanExpr` → Qwen BPE | 151,936 | **1.15** | 112.7 min | 277 | 8 |
-| C | AST-style → Qwen BPE | 151,936 | **1.13** | 50.0 min | 277 | 8 |
+| A | Maith IR tokens (v1.2.0) | 4,495 | 1.39 | 22.7 min | 277 | 8 |
+| B | Raw leanExpr → Qwen BPE | 151,936 | 1.15 | 112.7 min | 277 | 8 |
+| C | AST-style → Qwen BPE | 151,936 | 1.13 | 50.0 min | 277 | 8 |
 
-A underperforms B and C. The gap holds after the DEC-007 fix. DEC-006 (A starts from randomly
-initialized embeddings vs B/C pretrained Qwen embeddings) is the remaining confound. A 3-epoch
-A run is the next step to rule it out. See `docs/PHASE_5_RESULTS.md` for full analysis.
+Superseded by DEC-015 (corpus expansion) and the 2026-08-01 matched rerun above.
 
 ### Previous run (2026-07-27 — carries DEC-007 confound, superseded)
 

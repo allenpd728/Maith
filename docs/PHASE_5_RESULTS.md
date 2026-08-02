@@ -224,6 +224,75 @@ context window gives it an edge when the model needs to track more tokens back.
 > Phase 5 conclusion.
 
 The IR representation hypothesis is ~~falsified at this scale and dataset size~~. **Retracted.**
-The corrected eval shows A=89.7% vs B/C=94–95%, a ~5pp gap at 3× the training budget for A.
+The corrected eval shows A=89.7% vs B/C=94-95%, a ~5pp gap at 3x the training budget for A.
 The hypothesis is not falsified — the gap is consistent with the cold-start embedding penalty
 and a fair matched-epoch comparison has not yet been run.
+
+---
+
+## Phase 5 Final — Expanded corpus, matched 3-epoch rerun (2026-08-01)
+
+This is the authoritative Phase 5 result. See DEC-016 in DECISION_LOG.md for full methodology.
+
+### Run configuration
+
+All three variants: 3,375 train / 376 eval, 3 epochs, seed=42, Qwen2.5-Coder-0.5B, smoke_test=false.
+
+| Variant | Checkpoint | Vocab size | Params | Train time |
+|---------|-----------|------------|--------|------------|
+| A | variant_A_v3/checkpoint-final | 8,102 | 365M | 77.4 min |
+| B | variant_B2/checkpoint-final | 151,643 | 494M | 523.0 min |
+| C | variant_C_v2/checkpoint-final | 151,643 | 494M | 272.8 min |
+
+### Perplexity
+
+| Variant | Eval Perplexity |
+|---------|-----------------|
+| A | 1.2812 |
+| B | 1.107 |
+| C | 1.098 |
+
+### Completion accuracy (mask_last=5, 50 examples, teacher-forced autoregressive)
+
+| Variant | Top-1 Accuracy | Correct / Total |
+|---------|---------------|-----------------|
+| A | 89.6% | 224 / 250 |
+| B | 94.4% | 236 / 250 |
+| C | 90.8% | 227 / 250 |
+
+Spot-check (24 examples, 120 positions, two independent rounds with different seeds):
+Round 1 (9 examples): B=93.3%, C=88.9%. Round 2 (15 fresh examples): B=97.3%, C=98.7%.
+Combined: B=95.8%, C=95.0% — essentially tied at the token level. The round-1 narrative
+("C fails at syntactic boundaries") did not replicate in round 2. No systematic per-token
+pattern distinguishing B from C was confirmed across 24 examples.
+
+### Phase 5 finding
+
+Variant A trails B and C on both metrics. The gap is real: ~0.18 perplexity points,
+~5pp completion accuracy. It is materially smaller than the earlier mismatched estimates
+(which showed 36pp from unequal corpus sizes and a buggy eval).
+
+The representation hypothesis is **not falsified.** The 5pp gap was measured at 50 examples
+with mask_last=5. A matched higher-confidence eval (200 examples, mask_last=10) has not yet
+been run against the current 3-epoch checkpoints. That is a required follow-up, not optional.
+
+### Open confound — DEC-006 (still unresolved)
+
+Variant A uses a randomly initialized 8,102-token embedding table. B and C use Qwen pretrained
+embeddings (151,643 tokens). DEC-009 (warm-start attempt) achieved 0.51% token overlap — 
+effectively a cold start — and did not isolate the confound. No experiment has run A with a
+genuinely warm-started embedding. We cannot separate "IR representation is worse" from
+"random initialization is worse" until that experiment is done.
+
+### Required follow-ups (pre-conditions for Phase 6, not optional)
+
+1. **DEC-002 stratified perplexity analysis** — stratify by sequence length bucket
+   (short: <128 tokens, medium: 128-512, long: >512). B/C p99 sequence length is 2,051 tokens
+   against a 512-token eval cap. Until truncation asymmetry is ruled out, B/C's perplexity
+   advantage cannot be cleanly attributed to representation quality.
+
+2. **Matched-epoch completion eval** — run eval_completion.py with --samples 200 --mask-last 10
+   against variant_A_v3, variant_B2, variant_C_v2. The 5pp gap from the current run (50 examples,
+   mask_last=5) is directionally correct but not sufficient for a Phase 6 conclusion.
+
+Phase 6 design must not begin until both follow-ups are complete and recorded here.
