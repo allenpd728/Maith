@@ -46,7 +46,7 @@ def load_vocab_size(vocab_path: Path) -> Optional[int]:
     return len(payload)
 
 
-def scan_docs(files: list[Path], expected_vocab_size: int | None) -> List[Finding]:
+def scan_docs(files: list[Path], expected_vocab_size: Optional[int]) -> List[Finding]:
     findings: list[Finding] = []
     for path in files:
         text = path.read_text(errors="replace")
