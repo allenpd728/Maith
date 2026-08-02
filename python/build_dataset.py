@@ -60,7 +60,8 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
         "pos", "neg", "neut",
         "eq", "add", "sub", "mul", "div", "le", "ge", "lt", "gt", "pow",
         "typeclass", "sort", "literal",
-    ] + [f"BVAR_{i}" for i in range(32)] + ["BVAR_MANY"] \
+    ] + [f"FVAR_{i}" for i in range(32)] + ["FVAR_MANY"] \
+      + [f"BVAR_{i}" for i in range(32)] + ["BVAR_MANY"] \
       + [f"TERM_{i}" for i in range(32)] + ["TERM_MANY"]
 
     vocab = {tok: i for i, tok in enumerate(structural)}
