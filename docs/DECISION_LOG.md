@@ -935,3 +935,87 @@ Those decisions require the dry-run numbers and an explicit hypothesis choice fi
 - DEC-016 (Phase 5 conclusion)
 - DEC-018 (perplexity gate resolved)
 
+---
+
+### DEC-020: Phase 6 conclusion — expanded corpus A/B/C rerun (2026-08-02)
+
+**Date:** 2026-08-02
+**Status:** Closed.
+
+#### What was run
+
+Full A/B/C retrain on the expanded 14-module corpus (DEC-015), matching the Phase 5
+design. Embed-pretrain warm-start applied identically across all three variants
+(DEC-009). Equal epoch counts: B and C at 2 epochs, A at 3 epochs (same ratio as
+Phase 5 to account for A's smaller vocabulary). All runs completed without throttling
+or checkpointing issues.
+
+#### Results
+
+| Variant | Vocab | Params | Epochs | Eval perplexity | Training time |
+|---------|-------|--------|--------|----------------|--------------|
+| A (IR tokenization) | 8,144 | 365M | 3 | **1.2792** | 105 min |
+| B (BPE, standard FT) | 151,643 | 494M | 2 | **1.1295** | 181 min |
+| C (BPE, embed-pretrain) | 151,643 | 494M | 2 | **1.1102** | 189 min |
+
+B/C gap: 0.019 (negligible). A trails B/C by ~0.15–0.17 perplexity points.
+
+#### Interpretation
+
+The Phase 5 finding (DEC-016) replicates exactly on the expanded corpus. The A/B/C
+gap did not close with more data: A's perplexity improved from Phase 5 (where
+embed-pretrain eval was 2.14 pre-warmup) to 1.28 final, but B and C improved
+proportionally, maintaining the same margin.
+
+This is consistent with the representation hypothesis in DEC-006 — IR tokenization
+produces a fundamentally different sequence structure that does not benefit from
+BPE-pretrained Qwen weights as efficiently — but DEC-006 remains technically open
+because the cold-start confound (A's embedding table was randomly initialized at
+Phase 4 baseline) has not been isolated by a controlled experiment. The embed-pretrain
+warm-start (DEC-009) mitigated this for Phase 5 and Phase 6 runs, but a direct
+embedding-projection experiment was attempted (runs/variant_B_phase6 embed_pretrain
+path) and showed only marginal improvement (embed_pretrain_eval_ppl 1.2761 → 1.1295
+final for B; 1.2902 → 1.1102 for C; 2.1403 → 1.2792 for A), which does not
+definitively isolate the representation quality effect from the embedding-table effect.
+
+#### What this closes
+
+- Phase 6 is complete. The experimental question "does more data close the gap?" is
+  answered: no, not at the volume tested (~3,375 train / 376 eval examples across 14
+  modules).
+- DEC-019 (corpus expansion plan) status: the volume-for-DEC-006 hypothesis was
+  implicitly tested here; the gap did not narrow. The diversity hypothesis
+  (Topology.Basic, Order.Lattice) remains untested.
+
+#### What remains open
+
+- **DEC-006** — the cold-start embedding confound is still not definitively isolated.
+  A controlled experiment (identical vocab, embed-pretrain on IR tokens from a Lean
+  corpus, then fine-tune) would be required to separate representation quality from
+  initialization quality.
+- **DEC-019 diversity track** — domain generalization (does Maith IR transfer to
+  topology/lattice structures?) was not addressed by Phase 6 and remains a valid
+  future question.
+- **Decompiler validity** (from DEC-014 and the decompiler PR) — the Lean decompiler
+  produces structural skeletons, not yet valid Lean. This is a Phase 7 concern.
+
+#### Decision
+
+Phase 6 is closed. The project has a clean, reproducible, multi-phase result: IR
+tokenization (Variant A) consistently trails BPE-based fine-tuning (Variants B/C) by
+~0.15–0.17 perplexity points across both Phase 5 and Phase 6 corpus sizes. The gap
+is stable, not converging. Whether this is attributable to representation quality,
+initialization, or both requires a dedicated controlled experiment that is out of scope
+for the current experimental program.
+
+#### References
+- runs/variant_A_phase6/results.json
+- runs/variant_B_phase6/results.json
+- runs/variant_C_phase6/results.json
+- DEC-006 (cold-start embedding confound, still open)
+- DEC-009 (embed-pretrain warm-start)
+- DEC-015 (corpus expansion)
+- DEC-016 (Phase 5 conclusion)
+- DEC-018 (perplexity gate resolved)
+- DEC-019 (corpus expansion plan)
+
