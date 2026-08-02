@@ -8,11 +8,13 @@ These notes document the architectural reasoning behind the Lean‑based transfo
 The core research question: **Can language models become better theorem provers if trained on a representation of mathematics that exposes semantic structure rather than source syntax?**
 
 Maith tests this by comparing three representations:
-- **A (IR):** Maith's semantic graph → tokens
+- **A (IR):** Maith's semantic graph → tokens (one candidate IR)
 - **B (source):** Raw Lean source → BPE tokens
 - **C (AST):** Lean elaborated type → AST-style → BPE tokens
 
 The IR is designed to expose semantic structure that source syntax hides—canonical forms, resolved implicits, typeclass instances—so models can learn mathematical patterns more directly.
+
+**Note:** Maith's IR is one *candidate* representation. The hypothesis is that *some* semantic representation helps; other IR designs (different abstraction levels, noise reduction, etc.) could also be explored.
 
 ## Extraction Architecture
 

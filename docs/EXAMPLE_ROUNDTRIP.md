@@ -10,6 +10,8 @@
 
 This document traces a single mathematical statement (`neg_neg`) through Maith's pipeline—from Lean source to a canonical semantic representation—to show how that representation is built and verified.
 
+**Note:** Maith's IR is one *candidate* representation. The hypothesis is broader: that *some* semantic representation helps models learn mathematics more efficiently. Other IR designs could also be explored.
+
 ---
 
 ## What This Document Explains
