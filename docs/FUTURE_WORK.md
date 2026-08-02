@@ -1,8 +1,11 @@
 # Future Work (Phase 6+)
 
+> Phase 5 is complete (DEC-018 resolved, 2026-08-02). This document contains scaffold designs
+> for Phase 6 and beyond. Phase 6 design may now proceed.
+
 This document consolidates scaffold designs for work that has not yet started. Nothing here
 is implemented. These notes exist to preserve design thinking and schema contracts for when
-Phase 5 results are interpreted and Phase 6 begins.
+Phase 6 begins.
 
 ---
 
@@ -52,8 +55,12 @@ python3 python/validate_theorem_eval_artifacts.py
 
 ## Representation evolution
 
-If Phase 5 results do not support the current IR hypothesis, alternate representations
-can be developed. Design notes are in `docs/REPRESENTATION_EVOLUTION.md`.
+Phase 5 results (A=1.489 vs B=1.180 vs C=1.207 at 512-token cap) show A trails B/C on both
+perplexity and completion accuracy. DEC-006 (cold-start embedding confound) remains open — we
+cannot yet separate representation quality from initialization advantage.
+
+Alternate representations can be explored as Phase 6 work if the confound is resolved and the
+gap persists. Design notes are in `docs/REPRESENTATION_EVOLUTION.md`.
 
 ---
 

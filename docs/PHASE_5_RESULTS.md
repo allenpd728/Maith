@@ -16,9 +16,9 @@ Three variants compared on next-token prediction perplexity (lower is better) on
 
 | Variant | Token Type | Vocab Size | Parameters | Train Seq Cap | Eval Seq Cap |
 |---------|------------|------------|------------|---------------|--------------|
-| A | Maith IR tokens (v1.2.0) | 4,495 | 361.9M | 1024 | 512 |
-| B | Raw `leanExpr` string | 151,643 | 494.0M | 384 | 512 |
-| C | AST-style split `leanExpr` | 151,643 | 494.0M | 384 | 512 |
+| A | Maith IR tokens (v1.2.0) | 8,102 | 365M | 512 | 512 |
+| B | Raw `leanExpr` string | 151,643 | 494M | 512 | 512 |
+| C | AST-style split `leanExpr` | 151,643 | 494M | 512 | 512 |
 
 ---
 
@@ -272,9 +272,9 @@ Variant A trails B and C on both metrics. The gap is real: ~0.18 perplexity poin
 ~5pp completion accuracy. It is materially smaller than the earlier mismatched estimates
 (which showed 36pp from unequal corpus sizes and a buggy eval).
 
-The representation hypothesis is **not falsified.** The 5pp gap was measured at 50 examples
-with mask_last=5. A matched higher-confidence eval (200 examples, mask_last=10) has not yet
-been run against the current 3-epoch checkpoints. That is a required follow-up, not optional.
+The representation hypothesis is **not falsified.** DEC-017/018 confirmed the gap persists
+at matched 512-token cap and across all sequence length buckets. DEC-006 (cold-start
+embedding confound) remains unresolved — Phase 6 design may proceed with this caveat.
 
 ### Open confound — DEC-006 (still unresolved)
 
@@ -284,15 +284,16 @@ effectively a cold start — and did not isolate the confound. No experiment has
 genuinely warm-started embedding. We cannot separate "IR representation is worse" from
 "random initialization is worse" until that experiment is done.
 
-### Required follow-ups (pre-conditions for Phase 6, not optional)
+### Required follow-ups (pre-conditions for Phase 6) — COMPLETE
 
-1. **DEC-002 stratified perplexity analysis** — stratify by sequence length bucket
+1. ✅ **DEC-017: stratified perplexity analysis** — stratify by sequence length bucket
    (short: <128 tokens, medium: 128-512, long: >512). B/C p99 sequence length is 2,051 tokens
-   against a 512-token eval cap. Until truncation asymmetry is ruled out, B/C's perplexity
-   advantage cannot be cleanly attributed to representation quality.
+   against a 512-token eval cap. Results: B/C lead A in every bucket. Gap is not a truncation artifact.
 
-2. **Matched-epoch completion eval** — run eval_completion.py with --samples 200 --mask-last 10
-   against variant_A_v3, variant_B2, variant_C_v2. The 5pp gap from the current run (50 examples,
-   mask_last=5) is directionally correct but not sufficient for a Phase 6 conclusion.
+2. ✅ **DEC-018: equal-sequence-length perplexity rerun** — matched 512-token cap evaluation.
+   Results: A=1.489, B=1.180, C=1.207. B/C lead confirmed in every perplexity bucket.
 
-Phase 6 design must not begin until both follow-ups are complete and recorded here.
+3. ✅ **Matched-epoch completion eval** — eval_completion.py with --samples 200 --mask-last 10
+   against variant_A_v3, variant_B2, variant_C_v2. Results: A=86.2%, B=92.8%, C=91.4%.
+
+**Phase 5 is complete. Phase 6 design may proceed.**
