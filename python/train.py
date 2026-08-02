@@ -304,7 +304,7 @@ class ThermalGuardCallback(TrainerCallback):
     Logs all step times so slowdowns are visible in the training output.
     """
     THROTTLE_THRESHOLD_SEC = 90   # flag if a step exceeds this (normal variance is 17-60s; 90s signals real pressure)
-    COOLDOWN_SEC           = 30   # pause this long when throttling detected
+    COOLDOWN_SEC           = 10   # pause this long when throttling detected
     LOG_EVERY_N_STEPS      = 10   # print step time at this interval
 
     def __init__(self):
