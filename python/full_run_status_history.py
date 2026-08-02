@@ -7,7 +7,9 @@ Safe during active training (read-only from run artifacts).
 """
 
 import argparse
+from typing import Optional
 import json
+from typing import Optional
 from pathlib import Path
 
 from full_run_status_snapshot import build_snapshot
@@ -28,7 +30,7 @@ def build_fingerprint(snapshot: dict) -> str:
     )
 
 
-def read_last_record(path: Path) -> dict | None:
+def read_last_record(path: Path) -> Optional[dict]:
     if not path.exists():
         return None
     lines = path.read_text(errors="replace").splitlines()
@@ -45,7 +47,7 @@ def read_last_record(path: Path) -> dict | None:
     return None
 
 
-def read_last_line(path: Path) -> str | None:
+def read_last_line(path: Path) -> Optional[str]:
     if not path.exists():
         return None
     lines = path.read_text(errors="replace").splitlines()

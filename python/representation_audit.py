@@ -7,11 +7,13 @@ Safe to run while training is active (read-only checks).
 """
 
 import argparse
+from typing import Optional
 import json
+from typing import Optional
 from pathlib import Path
 
 
-def read_first_jsonl_row(path: Path) -> dict | None:
+def read_first_jsonl_row(path: Path) -> Optional[dict]:
     if not path.exists():
         return None
     with open(path) as f:
@@ -21,7 +23,7 @@ def read_first_jsonl_row(path: Path) -> dict | None:
     return json.loads(first)
 
 
-def load_json(path: Path) -> dict | None:
+def load_json(path: Path) -> Optional[dict]:
     if not path.exists():
         return None
     with open(path) as f:
