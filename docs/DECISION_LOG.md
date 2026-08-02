@@ -107,6 +107,11 @@ Canonical record of experiment-critical decisions that affect interpretation and
   - `docs/EXPERIMENT_DESIGN.md#known-confound-embedding-table-size`
   - `python/train.py` (MAX_SEQ_LEN / MAX_SEQ_LEN_C constants)
 
+  **Implementation status (2026-08-02):**
+  `python/embed_project.py` and `--embed-project` flag in `train.py` are
+  implemented and tested. Run `python3 python/validate_dec006_setup.py`
+  before the full training run.
+
 ### DEC-007: Effective batch size differs across variants (unmatched)
 - Date: 2026-07-27
 - Status: accepted
