@@ -9,6 +9,7 @@ import Tests.Harness
 import Tests.ComponentTests
 import Tests.EncoderTests
 import Tests.DecoderTests
+import Tests.DecompilerTests
 import Tests.PipelineTests
 -- import Tests.CorpusTests  -- Commented out - conflicts with new CorpusBuilder
 import Tests.NormalizerTests
@@ -28,6 +29,7 @@ def main : IO Unit := do
   Tests.Components.runAllComponentTests
   Tests.Encoder.runAllEncoderTests
   Tests.Decoder.runAllDecoderTests
+  Tests.Decompiler.runAllDecompilerTests
   Tests.Pipeline.runAllPipelineTests
   -- Tests.TrainingCorpus.runAllCorpusTests  -- Commented out - conflicts with new CorpusBuilder
   Tests.Normalizer.runAllNormalizerTests

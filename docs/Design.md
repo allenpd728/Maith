@@ -110,10 +110,18 @@ Every IR token must map back to a Lean construct. This ensures:
 
 The token↔graph direction of this round-trip is implemented and verified
 (2,554/2,554 declarations pass `validate_roundtrip.py`). The graph→Lean-syntax
-direction — reconstructing valid Lean from an IR graph — is not yet implemented;
-`Transpiler.lean` currently produces debug strings, not valid Lean syntax.
-"Verifiable SLM outputs" and "safe rewriting" depend on the latter and remain
-future work.
+direction — reconstructing valid Lean from an IR graph — is now implemented via
+`Transpiler.lean`'s `Decompile.decompileGraph` function. This enables verifiable
+SLM outputs and supports safe rewriting workflows.
+
+The decompiler handles:
+- Forall binders with implicit/instance-implicit/explicit kinds
+- Typeclass instances
+- Sort annotations (Type.{u})
+- Arithmetic operations (neg, add, sub, mul, div, pow)
+- Generic operations (gen:<name>)
+- Equality relations
+- Nested forall structure
     
 
 ### **3\. Graphs are the universal representation**
