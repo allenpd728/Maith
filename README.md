@@ -294,19 +294,21 @@ python/
   spot_check.py            # manual corpus spot-checking helper
 docs/
   Design.md                # architecture and design decisions
-  ENCODER_FORMAT.md        # canonical token format spec (v1.2.0)
+  ENCODER_FORMAT.md        # canonical token format spec (v1.3.0)
   EXPERIMENT_DESIGN.md     # A/B/C experiment design and results
   DECISION_LOG.md          # experiment decisions and confound documentation
+  DECISION_INDEX.md        # navigation index for DECISION_LOG
   EXAMPLE_ROUNDTRIP.md     # full pipeline walkthrough for neg_neg
-  PHASE_5_RESULTS.md       # Phase 5 results (matched-batch rerun complete 2026-07-28)
-  CORPUS_PIPELINE_STATUS.md
+  PHASE_5_RESULTS.md       # Phase 5 results
+  PHASE_6_RESULTS.md       # Phase 6 results
+  PHASE_7_ROADMAP.md       # current roadmap
+  PHASE_7_DESIGN.md        # Phase 7 design notes
   PYTHON_PIPELINE.md       # python/ tooling reference
   TESTING_SUMMARY.md       # test suite status
-  LATEST_FIXES.md          # recent session fixes (last 2 sessions)
   CHANGELOG.md             # older fix history
-  SESSION_PROGRESS.md      # full session-by-session development log
   REPRESENTATION_EVOLUTION.md  # IR candidate evolution strategy
-  FUTURE_WORK.md           # Phase 6+ scaffold designs (not yet implemented)
+  FUTURE_WORK.md           # superseded by PHASE_7_ROADMAP.md
+  REPO_AUDIT.md           # file classification audit
   TEST.md                  # test run commands
 README.md
 CORPUS_SCHEMA.md           # JSONL schema contract

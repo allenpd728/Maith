@@ -1,7 +1,6 @@
 # Changelog
 
-Historical record of fixes and changes. For recent sessions, see `docs/LATEST_FIXES.md`.
-For the full session-by-session narrative log, see `docs/SESSION_PROGRESS.md`.
+Historical record of fixes and changes. For current experiment decisions, see `docs/DECISION_LOG.md`.
 
 ---
 
@@ -99,7 +98,7 @@ which walks `ConstantInfo`/`Expr` trees from the live Lean `Environment`.
 
 ### Key fixes
 
-- HOF application, projection, `letE`, `HEq` arity — all resolved (see `SESSION_PROGRESS.md`)
+- HOF application, projection, `letE`, `HEq` arity — all resolved
 - Stats aggregation fixed with `Float.ofNat`
 - `buildCorpus` executable added
 - `decodeGraph` panics replaced with graceful fallbacks
