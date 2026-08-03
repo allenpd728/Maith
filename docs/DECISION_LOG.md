@@ -1109,6 +1109,35 @@ controlled embedding projection experiment. The gap is real, stable, and not exp
 by initialization. Phase 7 should treat IR tokenization as a weaker baseline and focus
 on decompiler validity and domain generalization.
 
+#### Known residual: 93% alpha-equivalence rate is accurate, not a defect
+
+Post-DEC-021 normalisation audit found a 93.0% alpha-equivalence identical rate across
+1,478 structurally-similar corpus pairs. Investigation of the failing 7% established
+that this is **not a normaliser bug** and is not fixable at the `MetaExtractor.lean` level.
+
+The failing pairs fall into two categories:
+
+1. **`Foo.mk` vs `Foo.mk._flat_ctor`** — 43 training examples. These are genuinely
+   distinct types. `Foo.mk` takes typeclass implicit arguments (`[Zero M] [Add M]`);
+   `Foo.mk._flat_ctor` takes the same constraints as explicit lambda arguments carrying
+   field values directly (`M -> (M -> M -> M) -> AddZero M`). The IR correctly reflects
+   that `forall {M} [Zero M] [Add M], AddZero M` and `forall {M}, M -> (M -> M -> M) ->
+   AddZero M` are different expressions — different binder kinds, different R-row
+   structure, different O-row gen tokens. `canonicaliseDeclName` normalises the scope
+   string embedded in binder IDs but cannot change the underlying Expr structure.
+
+2. **`Foo.casesOn` vs `Foo.recOn`** — 132 training examples. Lean generates both as
+   eliminators for the same type, but their elaborated `Expr` types differ in argument
+   order and universe structure. Same analysis applies.
+
+Total affected: **175 of 2,213 training examples (7.9%)**.
+
+**The 93% alpha-equivalence rate should be read as accurate and expected.** The corpus
+genuinely contains structurally-distinct sibling declarations — auto-generated Lean
+variants of the same typeclass with different type signatures. This is understood, not
+a defect in the normaliser or the IR. The normaliser is correctly producing different
+token sequences for different expressions. No further fix is required before retraining.
+
 #### References
 - runs/variant_A_dec006/results.json
 - DEC-006 (cold-start confound — now closed)
@@ -1116,3 +1145,5 @@ on decompiler validity and domain generalization.
 - DEC-016 (Phase 5 conclusion)
 - DEC-020 (Phase 6 conclusion)
 - DEC-019 (corpus expansion plan, diversity track remains open)
+- docs/IR_V2_FIX_SPEC.md (Fix 1 implemented; residual explained above)
+- python/normalisation_audit.py (audit run post-Fix-1, 2026-08-03)
