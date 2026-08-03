@@ -40,12 +40,12 @@
     "term_many_count": 1177
   },
   {
-    "name": "add_nsmul._f",
+    "name": "pow_add._f",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 1032
   },
   {
-    "name": "pow_add._f",
+    "name": "add_nsmul._f",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 1032
   },
@@ -425,12 +425,12 @@
     "term_many_count": 133
   },
   {
-    "name": "AddMonoid.mk.noConfusion",
+    "name": "Monoid.mk.noConfusion",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 131
   },
   {
-    "name": "Monoid.mk.noConfusion",
+    "name": "AddMonoid.mk.noConfusion",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 131
   },
@@ -560,12 +560,12 @@
     "term_many_count": 105
   },
   {
-    "name": "SubNegMonoid.mk._flat_ctor",
+    "name": "DivInvMonoid.mk._flat_ctor",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 103
   },
   {
-    "name": "DivInvMonoid.mk._flat_ctor",
+    "name": "SubNegMonoid.mk._flat_ctor",
     "module": "Mathlib.Algebra.Group.Defs",
     "term_many_count": 103
   },
@@ -640,12 +640,12 @@
     "term_many_count": 81
   },
   {
-    "name": "NonAssocSemiring.casesOn",
+    "name": "NonUnitalNonAssocSemiring.casesOn",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 76
   },
   {
-    "name": "NonUnitalNonAssocSemiring.casesOn",
+    "name": "NonAssocSemiring.casesOn",
     "module": "Mathlib.Algebra.Ring.Defs",
     "term_many_count": 76
   },
