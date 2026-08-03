@@ -202,10 +202,12 @@ def decompTest8 : IO TestResult := do
   
   -- Wrap in a valid Lean file with imports
   -- We use `sorry` because we're testing syntax/type-correctness, not proof
+  -- Escape any braces in leanCode to avoid breaking the string interpolation
+  let escapedCode := leanCode.replace "{" "{{" |>.replace "}" "}}"
   let fullFile := 
     "import Mathlib.Algebra.Group.Defs\n" ++
     "import Mathlib.Init.Compute\n\n" ++
-    s!"theorem neg_neg_test {G : Type} [inst : InvolutiveNeg G] (a : G) : {leanCode} := sorry\n"
+    s!"theorem neg_neg_test {{G : Type}} [inst : InvolutiveNeg G] (a : G) : {escapedCode} := sorry\n"
   
   -- Write to temporary file
   let tmpDir := System.mkDirPath "/tmp/maith_test"
