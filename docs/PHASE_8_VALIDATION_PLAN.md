@@ -42,7 +42,7 @@ Currently only the middle two steps (Encoder ↔ Decoder) are tested, and only v
 ## Phase 8a — Fix Python round-trip for v1.3.0
 
 **Owner:** Kit  
-**Status:** 🔴 Not started  
+**Status:** ✅ Complete (2026-08-03)  
 **Estimated effort:** 2–3 hours  
 **Blocked by:** Nothing — start immediately
 
@@ -232,11 +232,57 @@ Phase 8b  Lean Encoder ↔ Decoder            OpenHands #1    🔴 Not started
 
 ---
 
+## Critical finding: corpus.jsonl is v1.2.0 — polarity tokens were never removed
+
+**Discovered during Phase 8a (2026-08-03).**
+
+`Encoder.lean` Fix 2 (polarity removal) only affects future Lean extractions. `corpus.jsonl`
+was not re-extracted after the fix — it still contains v1.2.0 tokens with `neut` after every
+row. `build_dataset.py` encodes corpus tokens directly to integer IDs without stripping polarity.
+
+**Consequence:** All three "v1.3.0" training runs (2,213-example wrong corpus, 2,213-example
+correct corpus no embed-pretrain, 3,375-example correct corpus with embed-pretrain) were
+trained on v1.2.0 tokens. The 1.3016 perplexity result is a fair comparison to DEC-021
+(also v1.2.0 tokens) but is **not a test of polarity removal**. Fix 2 has not been
+experimentally validated.
+
+**What's needed:** Re-extract `corpus.jsonl` by running the Lean extraction pipeline with the
+updated `Encoder.lean`. This requires `lake build` + `Scripts/BuildCorpus.lean` to run clean.
+This is a prerequisite for any meaningful v1.3.0 experiment. Added as Phase 8a-ii below.
+
+---
+
+## Phase 8a-ii — Re-extract corpus with v1.3.0 Encoder.lean
+
+**Owner:** TBD (requires Lean build environment — OpenHands with SSH, or local terminal)  
+**Status:** 🔴 Not started  
+**Estimated effort:** 2–4 hours (build time depends on Mathlib cache)  
+**Blocked by:** Phase 8a complete ✅
+
+### What to do
+
+1. Run `source ~/.elan/env && lake build` in the repo root — confirm build passes clean
+2. Run the corpus extraction script against the 14-module target list:
+   `lake exe BuildCorpus` (or equivalent — check `Scripts/` for the correct entry point)
+3. Verify the new `corpus.jsonl` has zero `neut`/`pos`/`neg` tokens in any example
+4. Verify declaration count is ≥ 3,901 (same as current — no regressions from the encoder change)
+5. Run `python3 python/validate_roundtrip.py --all` and confirm v1.3.0 format detected, 3,901/3,901 pass
+
+### Pass criterion
+
+✅ `corpus.jsonl` contains zero polarity tokens  
+✅ Declaration count ≥ 3,901  
+✅ `validate_roundtrip.py --all` passes with `Detected encoder version: 1.3.0`
+
+---
+
 ## Progress log
 
 | Date | Phase | Action | Result |
 |---|---|---|---|
 | 2026-08-03 | — | Plan written | This document |
+| 2026-08-03 | 8a | validate_roundtrip.py updated for v1.2.0/v1.3.0 with version detection | ✅ 3,901/3,901 pass (v1.2.0 corpus) |
+| 2026-08-03 | 8a | Discovered corpus.jsonl is still v1.2.0 — polarity removal not yet applied | ⚠️ See critical finding above |
 
 ---
 
