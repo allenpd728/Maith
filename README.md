@@ -1,6 +1,6 @@
 # Maith: Semantic IR for Lean Mathematics
 
-> **Phase 6 complete (DEC-020, 2026-08-02).** Expanded corpus (14 modules, 3,375 train examples) rerun confirms Phase 5 finding: A trails B/C by 0.15–0.17 perplexity points. Gap is stable across corpus sizes. DEC-006 (cold-start embedding confound) remains open. See `docs/DECISION_LOG.md` for full experimental history.
+> **Phase 6 complete (DEC-020). DEC-006 closed (DEC-021, 2026-08-03).** A trails B/C by ~0.17pp across Phase 5, Phase 6, and a controlled embedding projection experiment. Gap is not due to cold-start initialisation, sequence length, or Qwen pretraining prior. v1.3.0 IR retraining in progress (polarity removed, normalisation improved). See `docs/PHASE_7_ROADMAP.md` for current status.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
