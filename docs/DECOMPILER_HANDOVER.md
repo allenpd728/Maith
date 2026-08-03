@@ -154,9 +154,6 @@ These are pretty-printing concerns. The decompiled output is **valid, compilable
 | `Tests/Main.lean` | Added decompiler tests to test suite |
 | `docs/Design.md` | Updated Transpiler description |
 | `docs/EXAMPLE_ROUNDTRIP.md` | Updated Stage 6 with decompiler info |
-| `docs/CORPUS_PIPELINE_STATUS.md` | Updated Transpiler status |
-| `docs/SESSION_PROGRESS.md` | Updated round-trip note |
-| `docs/LATEST_FIXES.md` | Updated round-trip note |
 
 ---
 

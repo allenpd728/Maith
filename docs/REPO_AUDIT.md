@@ -181,9 +181,9 @@ This audit classifies every `.md` and `.py` file in the repository. The goal is 
 
 | File | Classification | Reason | Action |
 |------|----------------|--------|--------|
-| `python/spotcheck.py` | **RENAME** | Different purpose from spot_check.py but name is confusing. spotcheck.py compares B vs C predictions; spot_check.py validates corpus round-trips. | **Rename to `python/compare_bc_predictions.py`** per task instructions |
+| `python/spotcheck.py` | **RENAME → DONE** | Renamed to `python/compare_bc_predictions.py` per task instructions. Different purpose from spot_check.py: compare_bc_predictions.py compares B vs C predictions; spot_check.py validates corpus round-trips. | N/A - completed |
 
-**Note:** The task specifies renaming `spotcheck.py` to `python/compare_bc_predictions.py`. This is a rename, not a delete. No reference updates are needed since spotcheck.py appears to be standalone (hardcoded paths to `/tmp/spotcheck2_names.json` and specific checkpoint directories).
+**Note:** Renamed per task instructions. No other files referenced spotcheck.py, so no reference updates were needed.
 
 ---
 
@@ -252,7 +252,12 @@ The following files are explicitly protected and were NOT flagged for deletion:
 ### Python Files  
 - **Total:** 63
 - **KEEP:** 62
-- **RENAME:** 1 (spotcheck.py → compare_bc_predictions.py)
+- **RENAME:** 1 (spotcheck.py → compare_bc_predictions.py) **COMPLETED**
+
+### Changes Summary
+- **Files deleted:** 6
+- **Files renamed:** 1
+- **Files modified (reference updates):** 3 (README.md, CHANGELOG.md, DECOMPILER_HANDOVER.md)
 
 ### Broken Cross-References
 - **Total:** 1
@@ -262,22 +267,22 @@ The following files are explicitly protected and were NOT flagged for deletion:
 
 ## Appendix: File-by-File Classification Detail
 
-### Files Classified as DELETE
+### Files Classified as DELETE (Actions Completed)
 
-1. **`docs/README.md`** — Near-duplicate of root README. The docs/ folder doesn't need its own readme.
+1. **`docs/README.md`** ✅ DELETED — Near-duplicate of root README. The docs/ folder doesn't need its own readme.
 
-2. **`docs/SESSION_PROGRESS.md`** — Session-by-session working notes from sessions 1-7. Content has been absorbed into DECISION_LOG.md (which has entries from DEC-001 through DEC-021). The narrative log function has been replaced by the structured decision log.
+2. **`docs/SESSION_PROGRESS.md`** ✅ DELETED — Session-by-session working notes from sessions 1-7. Content has been absorbed into DECISION_LOG.md (which has entries from DEC-001 through DEC-021). The narrative log function has been replaced by the structured decision log.
 
-3. **`docs/LATEST_FIXES.md`** — Session working notes with entries from July 28-August 2. CHANGELOG.md header explicitly states: "For recent sessions, see `docs/LATEST_FIXES.md`. For the full session-by-session narrative log, see `docs/SESSION_PROGRESS.md`." Both LATEST_FIXES and SESSION_PROGRESS are being deleted, meaning CHANGELOG.md will be the sole historical record.
+3. **`docs/LATEST_FIXES.md`** ✅ DELETED — Session working notes with entries from July 28-August 2. CHANGELOG.md header explicitly states: "For recent sessions, see `docs/LATEST_FIXES.md`. For the full session-by-session narrative log, see `docs/SESSION_PROGRESS.md`." Both LATEST_FIXES and SESSION_PROGRESS are being deleted, meaning CHANGELOG.md will be the sole historical record.
 
-4. **`docs/CORPUS_PIPELINE_STATUS.md`** — Last updated July 26, 2026. References the 4-module corpus (superseded by 14-module corpus). Pipeline architecture description is now in docs/Design.md and docs/ENCODER_FORMAT.md. Results are in PHASE_5_RESULTS.md and PHASE_6_RESULTS.md.
+4. **`docs/CORPUS_PIPELINE_STATUS.md`** ✅ DELETED — Last updated July 26, 2026. References the 4-module corpus (superseded by 14-module corpus). Pipeline architecture description is now in docs/Design.md and docs/ENCODER_FORMAT.md. Results are in PHASE_5_RESULTS.md and PHASE_6_RESULTS.md.
 
-5. **`docs/OPENHANDS_DEC006_TASK.md`** — Task brief for a completed OpenHands run. Contains implementation details for DEC-006 (embedding projection), but the implementation is complete and documented in DECISION_LOG.md DEC-021. No ongoing value.
+5. **`docs/OPENHANDS_DEC006_TASK.md`** ✅ DELETED — Task brief for a completed OpenHands run. Contains implementation details for DEC-006 (embedding projection), but the implementation is complete and documented in DECISION_LOG.md DEC-021. No ongoing value.
 
-6. **`PHASE_5_COMPLETION_CHECKLIST.md`** — Phase checklist for a closed phase. Explicitly marked deprecated with links to current authoritative documents. Content is historical.
+6. **`PHASE_5_COMPLETION_CHECKLIST.md`** ✅ DELETED — Phase checklist for a closed phase. Explicitly marked deprecated with links to current authoritative documents. Content is historical.
 
-7. **`python/spotcheck.py`** — Rename to `python/compare_bc_predictions.py`. Different purpose from `spot_check.py`:
+7. **`python/spotcheck.py`** ✅ RENAMED to `python/compare_bc_predictions.py` — Different purpose from `spot_check.py`:
    - `spot_check.py`: Validates corpus token round-trips via corpus_loader.py
-   - `spotcheck.py`: Compares B vs C token-level predictions (requires loaded models)
+   - `compare_bc_predictions.py`: Compares B vs C token-level predictions (requires loaded models)
    
-   The similar names are confusing. Per task instructions, rename to make distinction clear.
+   The similar names were confusing. Renamed per task instructions to make distinction clear.
