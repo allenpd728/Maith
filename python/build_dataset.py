@@ -219,7 +219,7 @@ def filter_examples(examples: list[dict], threshold: int, drop_log_path: Optiona
     return kept
 
 
-def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v1_2_0") -> None:
+def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v1_3_0") -> None:
     print(f"Loading corpus from {corpus_path} ...")
     with open(corpus_path) as f:
         examples = [json.loads(line) for line in f]
@@ -303,6 +303,7 @@ def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str =
         json.dump(
             {
                 "representation_id": representation_id,
+                "encoderVersion": "1.3.0",
                 "seed": seed,
                 "train_examples": len(train_examples),
                 "eval_examples": len(eval_examples),
