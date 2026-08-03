@@ -108,27 +108,51 @@ Round-trip fidelity is verified by the test suite in `Tests.DecoderTests`.
 
 -/
 
+-- v1.3.0: E rows are 2 tokens (E, id) — no polarity token emitted.
+-- v1.2.0: E rows were 3 tokens (E, id, pol) — polarity was emitted.
+-- Both forms are accepted here for backward compatibility during corpus transition.
 def decodeEntity (toks : List Token) : Entity :=
   match toks with
+  | ["E", idStr] =>
+      -- v1.3.0 format: no polarity token
+      let id := parseEntityIdToken idStr
+      { id := id, polarity := Polarity.neut }
   | ["E", idStr, polStr] =>
+      -- v1.2.0 format: polarity token present
       let id := parseEntityIdToken idStr
       let pol := parsePolarityToken polStr
       { id := id, polarity := pol }
   | _ =>
       { id := EntityId.var "ERR", polarity := Polarity.neut }
 
+-- v1.3.0: A rows are 4 tokens (A, target, key, value) — no polarity token.
+-- v1.2.0: A rows were 5 tokens (A, target, key, value, pol).
 def decodeAttribute (toks : List Token) : Attribute :=
   match toks with
+  | ["A", tgtStr, key, val] =>
+      -- v1.3.0 format: no polarity token
+      let tgt := parseEntityIdToken tgtStr
+      { target := tgt, key := key, value := val, polarity := Polarity.neut }
   | ["A", tgtStr, key, val, polStr] =>
+      -- v1.2.0 format: polarity token present
       let tgt := parseEntityIdToken tgtStr
       let pol := parsePolarityToken polStr
       { target := tgt, key := key, value := val, polarity := pol }
   | _ =>
       { target := EntityId.var "ERR", key := "ERR", value := "ERR", polarity := Polarity.neut }
 
+-- v1.3.0: R rows are 4 tokens (R, src, tgt, op) — no polarity token.
+-- v1.2.0: R rows were 5 tokens (R, src, tgt, op, pol).
 def decodeRelation (toks : List Token) : Relation :=
   match toks with
+  | ["R", srcStr, tgtStr, opStr] =>
+      -- v1.3.0 format: no polarity token
+      let src := parseEntityIdToken srcStr
+      let tgt := parseEntityIdToken tgtStr
+      let op := parseRelationOpToken opStr
+      { src := src, tgt := tgt, op := op, polarity := Polarity.neut }
   | ["R", srcStr, tgtStr, opStr, polStr] =>
+      -- v1.2.0 format: polarity token present
       let src := parseEntityIdToken srcStr
       let tgt := parseEntityIdToken tgtStr
       let op := parseRelationOpToken opStr
@@ -137,16 +161,28 @@ def decodeRelation (toks : List Token) : Relation :=
   | _ =>
       { src := EntityId.var "ERR", tgt := EntityId.var "ERR", op := RelationOp.eq, polarity := Polarity.neut }
 
+-- v1.3.0: O rows are 4 tokens (O, inputs, output, op) — no polarity token.
+-- v1.2.0: O rows were 5 tokens (O, inputs, output, op, pol).
 def decodeOperation (toks : List Token) : Operation :=
   match toks with
-  | ["O", inputsStr, outputStr, opStr, polStr] =>
+  | ["O", inputsStr, outputStr, opStr] =>
+      -- v1.3.0 format: no polarity token
       let trimmed : String :=
         if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
       let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken (s.trimAscii.toString))
       let outputText : String :=
         if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr
-      let output :=
-        parseEntityIdToken (outputText.trimAscii.toString)
+      let output := parseEntityIdToken (outputText.trimAscii.toString)
+      let op := parseOperationOpToken opStr
+      { inputs := inputs, output := output, op := op, polarity := Polarity.neut }
+  | ["O", inputsStr, outputStr, opStr, polStr] =>
+      -- v1.2.0 format: polarity token present
+      let trimmed : String :=
+        if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
+      let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken (s.trimAscii.toString))
+      let outputText : String :=
+        if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr
+      let output := parseEntityIdToken (outputText.trimAscii.toString)
       let op := parseOperationOpToken opStr
       let pol := parsePolarityToken polStr
       { inputs := inputs, output := output, op := op, polarity := pol }
@@ -164,20 +200,49 @@ def decodeGraph (toks : List Token) : Graph :=
   | [] => emptyGraph  -- missing GRAPH_BEGIN: return empty rather than panic
   | _ :: body =>
     let body := body.takeWhile (fun t => t ≠ "GRAPH_END")
+    -- Detect format version by checking whether E rows include a polarity token.
+    -- v1.3.0: E id (2 tokens after "E"); v1.2.0: E id pol (3 tokens after "E").
+    -- We check the first E row to decide: if the token after id is a known polarity
+    -- token, treat the stream as v1.2.0; otherwise treat as v1.3.0.
+    let isV12 : Bool :=
+      match body.dropWhile (· ≠ "E") with
+      | "E" :: _ :: pol :: _ => pol == "pos" || pol == "neut" || pol == "neg"
+      | _ => false
     let rec go (remaining : List Token) (acc : Graph) : Graph :=
       match remaining with
       | [] => acc
-      | "E" :: id :: pol :: rest =>
-          go rest { acc with entities := acc.entities ++ [decodeEntity ["E", id, pol]] }
-      | "A" :: tgt :: key :: value :: pol :: rest =>
-          go rest { acc with attributes := acc.attributes ++ [decodeAttribute ["A", tgt, key, value, pol]] }
-      | "R" :: src :: tgt :: op :: pol :: rest =>
-          go rest { acc with relations := acc.relations ++ [decodeRelation ["R", src, tgt, op, pol]] }
-      | "O" :: inputs :: output :: op :: pol :: rest =>
-          go rest { acc with operations := acc.operations ++ [decodeOperation ["O", inputs, output, op, pol]] }
+      -- v1.3.0: 2-token rows (no polarity)
+      | "E" :: id :: rest =>
+          if isV12 then
+            -- v1.2.0: consume id + pol together
+            match rest with
+            | pol :: rest2 => go rest2 { acc with entities := acc.entities ++ [decodeEntity ["E", id, pol]] }
+            | _ => acc
+          else
+            go rest { acc with entities := acc.entities ++ [decodeEntity ["E", id]] }
+      | "A" :: tgt :: key :: value :: rest =>
+          if isV12 then
+            match rest with
+            | pol :: rest2 => go rest2 { acc with attributes := acc.attributes ++ [decodeAttribute ["A", tgt, key, value, pol]] }
+            | _ => acc
+          else
+            go rest { acc with attributes := acc.attributes ++ [decodeAttribute ["A", tgt, key, value]] }
+      | "R" :: src :: tgt :: op :: rest =>
+          if isV12 then
+            match rest with
+            | pol :: rest2 => go rest2 { acc with relations := acc.relations ++ [decodeRelation ["R", src, tgt, op, pol]] }
+            | _ => acc
+          else
+            go rest { acc with relations := acc.relations ++ [decodeRelation ["R", src, tgt, op]] }
+      | "O" :: inputs :: output :: op :: rest =>
+          if isV12 then
+            match rest with
+            | pol :: rest2 => go rest2 { acc with operations := acc.operations ++ [decodeOperation ["O", inputs, output, op, pol]] }
+            | _ => acc
+          else
+            go rest { acc with operations := acc.operations ++ [decodeOperation ["O", inputs, output, op]] }
       | _ :: rest =>
           -- Unknown or malformed token: skip rather than crash.
-          -- This keeps decode total and safe on partial or future-format streams.
           go rest acc
     go body emptyGraph
 
