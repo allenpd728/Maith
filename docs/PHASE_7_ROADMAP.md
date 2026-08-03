@@ -153,7 +153,12 @@ v1.3.0 results
     │       → If flat-IR < full IR: graph structure is helping; pursue IR pretraining (item 4)
     │
     └── perplexity > 1.28 (regression)
-            → Something broke — audit dataset rebuild and training config before proceeding
+            → Audit dataset rebuild and training config before proceeding
+            → DEC-022 (2026-08-03): regression confirmed as real finding, not a bug
+              neut tokens were functioning as positional anchors; removal cost 0.074pp
+              New baseline: v1.3.0 + embed_project = 1.3717
+              Fix 2 deferred until corpus > ~10k examples
+            → Next: Phase 8b (Lean round-trip validation) then Fix 3 (IO markers)
 ```
 
 ---
