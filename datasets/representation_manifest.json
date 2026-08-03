@@ -1,6 +1,7 @@
 {
-  "representation_id": "semantic_graph_ir_v1_2_0",
+  "representation_id": "semantic_graph_ir_v1_3_0",
+  "encoderVersion": "1.3.0",
   "seed": 42,
-  "train_examples": 3375,
-  "eval_examples": 376
+  "train_examples": 3491,
+  "eval_examples": 388
 }

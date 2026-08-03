@@ -13,6 +13,16 @@ def main (args : List String) : IO Unit := do
     , "Mathlib.Algebra.Group.Basic"
     , "Mathlib.Algebra.Ring.Defs"
     , "Mathlib.Order.Basic"
+    , "Mathlib.Algebra.Group.NatPowAssoc"
+    , "Mathlib.Algebra.Ring.Basic"
+    , "Mathlib.Algebra.Ring.GeomSum"
+    , "Mathlib.Algebra.Group.Subgroup.Basic"
+    , "Mathlib.Data.Nat.Basic"
+    , "Mathlib.Data.Int.Basic"
+    , "Mathlib.Order.Lattice"
+    , "Mathlib.Order.LatticeIntervals"
+    , "Mathlib.Algebra.Module.Basic"
+    , "Mathlib.Topology.Basic"
     ]
     (encoder := Lean.DSL.defaultEncoder)
     (traceDecl := traceDecl)
