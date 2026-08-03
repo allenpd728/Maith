@@ -38,6 +38,17 @@ private def ExtractionState.toGraph (st : ExtractionState) : Graph :=
 private def failUnsupported {α : Type} (detail : String) : ExtractM α := do
   throw s!"unsupported: {detail}"
 
+-- Canonicalise Lean-generated declaration names to handle structurally identical variants.
+-- casesOn and recOn are alpha-equivalent eliminators; mk._flat_ctor is an alias for mk.
+private def canonicaliseDeclName (name : String) : String :=
+  let name := if name.endsWith ".casesOn" then
+                name.dropRight ".casesOn".length ++ ".recOn"
+              else name
+  let name := if name.endsWith "._flat_ctor" then
+                name.dropRight "._flat_ctor".length
+              else name
+  name
+
 private def addEntity (id : EntityId) (polarity : Polarity := .neut) : ExtractM Unit := do
   modify fun st =>
     if st.entities.any (fun e => e.id = id) then
@@ -305,7 +316,8 @@ end
 -- Extract a Graph from a single Expr, scoped to `declName`.
 -- Exposed (non-private) so tests can call it directly.
 def graphFromExpr (declName : String) (expr : Lean.Expr) : ProcessingResult Graph :=
-  let initState : ExtractionState := { declName }
+  let canonName := canonicaliseDeclName declName
+  let initState : ExtractionState := { declName := canonName }
   match (extractExprEntityId expr).run initState with
   | .ok (_, state) => .ok state.toGraph
   | .error msg => .fail msg
@@ -333,7 +345,7 @@ private def constantValueExpr? : ConstantInfo → Option Expr
   | _ => none
 
 def extractGraphFromConstantInfo (info : ConstantInfo) : ProcessingResult Graph :=
-  let declName := info.name.toString
+  let declName := canonicaliseDeclName info.name.toString
   let initState : ExtractionState := { declName }
   -- Extract the type first.
   match (extractExprEntityId info.type).run initState with
