@@ -17,6 +17,7 @@ import Tests.InjectivityTests
 import Tests.ProblemGeneratorTests
 import Tests.CorpusPipelineTests
 import Tests.CorpusSerializerTests
+import Tests.RoundTripTests
 
 def main : IO Unit := do
   IO.println ""
@@ -37,6 +38,7 @@ def main : IO Unit := do
   Tests.ProblemGenerator.runAllProblemGeneratorTests
   Tests.CorpusPipeline.runAllCorpusPipelineTests
   Tests.CorpusSerializer.runAllCorpusSerializerTests
+  Tests.runTestSuite "Phase 8b — Encoder ↔ Decoder Round-Trip (v1.3.0)" Tests.RoundTrip.roundTripTests
   
   IO.println ""
   IO.println "╔════════════════════════════════════════════════════╗"
