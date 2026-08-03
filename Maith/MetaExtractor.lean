@@ -42,10 +42,10 @@ private def failUnsupported {α : Type} (detail : String) : ExtractM α := do
 -- casesOn and recOn are alpha-equivalent eliminators; mk._flat_ctor is an alias for mk.
 private def canonicaliseDeclName (name : String) : String :=
   let name := if name.endsWith ".casesOn" then
-                name.dropRight ".casesOn".length ++ ".recOn"
+                name.dropEnd ".casesOn".length ++ ".recOn"
               else name
   let name := if name.endsWith "._flat_ctor" then
-                name.dropRight "._flat_ctor".length
+                name.dropEnd "._flat_ctor".length
               else name
   name
 
