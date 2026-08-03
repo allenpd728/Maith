@@ -168,8 +168,7 @@ and type-correct Lean.
 
 The decompiler produces a structural skeleton that should express the correct
 theorem. This test validates that the skeleton is well-formed Lean.
--/
-/--
+
 Test 8: Verify decompiled Lean code actually type-checks via `lean --make`.
 
 NOTE: This test is a placeholder. The IO test infrastructure needs to be updated
