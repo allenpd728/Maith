@@ -392,6 +392,8 @@ This is a prerequisite for any meaningful v1.3.0 experiment. Added as Phase 8a-i
 | 2026-08-03 | — | Plan written | This document |
 | 2026-08-03 | 8a | validate_roundtrip.py updated for v1.2.0/v1.3.0 with version detection | ✅ 3,901/3,901 pass (v1.2.0 corpus) |
 | 2026-08-03 | 8a | Discovered corpus.jsonl is still v1.2.0 — polarity removal not yet applied | ⚠️ See critical finding above |
+| 2026-08-03 | 8a-ii | Re-extracted corpus via lake exe buildCorpus (14 modules, 4,029 examples) | ✅ Zero neut/pos tokens confirmed |
+| 2026-08-03 | 8a-ii | Dataset rebuilt: 3,491 train / 388 eval, median seq len 120 (was 153) | ✅ Ready for v1.3.0 training run |
 
 ---
 
