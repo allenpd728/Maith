@@ -337,6 +337,6 @@ if __name__ == "__main__":
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
     parser.add_argument("--out", default="datasets/")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--representation-id", default="semantic_graph_ir_v1_2_0")
+    parser.add_argument("--representation-id", default="semantic_graph_ir_v1_3_0")
     args = parser.parse_args()
     run(args.corpus, args.out, args.seed, args.representation_id)
