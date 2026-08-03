@@ -216,8 +216,8 @@ def decompTest8 : IO TestResult := do
   
   -- Run lean --make on the file
   let procResult <- IO.Process.run {
-    cmd: "lake", 
-    args: #["env", "lean", "--make", tmpFile]
+    cmd := "lake",
+    args := #["env", "lean", "--make", tmpFile]
   }
   
   -- Clean up
