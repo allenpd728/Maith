@@ -2,9 +2,12 @@
 
 Encoder.lean
 
-IR → Token sequence encoder. Format version 1.2.0.
+IR → Token sequence encoder. Format version 1.3.0.
 
 See docs/ENCODER_FORMAT.md for the full token grammar specification.
+
+Changes in v1.3.0:
+- Removed polarity tokens from E, A, R, O row emission (no discriminative signal)
 
 Changes in v1.2.0:
 - Forall binders (∀:) → FVAR_N tokens (separate counter from BVAR_N)
@@ -27,7 +30,7 @@ namespace Lean.DSL
 /--
 Encoder transforms IR structures into linear token sequences.
 
-Format version 1.2.0 (see docs/ENCODER_FORMAT.md):
+Format version 1.3.0 (see docs/ENCODER_FORMAT.md):
 - `EntityId.var`   → bare constant name (stable across corpus)
 - `EntityId.term`  → `TERM_N` (capped at TERM_63; beyond → TERM_MANY)
 - `EntityId.bound` with "∀:" prefix → `FVAR_N` (forall binder, counter starts at 0 per graph)
@@ -35,6 +38,7 @@ Format version 1.2.0 (see docs/ENCODER_FORMAT.md):
 - `EntityId.bound` untagged (legacy) → `BVAR_N` (backward compat)
 - Operation ops    → `gen:*` (rare ops mapped to GEN_UNK at dataset-build time)
 - Graph structure  → GRAPH_BEGIN / E / A / R / O / GRAPH_END
+- Polarity is no longer emitted as a token (v1.3.0 breaking change)
 -/
 structure Encoder where
   encodeEntity    : Entity → List Token
@@ -91,13 +95,13 @@ private def resolveId (bvarMap : List (String × Token)) (id : EntityId) : Token
     | none          => "BVAR_MANY"  -- should not happen if map was built from same graph
 
 private def encodeEntityWith (bvarMap : List (String × Token)) (e : Entity) : List Token :=
-  ["E", resolveId bvarMap e.id, toString e.polarity]
+  ["E", resolveId bvarMap e.id]
 
 private def encodeAttributeWith (bvarMap : List (String × Token)) (a : Attribute) : List Token :=
-  ["A", resolveId bvarMap a.target, a.key, a.value, toString a.polarity]
+  ["A", resolveId bvarMap a.target, a.key, a.value]
 
 private def encodeRelationWith (bvarMap : List (String × Token)) (r : Relation) : List Token :=
-  ["R", resolveId bvarMap r.src, resolveId bvarMap r.tgt, toString r.op, toString r.polarity]
+  ["R", resolveId bvarMap r.src, resolveId bvarMap r.tgt, toString r.op]
 
 private def encodeOperationWith (bvarMap : List (String × Token)) (o : Operation) : List Token :=
   let inputTokens := o.inputs.map (resolveId bvarMap)
@@ -105,20 +109,19 @@ private def encodeOperationWith (bvarMap : List (String × Token)) (o : Operatio
   , "inputs:" ++ String.intercalate "," inputTokens
   , "output:" ++ resolveId bvarMap o.output
   , toString o.op
-  , toString o.polarity
   ]
 
 -- Per-component functions for the Encoder struct (graph-level context not available).
 -- These use the raw toString fallback and are provided for compatibility.
 -- Prefer encodeGraph for training corpus output.
 def encodeEntity (e : Entity) : List Token :=
-  ["E", toString e.id, toString e.polarity]
+  ["E", toString e.id]
 
 def encodeAttribute (a : Attribute) : List Token :=
-  ["A", toString a.target, a.key, a.value, toString a.polarity]
+  ["A", toString a.target, a.key, a.value]
 
 def encodeRelation (r : Relation) : List Token :=
-  ["R", toString r.src, toString r.tgt, toString r.op, toString r.polarity]
+  ["R", toString r.src, toString r.tgt, toString r.op]
 
 def encodeOperation (o : Operation) : List Token :=
   let inputTokens := o.inputs.map (fun id => toString id)
@@ -126,7 +129,6 @@ def encodeOperation (o : Operation) : List Token :=
   , "inputs:" ++ String.intercalate "," inputTokens
   , "output:" ++ toString o.output
   , toString o.op
-  , toString o.polarity
   ]
 
 /--

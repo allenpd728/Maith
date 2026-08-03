@@ -1,7 +1,7 @@
 # Maith Encoder Format
 
-**Version**: 1.0.0  
-**Last updated**: 2026-07-25
+**Version**: 1.3.0  
+**Last updated**: 2026-08-03
 
 This document is the canonical specification for the Maith IR token format. The
 encoder version field in `stats.json` (`encoderVersion`) must match the version
@@ -16,10 +16,10 @@ A graph is encoded as a flat list of string tokens:
 
 ```
 GRAPH_BEGIN
-  ( E <entity_id> <polarity> )*
-  ( A <entity_id> <key> <value> <polarity> )*
-  ( R <entity_id> <entity_id> <rel_op> <polarity> )*
-  ( O "inputs:<id,...>" "output:<id>" <op> <polarity> )*
+  ( E <entity_id> )*
+  ( A <entity_id> <key> <value> )*
+  ( R <entity_id> <entity_id> <rel_op> )*
+  ( O "inputs:<id,...>" "output:<id>" <op> )*
 GRAPH_END
 ```
 
@@ -76,7 +76,6 @@ the training split only (to avoid test set leakage).
 ```
 GRAPH_BEGIN  GRAPH_END
 E  A  R  O
-pos  neg  neut
 eq  add  sub  mul  div  le  ge  lt  gt  neg  pow
 FVAR_0 ... FVAR_63  FVAR_MANY
 BVAR_0 ... BVAR_63  BVAR_MANY
@@ -85,6 +84,10 @@ GEN_UNK
 typeclass  sort  let-binding  implicit  param  literal
 inputs:  output:
 ```
+
+Note: Polarity tokens (`pos`, `neg`, `neut`) are no longer part of the structural vocabulary
+as of v1.3.0. The `Polarity` type is retained in the IR data structures for potential future
+use, but is not emitted as tokens during encoding.
 
 ---
 
@@ -112,6 +115,12 @@ whether cross-graph identity is the missing signal.
 
 ## Version history
 
+### v1.3.0
+- **Breaking change:** Removed polarity tokens from E, A, R, O row emission
+- Polarity (`pos`, `neg`, `neut`) accounted for 24% of all tokens with 99.8% being `neut`
+- No discriminative signal in polarity — all normalised to `neut` by normalizer
+- Mean sequence length expected to drop from ~226 to ~170–180 tokens (~25% reduction)
+
 ### v1.2.0
 - Forall binders (`∀:` scoped) → `FVAR_N` tokens (separate positional counter per graph, starts at 0)
 - Lambda binders (`λ:` scoped) → `BVAR_N` tokens (unchanged)
@@ -125,3 +134,4 @@ whether cross-graph identity is the missing signal.
 | 1.0.0 | Positional bound IDs (`BVAR_N`), capped term IDs (`TERM_N`), `GEN_UNK` for rare ops. Cap = 31. |
 | 1.1.0 | Raised positional cap from 31 → 63. Covers p95+ of Mathlib graphs. |
 | 1.2.0 | Split bound IDs: forall binders → `FVAR_N`, lambda binders → `BVAR_N`. Separate counters per graph, both start at 0. `MetaExtractor` tags scope strings with `∀:`/`λ:` prefix. |
+| 1.3.0 | Removed polarity tokens from E/A/R/O rows. Polarity no longer emitted as structural tokens. |
