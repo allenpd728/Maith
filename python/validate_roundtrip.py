@@ -311,15 +311,16 @@ def run(corpus_path: str, sample_size: Optional[int], run_all: bool) -> None:
     print(f"Detected encoder version: {encoder_version}")
 
     # Polarity sanity check
+    # Only neut and pos are polarity tokens — neg is a valid relation/operation token (negation)
     polarity_count = sum(
         1 for ex in examples[:50]
         for t in ex.get("tokens", [])
-        if t in ("neut", "pos", "neg")
+        if t in ("neut", "pos")
     )
     if encoder_version.startswith("1.3") and polarity_count > 0:
-        print(f"  WARNING: {polarity_count} polarity tokens found in first 50 examples — expected 0 for v1.3.0")
+        print(f"  WARNING: {polarity_count} polarity tokens (neut/pos) found in first 50 examples — expected 0 for v1.3.0")
     elif encoder_version.startswith("1.2") and polarity_count == 0:
-        print(f"  WARNING: No polarity tokens found — expected neut/pos/neg for v1.2.0")
+        print(f"  WARNING: No polarity tokens found — expected neut/pos for v1.2.0")
 
     if run_all:
         targets = examples
@@ -362,7 +363,8 @@ def run(corpus_path: str, sample_size: Optional[int], run_all: bool) -> None:
     term = [t for t in vocab if t.startswith("TERM_")]
     legacy_b = [t for t in vocab if t.startswith("b(")]
     legacy_t = [t for t in vocab if t.startswith("t") and t[1:].isdigit()]
-    polarity = sum(vocab[t] for t in ("neut", "pos", "neg"))
+    # neut and pos are polarity tokens; neg is negation (a valid operation token)
+    polarity = sum(vocab.get(t, 0) for t in ("neut", "pos"))
 
     print()
     print(f"Vocab snapshot ({len(targets)} examples):")
