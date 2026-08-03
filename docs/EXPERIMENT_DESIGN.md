@@ -1,9 +1,11 @@
 # A/B/C Experiment Design
 
-> **Phase 5 complete (DEC-018 resolved, 2026-08-02).** Matched perplexity (shared
-> 512-token cap): A 1.489, B 1.180, C 1.207. Completion accuracy: A 86.2%, B 92.8%,
-> C 91.4%. B/C advantage confirmed as real, not a truncation artifact. Phase 6 may
-> proceed. DEC-006 (cold-start confound) remains open.
+> **Phase 6 complete (DEC-020, 2026-08-02). DEC-006 closed (DEC-021, 2026-08-03).**
+> A trails B/C by ~0.17pp across Phase 5, Phase 6, and embedding projection experiment.
+> Gap is not due to cold-start initialisation (DEC-021), sequence length (IR is 2x shorter
+> than BPE), or Qwen pretraining prior (25.8% vocab overlap). v1.3.0 IR retraining in
+> progress — polarity removed, casesOn/recOn normalised. See `docs/PHASE_7_ROADMAP.md`
+> for current status and next steps.
 
 Controlled comparison of three input representations for next-token prediction on Mathlib IR.
 
@@ -11,11 +13,11 @@ Controlled comparison of three input representations for next-token prediction o
 
 | Variant | Representation | Tokenizer | Vocab size |
 |---------|---------------|-----------|------------|
-| A | Maith IR tokens (v1.2.0) | Custom (`vocab_A.json`) | 8,102 |
+| A | Maith IR tokens (v1.3.0) | Custom (`vocab_A.json`) | 8,144 |
 | B | Raw `leanExpr` string | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 | C | AST-style split `leanExpr` | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 
-Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (3,375 train / 376 eval, seed=42).
+Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (2,213 train / 246 eval, seed=42 — rebuilt for v1.3.0).
 
 Clarification: C is a representation baseline (AST-style split input), not "B with a different context cap."
 B and C intentionally share tokenizer/model family while changing representation; eval perplexity uses a
