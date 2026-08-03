@@ -1147,3 +1147,52 @@ token sequences for different expressions. No further fix is required before ret
 - DEC-019 (corpus expansion plan, diversity track remains open)
 - docs/IR_V2_FIX_SPEC.md (Fix 1 implemented; residual explained above)
 - python/normalisation_audit.py (audit run post-Fix-1, 2026-08-03)
+
+---
+
+### DEC-022 — Fix 2 (polarity removal) regresses perplexity at current scale
+
+**Date:** 2026-08-03
+**Status:** Closed — finding documented, Fix 2 deferred
+**Decision:** Do not apply Fix 2 until corpus exceeds ~10k examples or a lighter-weight separator design is validated.
+
+#### Background
+
+Fix 2 removed polarity tokens (neut, pos) from Encoder.lean on the hypothesis that they carried near-zero information (confirmed by normalisation audit: 99.8% of rows were neut). The expectation was that removing this noise would improve model generalisation.
+
+#### Experiment
+
+Two controlled runs on the true v1.3.0 corpus (4,029 examples, 3,491 train, zero polarity tokens):
+
+| Run | Init | Perplexity |
+|---|---|---|
+| DEC-021 baseline (v1.2.0 tokens) | embed_project | 1.2978 |
+| v1.3.0 + embed_pretrain | embed_pretrain | 1.3896 |
+| v1.3.0 + embed_project (clean comparison) | embed_project | 1.3717 |
+
+The like-for-like comparison (same init strategy, same corpus size) shows a 0.074pp regression from polarity removal. This is not explained by dataset size (3,491 > 3,375) or init method.
+
+#### Finding
+
+neut was functioning as a predictable positional anchor — appearing after every entity row at a fixed interval, giving the model a reliable rhythmic structure. At 365M params trained on 3.5k examples, the positional attention benefits of this anchor outweigh the semantic noise it introduces.
+
+The "polarity tokens carry no semantic information" finding from the normalisation audit remains correct. The mistake was assuming semantic noise equals training noise. At small corpus scale, structural regularity matters more than semantic cleanliness.
+
+#### Decision
+
+- Fix 2 is not reverted in Encoder.lean — the code change is correct and cleaner
+- The v1.3.0 corpus (zero polarity tokens) becomes the new baseline
+- Future training runs use v1.3.0 tokens; any comparison to DEC-021 must account for the 0.074pp structural-anchor cost
+- Revisit polarity removal when corpus exceeds ~10k examples or when IR pretraining (item 4 in Phase 7 roadmap) is implemented
+
+#### New baseline
+
+v1.3.0 + embed_project: perplexity 1.3717, 3,491 train examples, vocab 8,221 tokens.
+All future runs compared against this number unless otherwise noted.
+
+#### References
+- runs/variant_A_v1_3_0_true/results.json (embed_pretrain, 1.3896)
+- runs/variant_A_v1_3_0_proj/results.json (embed_project, 1.3717)
+- docs/IR_V2_FIX_SPEC.md (Fix 2 spec)
+- python/normalisation_audit.py
+- DEC-021 (prior baseline)

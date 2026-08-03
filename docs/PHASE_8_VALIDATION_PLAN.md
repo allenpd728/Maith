@@ -1,7 +1,7 @@
 # Phase 8: Bidirectional Pipeline Validation
 
 **Created:** 2026-08-03  
-**Status:** 🟡 In Progress — 8a complete, 8a-ii + 8b/8c/8d pending  
+**Status:** 🟡 In Progress — 8a + 8a-ii complete, 8b/8c/8d pending  
 **Goal:** Confirm at every stage that no information is silently lost before making any further IR changes (Fix 3 IO markers, Fix 4 type-role prefixes).
 
 **Phases can run out of order** — 8b, 8c, and 8d are independent OpenHands Lean tasks and
@@ -394,6 +394,8 @@ This is a prerequisite for any meaningful v1.3.0 experiment. Added as Phase 8a-i
 | 2026-08-03 | 8a | Discovered corpus.jsonl is still v1.2.0 — polarity removal not yet applied | ⚠️ See critical finding above |
 | 2026-08-03 | 8a-ii | Re-extracted corpus via lake exe buildCorpus (14 modules, 4,029 examples) | ✅ Zero neut/pos tokens confirmed |
 | 2026-08-03 | 8a-ii | Dataset rebuilt: 3,491 train / 388 eval, median seq len 120 (was 153) | ✅ Ready for v1.3.0 training run |
+| 2026-08-03 | — | v1.3.0 training runs complete (embed_pretrain: 1.3896, embed_project: 1.3717) | ⚠️ Regression vs DEC-021 (1.2978) — documented in DEC-022 |
+| 2026-08-03 | — | DEC-022 closed: neut = positional anchor, Fix 2 deferred, new baseline 1.3717 | ✅ Next: Phase 8b |
 
 ---
 
