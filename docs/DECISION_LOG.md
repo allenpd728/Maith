@@ -1257,24 +1257,37 @@ Flat-IR ablation: transform v1.4.0 token sequences into shape-only sequences whe
 | Variant B (raw BPE) | BPE baseline | 1.1295 |
 | Variant A v1.4.0 (full IR) | Semantic graph IR | 1.2751 |
 
-#### Finding
+#### Finding — what the data actually shows
 
-Flat-IR beats Variant A by 0.22pp and beats both BPE baselines. The model achieves lower perplexity knowing only sequence shape (row type counts and positions) than it does with full semantic content.
+**Raw perplexity comparison is not valid across vocabulary sizes.** Flat-IR's low PPL is partly an artefact of task difficulty: 66.6% of flat-IR tokens are SLOT, making next-token prediction structurally easier. The vocabulary-normalised comparison in bits/token (log2 of PPL) is the correct measure:
 
-This means: at 365M params / 3.5k examples, the model cannot learn to use the semantic content of the IR. The gen: tokens, entity IDs, relation types, and attribute keys are adding 0.22pp of perplexity noise rather than helping. The structural pattern of Mathlib declarations (typically N_E entity rows, N_A attribute rows, N_R relation rows, N_O operation rows) is itself highly predictable and accounts for most of the model's signal.
+| Variant | PPL | bits/token | vocab |
+|---|---|---|---|
+| Flat-IR | 1.0551 | 0.077 | 11 |
+| C (BPE) | 1.1102 | 0.151 | 151,936 |
+| B (BPE) | 1.1295 | 0.176 | 151,936 |
+| A v1.4.0 | 1.2751 | 0.351 | 1,236 |
 
-#### Implication
+In bits/token, B and C remain well below Variant A. Flat-IR is lowest, but this reflects that predicting SLOT is easier than predicting mathematical identifiers. A bigram model achieves perplexity 2.38 on the flat-IR eval set; the neural model achieves 1.055 — the gap (2.38 → 1.055) represents real learning of structural patterns, not a trivial result, but it is a far simpler task than Variant A or B/C.
 
-The hypothesis as formulated is not supported at this scale. The IR is not outperforming BPE because the semantic content is not learnable at 3.5k examples. Two paths forward:
+**What is confirmed:** At the current scale (365M params, 3.5k examples), Variant A's semantic content contributes approximately 0.27 additional bits/token of prediction difficulty above what shape alone requires, and the model cannot recover that cost. The semantic tokens (gen:, entity IDs, relation types) are not helping relative to their structural overhead.
 
-1. **IR pretraining** — pre-train on a large synthetic corpus of IR sequences (100k+ examples) before fine-tuning on Mathlib. This would give the model enough exposure to learn what gen: tokens mean across graphs. This is item 4 in the Phase 7 roadmap.
+**What is NOT confirmed:** Whether this is because (a) more data would allow the model to learn the semantics, or (b) the semantic tokens are inherently poorly suited to next-token prediction in this format regardless of data volume. The current experiments do not distinguish these explanations. "Data volume" was stated as the cause in earlier notes — that is a hypothesis, not a finding.
 
-2. **Corpus expansion** — expand to 10k+ Mathlib examples so the semantic content appears often enough to be learned. The current 3.5k examples means many gen: tokens appear fewer than 10 times total.
+#### What the experiment was designed to test — and what it answered
 
-Both paths require significant investment. The flat-IR result is not a failure — it is exactly the design-validation signal the roadmap called for. It confirms the graph structure is sound; the bottleneck is data volume, not representation design.
+The flat-IR ablation was designed to test: "Is graph structure helping at all, or is it noise?" The answer is: **the structural shape of Mathlib declarations is highly predictable and learnable. Whether the semantic content within that structure adds value cannot be determined from these experiments alone** — it requires either more data or a different experimental design (e.g., probing tasks, not perplexity).
+
+#### Open questions the data does not resolve
+
+1. Would semantic content help with more training data (10k+ examples)?
+2. Would probing tasks (e.g., predicting declaration type from IR) show semantic content being used?
+3. Is the BPE advantage due to Qwen pretraining priors, or is it a genuine representational advantage?
 
 #### References
-- runs/variant_flat/results.json
-- python/build_flat_ir_dataset.py
-- docs/PHASE_7_ROADMAP.md (decision tree, item 4 IR pretraining)
+- runs/variant_flat/results.json (raw config and eval)
+- python/build_flat_ir_dataset.py (flat-IR transform)
+- Vocabulary normalisation analysis: log2(PPL) computed 2026-08-04
+- Bigram baseline: PPL 2.38 on flat-IR eval, computed 2026-08-04
+- docs/PHASE_7_ROADMAP.md (decision tree, item 4)
 - DEC-023 (prior Variant A best, 1.2751)
