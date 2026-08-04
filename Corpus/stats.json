@@ -1,1 +1,102 @@
-{"totalDeclarations": 4029, "successfulExamples": 4029, "failureStats": {"transpilationFailed": 0, "irConstructionFailed": 0, "normalizationFailed": 0, "injectivityCheckFailed": 0, "encodingFailed": 0, "skippedTooLarge": 0, "skippedTacticHeavy": 0, "failureReasons": []}, "tokenDistribution": {"minLength": 10, "maxLength": 12188, "avgLength": 244.481013, "totalTokens": 985014}, "graphStats": {"avgEntities": 38.003971, "avgAttributes": 5.239017, "avgRelations": 11.932986, "avgOperations": 24.446265, "maxGraphSize": 4028}, "moduleStats": [{"module": "Mathlib.Algebra.Group.Defs", "totalDeclarations": 1129, "successfulExamples": 1129}, {"module": "Mathlib.Algebra.Group.Basic", "totalDeclarations": 548, "successfulExamples": 548}, {"module": "Mathlib.Algebra.Ring.Defs", "totalDeclarations": 446, "successfulExamples": 446}, {"module": "Mathlib.Order.Basic", "totalDeclarations": 431, "successfulExamples": 431}, {"module": "Mathlib.Algebra.Group.NatPowAssoc", "totalDeclarations": 28, "successfulExamples": 28}, {"module": "Mathlib.Algebra.Ring.Basic", "totalDeclarations": 68, "successfulExamples": 68}, {"module": "Mathlib.Algebra.Ring.GeomSum", "totalDeclarations": 70, "successfulExamples": 70}, {"module": "Mathlib.Algebra.Group.Subgroup.Basic", "totalDeclarations": 393, "successfulExamples": 393}, {"module": "Mathlib.Data.Nat.Basic", "totalDeclarations": 27, "successfulExamples": 27}, {"module": "Mathlib.Data.Int.Basic", "totalDeclarations": 22, "successfulExamples": 22}, {"module": "Mathlib.Order.Lattice", "totalDeclarations": 519, "successfulExamples": 519}, {"module": "Mathlib.Order.LatticeIntervals", "totalDeclarations": 256, "successfulExamples": 256}, {"module": "Mathlib.Algebra.Module.Basic", "totalDeclarations": 23, "successfulExamples": 23}, {"module": "Mathlib.Topology.Basic", "totalDeclarations": 69, "successfulExamples": 69}], "mathlibCommitHash": "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f", "encoderVersion": "1.2.0", "irVersion": "0.1.0"}
+{
+  "totalDeclarations": 4029,
+  "successfulExamples": 4029,
+  "failureStats": {
+    "transpilationFailed": 0,
+    "irConstructionFailed": 0,
+    "normalizationFailed": 0,
+    "injectivityCheckFailed": 0,
+    "encodingFailed": 0,
+    "skippedTooLarge": 0,
+    "skippedTacticHeavy": 0,
+    "failureReasons": []
+  },
+  "tokenDistribution": {
+    "minLength": 10,
+    "maxLength": 12188,
+    "avgLength": 244.481013,
+    "totalTokens": 985014
+  },
+  "graphStats": {
+    "avgEntities": 38.003971,
+    "avgAttributes": 5.239017,
+    "avgRelations": 11.932986,
+    "avgOperations": 24.446265,
+    "maxGraphSize": 4028
+  },
+  "moduleStats": [
+    {
+      "module": "Mathlib.Algebra.Group.Defs",
+      "totalDeclarations": 1129,
+      "successfulExamples": 1129
+    },
+    {
+      "module": "Mathlib.Algebra.Group.Basic",
+      "totalDeclarations": 548,
+      "successfulExamples": 548
+    },
+    {
+      "module": "Mathlib.Algebra.Ring.Defs",
+      "totalDeclarations": 446,
+      "successfulExamples": 446
+    },
+    {
+      "module": "Mathlib.Order.Basic",
+      "totalDeclarations": 431,
+      "successfulExamples": 431
+    },
+    {
+      "module": "Mathlib.Algebra.Group.NatPowAssoc",
+      "totalDeclarations": 28,
+      "successfulExamples": 28
+    },
+    {
+      "module": "Mathlib.Algebra.Ring.Basic",
+      "totalDeclarations": 68,
+      "successfulExamples": 68
+    },
+    {
+      "module": "Mathlib.Algebra.Ring.GeomSum",
+      "totalDeclarations": 70,
+      "successfulExamples": 70
+    },
+    {
+      "module": "Mathlib.Algebra.Group.Subgroup.Basic",
+      "totalDeclarations": 393,
+      "successfulExamples": 393
+    },
+    {
+      "module": "Mathlib.Data.Nat.Basic",
+      "totalDeclarations": 27,
+      "successfulExamples": 27
+    },
+    {
+      "module": "Mathlib.Data.Int.Basic",
+      "totalDeclarations": 22,
+      "successfulExamples": 22
+    },
+    {
+      "module": "Mathlib.Order.Lattice",
+      "totalDeclarations": 519,
+      "successfulExamples": 519
+    },
+    {
+      "module": "Mathlib.Order.LatticeIntervals",
+      "totalDeclarations": 256,
+      "successfulExamples": 256
+    },
+    {
+      "module": "Mathlib.Algebra.Module.Basic",
+      "totalDeclarations": 23,
+      "successfulExamples": 23
+    },
+    {
+      "module": "Mathlib.Topology.Basic",
+      "totalDeclarations": 69,
+      "successfulExamples": 69
+    }
+  ],
+  "mathlibCommitHash": "fabf563a7c95a166b8d7b6efca11c8b4dc9d911f",
+  "encoderVersion": "1.4.0",
+  "irVersion": "1.4.0"
+}

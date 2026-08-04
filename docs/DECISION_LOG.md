@@ -71,7 +71,7 @@ Canonical record of experiment-critical decisions that affect interpretation and
 - Rationale:
   - Preserves current experiment comparability while enabling controlled context-aware variants.
 - References:
-  - `docs/CONTEXT_PACK_PROTOCOL.md`
+  - `docs/CONTEXT_PACK_PROTOCOL.md` (file no longer exists — was a planning doc deleted during repo audit)
   - `python/scaffold_context_artifacts.py`
   - `python/build_dependency_manifest.py`
 
