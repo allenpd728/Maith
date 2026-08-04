@@ -62,7 +62,9 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
         "typeclass", "sort", "literal",
     ] + [f"FVAR_{i}" for i in range(64)] + ["FVAR_MANY"] \
       + [f"BVAR_{i}" for i in range(64)] + ["BVAR_MANY"] \
-      + [f"TERM_{i}" for i in range(64)] + ["TERM_MANY"]
+      + [f"TERM_{i}" for i in range(64)] + ["TERM_MANY"] \
+      + [f"IN_{i}" for i in range(10)] + ["IN_MANY"] \
+      + [f"OUT_{i}" for i in range(64)] + ["OUT_MANY", "OUT_VAR"]
 
     vocab = {tok: i for i, tok in enumerate(structural)}
     next_id = len(vocab)
@@ -219,7 +221,7 @@ def filter_examples(examples: list[dict], threshold: int, drop_log_path: Optiona
     return kept
 
 
-def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v1_3_0") -> None:
+def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v1_4_0") -> None:
     print(f"Loading corpus from {corpus_path} ...")
     with open(corpus_path) as f:
         examples = [json.loads(line) for line in f]
@@ -337,6 +339,6 @@ if __name__ == "__main__":
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
     parser.add_argument("--out", default="datasets/")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--representation-id", default="semantic_graph_ir_v1_3_0")
+    parser.add_argument("--representation-id", default="semantic_graph_ir_v1_4_0")
     args = parser.parse_args()
     run(args.corpus, args.out, args.seed, args.representation_id)

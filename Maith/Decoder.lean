@@ -161,22 +161,53 @@ def decodeRelation (toks : List Token) : Relation :=
   | _ =>
       { src := EntityId.var "ERR", tgt := EntityId.var "ERR", op := RelationOp.eq, polarity := Polarity.neut }
 
--- v1.3.0: O rows are 4 tokens (O, inputs, output, op) — no polarity token.
--- v1.2.0: O rows were 5 tokens (O, inputs, output, op, pol).
+-- v1.4.0: O rows are 4 tokens (O, IN_N, OUT_N, op) — arity+output-position tokens.
+-- v1.3.0: O rows were 4 tokens (O, inputs:..., output:..., op) — compound strings.
+-- v1.2.0: O rows were 5 tokens (O, inputs:..., output:..., op, pol) — with polarity.
+-- Decode IN_N → N synthetic inputs (EntityId.term 0..N-1 as placeholders);
+-- OUT_N → EntityId.term N; OUT_VAR/OUT_MANY → EntityId.term 64 (sentinel).
+-- Note: the decoded inputs are positional sentinels only — the real entity identity
+-- is carried by E/R rows. Downstream consumers should use the graph structure.
+private def parseArityToken (s : String) : Nat :=
+  if s == "IN_MANY" then 10
+  else if s.startsWith "IN_" then
+    match (s.drop 3).toString.toNat? with
+    | some n => n
+    | none   => 0
+  else 0  -- fallback for compound "inputs:..." (v1.3.0 compat)
+
+private def parseOutputToken (s : String) : EntityId :=
+  if s == "OUT_MANY" || s == "OUT_VAR" then .term 64
+  else if s.startsWith "OUT_" then
+    match (s.drop 4).toString.toNat? with
+    | some n => .term n
+    | none   => .term 64
+  else
+    -- v1.3.0 compat: "output:TERM_N" compound string
+    let text := if s.startsWith "output:" then (s.drop 7).toString else s
+    parseEntityIdToken text
+
 def decodeOperation (toks : List Token) : Operation :=
   match toks with
-  | ["O", inputsStr, outputStr, opStr] =>
-      -- v1.3.0 format: no polarity token
-      let trimmed : String :=
-        if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
-      let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken (s.trimAscii.toString))
-      let outputText : String :=
-        if outputStr.startsWith "output:" then (outputStr.drop 7).toString else outputStr
-      let output := parseEntityIdToken (outputText.trimAscii.toString)
+  | ["O", arityOrInputs, outputTok, opStr] =>
+      let (inputs, output) :=
+        if arityOrInputs.startsWith "IN_" then
+          -- v1.4.0 format: IN_N + OUT_N
+          let n := parseArityToken arityOrInputs
+          let syntheticInputs := (List.range n).map (fun i => EntityId.term i)
+          (syntheticInputs, parseOutputToken outputTok)
+        else
+          -- v1.3.0 format: inputs:... + output:...
+          let trimmed : String :=
+            if arityOrInputs.startsWith "inputs:" then (arityOrInputs.drop 7).toString else arityOrInputs
+          let ins := (trimmed.splitOn ",").map (fun s => parseEntityIdToken (s.trimAscii.toString))
+          let outputText : String :=
+            if outputTok.startsWith "output:" then (outputTok.drop 7).toString else outputTok
+          (ins, parseEntityIdToken (outputText.trimAscii.toString))
       let op := parseOperationOpToken opStr
       { inputs := inputs, output := output, op := op, polarity := Polarity.neut }
   | ["O", inputsStr, outputStr, opStr, polStr] =>
-      -- v1.2.0 format: polarity token present
+      -- v1.2.0 format: polarity token present, compound strings
       let trimmed : String :=
         if inputsStr.startsWith "inputs:" then (inputsStr.drop 7).toString else inputsStr
       let inputs := (trimmed.splitOn ",").map (fun s => parseEntityIdToken (s.trimAscii.toString))

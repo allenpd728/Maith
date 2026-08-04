@@ -90,12 +90,12 @@ def parse_polarity(s: str) -> str:
 def detect_encoder_version(examples: list[dict]) -> str:
     """
     Detect encoder version from corpus examples.
-    Checks the first example with tokens for the presence of polarity tokens.
-    Returns '1.3.0' if no polarity tokens found, '1.2.0' otherwise.
+    v1.2.0 — polarity token after every row (neut/pos/neg after E id)
+    v1.3.0 — no polarity; O rows use compound "inputs:..." / "output:..." strings
+    v1.4.0 — no polarity; O rows use IN_N / OUT_N tokens
     Falls back to checking the encoderVersion field if present.
     """
     for ex in examples[:20]:
-        # Check stored encoderVersion field
         if ex.get("encoderVersion"):
             return ex["encoderVersion"]
 
@@ -103,20 +103,23 @@ def detect_encoder_version(examples: list[dict]) -> str:
         if not tokens:
             continue
 
-        # In v1.2.0 every E row is: E <id> <polarity>
-        # In v1.3.0 every E row is: E <id>
-        # Find the first E row and check what follows the entity id
+        # Check for v1.2.0: polarity token follows entity id in E rows
         for i, t in enumerate(tokens):
             if t == "E" and i + 2 < len(tokens):
                 candidate = tokens[i + 2]
                 if candidate in ("neut", "pos", "neg"):
                     return "1.2.0"
-                elif candidate in ("E", "A", "R", "O", "GRAPH_END") or \
-                     candidate.startswith(("FVAR_", "BVAR_", "TERM_")):
-                    return "1.3.0"
                 break
 
-    return "1.3.0"  # default to current format
+        # Check for v1.4.0: O rows contain IN_N tokens
+        for t in tokens:
+            if t.startswith("IN_") and t != "GRAPH_BEGIN":
+                return "1.4.0"
+
+        # No polarity, no IN_N → v1.3.0
+        return "1.3.0"
+
+    return "1.4.0"  # default to current format
 
 
 # ---------------------------------------------------------------------------

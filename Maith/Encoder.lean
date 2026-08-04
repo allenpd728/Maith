@@ -2,9 +2,16 @@
 
 Encoder.lean
 
-IR → Token sequence encoder. Format version 1.3.0.
+IR → Token sequence encoder. Format version 1.4.0.
 
 See docs/ENCODER_FORMAT.md for the full token grammar specification.
+
+Changes in v1.4.0:
+- IO marker simplification: O row now emits IN_N / OUT_N tokens instead of
+  compound "inputs:FVAR_0,FVAR_1" / "output:TERM_2" strings.
+  Reduces unique O-row token types from ~10,042 to ~75.
+  IN_N: arity count token (IN_1..IN_9, IN_MANY for 10+)
+  OUT_N: output positional token (OUT_0..OUT_63, OUT_MANY for 64+, OUT_VAR for .var IDs)
 
 Changes in v1.3.0:
 - Removed polarity tokens from E, A, R, O row emission (no discriminative signal)
@@ -30,7 +37,7 @@ namespace Lean.DSL
 /--
 Encoder transforms IR structures into linear token sequences.
 
-Format version 1.3.0 (see docs/ENCODER_FORMAT.md):
+Format version 1.4.0 (see docs/ENCODER_FORMAT.md):
 - `EntityId.var`   → bare constant name (stable across corpus)
 - `EntityId.term`  → `TERM_N` (capped at TERM_63; beyond → TERM_MANY)
 - `EntityId.bound` with "∀:" prefix → `FVAR_N` (forall binder, counter starts at 0 per graph)
@@ -39,6 +46,8 @@ Format version 1.3.0 (see docs/ENCODER_FORMAT.md):
 - Operation ops    → `gen:*` (rare ops mapped to GEN_UNK at dataset-build time)
 - Graph structure  → GRAPH_BEGIN / E / A / R / O / GRAPH_END
 - Polarity is no longer emitted as a token (v1.3.0 breaking change)
+- O rows emit `IN_N` (arity count) + `OUT_N` (output position) instead of
+  compound inputs:/output: strings (v1.4.0 breaking change)
 -/
 structure Encoder where
   encodeEntity    : Entity → List Token
@@ -103,11 +112,23 @@ private def encodeAttributeWith (bvarMap : List (String × Token)) (a : Attribut
 private def encodeRelationWith (bvarMap : List (String × Token)) (r : Relation) : List Token :=
   ["R", resolveId bvarMap r.src, resolveId bvarMap r.tgt, toString r.op]
 
+-- v1.4.0: emit arity count (IN_N) and output position (OUT_N) instead of
+-- compound "inputs:..." / "output:..." strings.
+-- IN_N: arity 1–9 → "IN_1".."IN_9"; 10+ → "IN_MANY"
+-- OUT_N: output is TERM_N → "OUT_N" (N ≤ 63) / "OUT_MANY" (N > 63);
+--        output is FVAR_N / BVAR_N / .var → "OUT_VAR" (structurally valid fallback)
+private def arityToken (n : Nat) : Token :=
+  if n ≤ 9 then s!"IN_{n}" else "IN_MANY"
+
+private def outputToken (bvarMap : List (String × Token)) (id : EntityId) : Token :=
+  match id with
+  | .term n => if n ≤ maxPositional then s!"OUT_{n}" else "OUT_MANY"
+  | _       => "OUT_VAR"  -- FVAR_N, BVAR_N, or .var — positionally non-deterministic
+
 private def encodeOperationWith (bvarMap : List (String × Token)) (o : Operation) : List Token :=
-  let inputTokens := o.inputs.map (resolveId bvarMap)
   [ "O"
-  , "inputs:" ++ String.intercalate "," inputTokens
-  , "output:" ++ resolveId bvarMap o.output
+  , arityToken o.inputs.length
+  , outputToken bvarMap o.output
   , toString o.op
   ]
 
@@ -124,10 +145,10 @@ def encodeRelation (r : Relation) : List Token :=
   ["R", toString r.src, toString r.tgt, toString r.op]
 
 def encodeOperation (o : Operation) : List Token :=
-  let inputTokens := o.inputs.map (fun id => toString id)
+  -- v1.4.0: emit arity + output-position tokens (no bvarMap context here, so output falls back to OUT_VAR)
   [ "O"
-  , "inputs:" ++ String.intercalate "," inputTokens
-  , "output:" ++ toString o.output
+  , arityToken o.inputs.length
+  , outputToken [] o.output
   , toString o.op
   ]
 
