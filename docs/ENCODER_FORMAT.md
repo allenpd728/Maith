@@ -1,7 +1,7 @@
 # Maith Encoder Format
 
-**Version**: 1.3.0  
-**Last updated**: 2026-08-03
+**Version**: 1.4.0  
+**Last updated**: 2026-08-04
 
 This document is the canonical specification for the Maith IR token format. The
 encoder version field in `stats.json` (`encoderVersion`) must match the version
@@ -19,9 +19,13 @@ GRAPH_BEGIN
   ( E <entity_id> )*
   ( A <entity_id> <key> <value> )*
   ( R <entity_id> <entity_id> <rel_op> )*
-  ( O "inputs:<id,...>" "output:<id>" <op> )*
+  ( O <arity_token> <output_token> <op> )*
 GRAPH_END
 ```
+
+Where:
+- `<arity_token>` = `IN_N` for N inputs (N=0..9), `IN_MANY` for 10+
+- `<output_token>` = `OUT_N` for `TERM_N` output (N=0..63), `OUT_MANY` for TERM_MANY, `OUT_VAR` for FVAR/BVAR/.var outputs
 
 ---
 
@@ -80,10 +84,14 @@ eq  add  sub  mul  div  le  ge  lt  gt  neg  pow
 FVAR_0 ... FVAR_63  FVAR_MANY
 BVAR_0 ... BVAR_63  BVAR_MANY
 TERM_0 ... TERM_63  TERM_MANY
+IN_0 ... IN_9  IN_MANY
+OUT_0 ... OUT_63  OUT_MANY  OUT_VAR
 GEN_UNK
-typeclass  sort  let-binding  implicit  param  literal
-inputs:  output:
+typeclass  sort  literal
 ```
+
+Note: `inputs:<id,...>` and `output:<id>` compound strings are no longer part of the vocabulary
+as of v1.4.0. O rows now use `IN_N` (arity count) and `OUT_N` (output position) tokens.
 
 Note: Polarity tokens (`pos`, `neg`, `neut`) are no longer part of the structural vocabulary
 as of v1.3.0. The `Polarity` type is retained in the IR data structures for potential future
@@ -115,11 +123,20 @@ whether cross-graph identity is the missing signal.
 
 ## Version history
 
+### v1.4.0
+- **Breaking change:** O rows now emit `IN_N` (arity count) + `OUT_N` (output position) instead of compound `inputs:<id,...>` / `output:<id>` strings
+- Collapses 9,977 unique `inputs:` token types into 11 fixed tokens (`IN_0`..`IN_9`, `IN_MANY`)
+- Collapses 65 unique `output:` token types into 66 fixed tokens (`OUT_0`..`OUT_63`, `OUT_MANY`, `OUT_VAR`)
+- Vocabulary reduction: 8,221 → 1,236 tokens (85% reduction)
+- Perplexity result: 1.2751 (new Variant A best as of DEC-023, 2026-08-04)
+- Trade-off: output entity identity is partially lost (OUT_N encodes TERM position but not FVAR/BVAR identity → OUT_VAR)
+
 ### v1.3.0
 - **Breaking change:** Removed polarity tokens from E, A, R, O row emission
 - Polarity (`pos`, `neg`, `neut`) accounted for 24% of all tokens with 99.8% being `neut`
 - No discriminative signal in polarity — all normalised to `neut` by normalizer
-- Mean sequence length expected to drop from ~226 to ~170–180 tokens (~25% reduction)
+- Experimental result: polarity removal caused 0.074pp regression vs v1.2.0 at 3.5k examples (DEC-022)
+- Conclusion: `neut` was functioning as a positional anchor token; removal deferred until corpus >~10k examples
 
 ### v1.2.0
 - Forall binders (`∀:` scoped) → `FVAR_N` tokens (separate positional counter per graph, starts at 0)
@@ -135,3 +152,4 @@ whether cross-graph identity is the missing signal.
 | 1.1.0 | Raised positional cap from 31 → 63. Covers p95+ of Mathlib graphs. |
 | 1.2.0 | Split bound IDs: forall binders → `FVAR_N`, lambda binders → `BVAR_N`. Separate counters per graph, both start at 0. `MetaExtractor` tags scope strings with `∀:`/`λ:` prefix. |
 | 1.3.0 | Removed polarity tokens from E/A/R/O rows. Polarity no longer emitted as structural tokens. |
+| 1.4.0 | O rows: replaced compound inputs:/output: strings with IN_N/OUT_N arity+position tokens. Vocab 8,221→1,236. |

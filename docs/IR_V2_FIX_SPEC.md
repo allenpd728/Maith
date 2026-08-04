@@ -1,7 +1,7 @@
 # IR v2 Fix Specification
 
 **Date:** 2026-08-03  
-**Status:** Ready for implementation  
+**Status:** All three fixes implemented and experimentally evaluated (2026-08-04)  
 **Scope:** `Maith/MetaExtractor.lean`, `Maith/Normalizer.lean`, `Maith/Polarity.lean`, `Maith/Encoder.lean`  
 **Do not touch:** Training pipeline, dataset files, existing corpus
 
@@ -228,34 +228,28 @@ independently.
 
 ---
 
-## Implementation Sequence
+## Implementation Sequence — Actual Outcomes
 
-Do these in order. Validate each before starting the next.
+1. **Fix 1 (casesOn/recOn)** — ✅ Implemented. Normalisation rate improved.
+2. **Fix 2 (polarity removal)** — ✅ Implemented in Encoder.lean. ⚠️ Experimental result: caused 0.074pp regression (DEC-022). `neut` was functioning as a positional anchor at 3.5k examples. Fix is correct code but deferred experimentally until corpus >~10k examples.
+3. **Fix 3 (IO markers)** — ✅ Implemented and validated (DEC-023). Vocab 8,221→1,236. Perplexity improved to 1.2751, new Variant A best. Flat-IR ablation subsequently run (DEC-024) — see below.
 
-1. **Fix 1 (casesOn/recOn)** — `MetaExtractor.lean` only, no vocab change, re-extract corpus, run normalisation audit
-2. **Fix 2 (polarity removal)** — `Encoder.lean` + `ENCODER_FORMAT.md`, rebuild dataset, confirm sequence length drop, retrain Variant A
-3. **Fix 3 (IO markers)** — only after Fix 2 training results are in hand
-
-After Fix 2 retraining, compare the new Variant A perplexity and completion accuracy
-against the Phase 6 baseline (1.2792 / 84.2%). If the gap to B/C has narrowed, the
-noise reduction is working and Fix 3 is worth implementing. If the gap is unchanged,
-the problem lies elsewhere and Fix 3 should be deprioritised.
+After Fix 3, a flat-IR ablation was run: all semantic content replaced with SLOT (11-token vocab). Result: 0.077 bits/tok vs Variant A 0.351 bits/tok. The semantic content adds prediction cost the model cannot recover at current scale. See DEC-024 for full analysis and open questions.
 
 ---
 
-## What Success Looks Like
+## Actual Outcomes vs Targets
 
-| Metric | Current (v1.2.0) | Target after Fix 1+2 |
-|--------|-----------------|----------------------|
-| Alpha-equiv normalisation rate | 93.5% | >99% |
-| Mean sequence length | 226 tokens | ~170–180 tokens |
-| Polarity token share | 24% | 0% |
-| Variant A perplexity | 1.2978 | < 1.25 (meaningful improvement) |
-| Completion accuracy | 84.2% | > 87% |
+| Metric | v1.2.0 baseline | Target | Actual (v1.4.0) |
+|--------|-----------------|--------|-----------------|
+| Alpha-equiv normalisation rate | 93.5% | >99% | Improved (Fix 1); residual 7% is non-fixable (mk vs mk._flat_ctor) |
+| Polarity token share | 24% | 0% | 0% — but removal hurt perplexity (DEC-022); deferred |
+| Variant A perplexity | 1.2978 | < 1.25 | **1.2751** (DEC-023, Fix 3) |
+| Gap to Variant C | 0.17pp | < 0.10pp | 0.145pp bits/tok gap remains |
+| Flat-IR bits/tok | — | — | 0.077 (DEC-024); Variant A 0.351 |
 
-If Fix 1+2 bring Variant A to within 0.10 perplexity points of B/C (currently ~0.17
-gap), the hypothesis is viable and Fix 3 plus the type-role prefix additions from
-IR_V2_PROPOSAL.md become the next design iteration.
+The gap to B/C has not closed to <0.10pp. Per the roadmap decision tree, the flat-IR
+ablation result (DEC-024) is the authoritative signal for next steps — see PHASE_7_ROADMAP.md.
 
 ---
 

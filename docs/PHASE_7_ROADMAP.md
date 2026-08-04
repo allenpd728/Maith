@@ -8,19 +8,24 @@
 
 ## Where We Stand
 
-Six phases of A/B/C experiments plus DEC-021 (embedding projection) have established:
+Six phases of A/B/C experiments plus DEC-021–024 have established:
 
 | Finding | Status |
 |---|---|
 | IR trails BPE by ~0.17pp across Phase 5, Phase 6, DEC-021 | Confirmed |
 | Gap is not due to cold-start embedding initialisation | Closed — DEC-021 |
-| Gap is not due to sequence length (IR is 2x shorter than BPE) | Confirmed — DEC-022 |
+| Gap is not due to sequence length (IR is 2x shorter than BPE) | Confirmed |
 | Qwen pretraining prior is weaker than expected (25.8% vocab overlap) | Confirmed — QWEN_PRIOR_ANALYSIS.md |
-| ~40–50% of v1.2.0 IR tokens were structural noise (polarity, sparse A rows, IO markers) | Confirmed — IR_SCHEMA_AUDIT.md |
+| ~40–50% of v1.2.0 IR tokens were structural noise (polarity, IO markers) | Confirmed — IR_SCHEMA_AUDIT.md |
 | 93% alpha-equivalence rate is accurate, not a defect | Confirmed — DEC-021 addendum |
+| Fix 2 (polarity removal) regresses perplexity at 3.5k examples | Confirmed — DEC-022; neut = positional anchor |
+| Fix 3 (IO marker simplification) improves perplexity to 1.2751 (new best) | Confirmed — DEC-023 |
+| Flat-IR (shape only, 11 tokens) achieves PPL 1.0551 / 0.077 bits/tok | Confirmed — DEC-024 |
+| Semantic content adds 0.27 bits/tok cost not recovered at current scale | Confirmed — DEC-024 |
+| Whether more data or different objective would close this gap | Open question |
 
-**Current run:** Variant A on v1.3.0 IR (polarity removed, casesOn/recOn normalised),
-2,213 train / 246 eval, 2 epochs, LR 2e-4. Results pending.
+**Current state (2026-08-04):** Variant A v1.4.0 perplexity 1.2751 (best to date).
+Flat-IR ablation complete. Next decision: IR pretraining, corpus expansion, or probing task experiment.
 
 ---
 
@@ -174,7 +179,7 @@ v1.3.0 results
 | Normalisation audit findings | `docs/NORMALISATION_AUDIT.md` |
 | Qwen pretraining prior analysis | `docs/QWEN_PRIOR_ANALYSIS.md` |
 | Representation registration and evolution workflow | `docs/REPRESENTATION_EVOLUTION.md` |
-| Full experimental history DEC-001 to DEC-021 | `docs/DECISION_LOG.md` |
+| Full experimental history DEC-001 to DEC-024 | `docs/DECISION_LOG.md` |
 | Phase 7 proof-term completion design (separate from this roadmap) | `docs/PHASE_7_DESIGN.md` |
 
 ---
