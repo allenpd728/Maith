@@ -1,7 +1,7 @@
 # Phase 8: Bidirectional Pipeline Validation
 
 **Created:** 2026-08-03  
-**Status:** 🟡 In Progress — 8a + 8a-ii complete, 8b/8c/8d pending  
+**Status:** 🟡 In Progress — 8a, 8a-ii, 8b complete; 8c and 8d pending  
 **Goal:** Confirm at every stage that no information is silently lost before making any further IR changes (Fix 3 IO markers, Fix 4 type-role prefixes).
 
 **Phases can run out of order** — 8b, 8c, and 8d are independent OpenHands Lean tasks and
@@ -396,6 +396,11 @@ This is a prerequisite for any meaningful v1.3.0 experiment. Added as Phase 8a-i
 | 2026-08-03 | 8a-ii | Dataset rebuilt: 3,491 train / 388 eval, median seq len 120 (was 153) | ✅ Ready for v1.3.0 training run |
 | 2026-08-03 | — | v1.3.0 training runs complete (embed_pretrain: 1.3896, embed_project: 1.3717) | ⚠️ Regression vs DEC-021 (1.2978) — documented in DEC-022 |
 | 2026-08-03 | — | DEC-022 closed: neut = positional anchor, Fix 2 deferred, new baseline 1.3717 | ✅ Next: Phase 8b |
+| 2026-08-03 | 8b | Decoder.lean updated for v1.3.0/v1.4.0 format (was mismatched — 3-token E rows vs 2-token) | ✅ Bug fixed |
+| 2026-08-03 | 8b | RoundTripTests.lean written: 18/18 pass against v1.3.0 corpus golden examples | ✅ Phase 8b complete |
+| 2026-08-03 | — | Fix 3 (IO markers): corpus re-extracted v1.4.0, vocab 8221→1236, perplexity 1.2751 (DEC-023) | ✅ New Variant A best |
+| 2026-08-04 | — | Flat-IR ablation: 11-token shape-only vocab, PPL 1.0551, bits/tok 0.077 (DEC-024) | ✅ Design-validation complete |
+| 2026-08-04 | — | DEC-024 revised: raw PPL comparison invalid across vocab sizes; bits/token is correct metric | ✅ Documented with open questions |
 
 ---
 
