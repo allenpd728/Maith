@@ -268,12 +268,12 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str,
     """
     print(f"Loading base model: {BASE_MODEL}")
 
-    if variant == "A":
-        assert vocab_path and os.path.exists(vocab_path), f"vocab_A.json not found at {vocab_path}"
+    if variant in ("A", "flat"):
+        assert vocab_path and os.path.exists(vocab_path), f"vocab not found at {vocab_path}"
         with open(vocab_path) as f:
             vocab = json.load(f)
         vocab_size = len(vocab)
-        print(f"  Variant A: custom IR vocab, {vocab_size} tokens")
+        print(f"  Variant {variant}: custom vocab, {vocab_size} tokens")
 
         tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
         model = AutoModelForCausalLM.from_pretrained(
@@ -379,24 +379,28 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
     print(f"Output: {out_dir}")
     print()
 
-    train_path = os.path.join(datasets_dir, f"train_{variant}.jsonl")
-    eval_path  = os.path.join(datasets_dir, f"eval_{variant}.jsonl")
-    vocab_path = os.path.join(datasets_dir, "vocab_A.json") if variant == "A" else None
+    # flat-IR ablation uses its own dataset directory and vocab
+    is_flat = (variant == "flat")
+    if is_flat:
+        train_path = os.path.join(datasets_dir, "train_flat.jsonl")
+        eval_path  = os.path.join(datasets_dir, "eval_flat.jsonl")
+        vocab_path = os.path.join(datasets_dir, "vocab_flat.json")
+        expected_source = "flat_ir"
+    else:
+        train_path = os.path.join(datasets_dir, f"train_{variant}.jsonl")
+        eval_path  = os.path.join(datasets_dir, f"eval_{variant}.jsonl")
+        vocab_path = os.path.join(datasets_dir, "vocab_A.json") if variant == "A" else None
+        expected_source = variant
 
     assert os.path.exists(train_path), f"Missing: {train_path} — run build_dataset.py first"
     assert os.path.exists(eval_path),  f"Missing: {eval_path}"
 
     limit = 50 if smoke_test else None
-    # Variant A uses a compact custom IR vocab (mean ~212 tokens); cap at 512 to
-    # reduce MPS memory pressure and avoid thermal throttling on Apple Silicon.
-    # B/C also capped at 512 to prevent thermal throttling on Apple Silicon MPS.
-    # DEC-014: seq_len for B/C reduced from 1024 to 512 on 2026-07-31 due to
-    # sustained thermal throttling on C (36 events in first 39 steps, >50h projected).
     seq_len = 512
     print(f"Sequence length cap: {seq_len} tokens")
     print(f"Loading datasets{' (smoke test: 50 examples)' if smoke_test else ''} ...")
-    train_dataset = IRDataset(train_path, max_len=seq_len, limit=limit, expected_source=variant)
-    eval_dataset  = IRDataset(eval_path,  max_len=seq_len, limit=limit, expected_source=variant)
+    train_dataset = IRDataset(train_path, max_len=seq_len, limit=limit, expected_source=expected_source)
+    eval_dataset  = IRDataset(eval_path,  max_len=seq_len, limit=limit, expected_source=expected_source)
     print(f"  Train: {len(train_dataset)} examples")
     print(f"  Eval:  {len(eval_dataset)} examples")
     print()
@@ -643,7 +647,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--variant",    required=True, choices=["A", "B", "C"])
+    parser.add_argument("--variant",    required=True, choices=["A", "B", "C", "flat"])
     parser.add_argument("--datasets",   default="datasets/")
     parser.add_argument("--out",        default=None)
     parser.add_argument("--smoke-test", action="store_true",
