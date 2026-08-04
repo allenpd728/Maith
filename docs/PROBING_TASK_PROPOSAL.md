@@ -1,227 +1,362 @@
-# Probing Task Proposal: Does the IR Encode Semantic Content?
+# Probing Task Proposal
 
 **Created:** 2026-08-04  
-**Status:** 🟡 Proposal — awaiting approval to implement  
-**Depends on:** Nothing — uses existing corpus and datasets, no new training required  
-**Blocks:** Decision on IR pretraining vs corpus expansion vs redesign
+**Status:** 🟡 Approved to implement — work from this checklist  
+**Author:** Kit  
+**Depends on:** Nothing new — uses existing corpus, existing checkpoints, no training  
+**Decision this gates:** IR pretraining vs corpus expansion vs representation redesign
 
 ---
 
-## Why This Experiment Comes First
+## Background and Motivation
 
-DEC-024 left a critical ambiguity: Variant A's semantic content (gen: tokens, entity IDs,
-relation types) adds 0.27 bits/token of prediction difficulty the model cannot recover at
-3.5k training examples. Two explanations fit the data equally well:
+### Where the project stands
 
-1. **Data volume** — the model hasn't seen enough examples to learn what the semantic
-   tokens mean. More data would close the gap.
-2. **Wrong objective** — next-token perplexity is not a good signal for whether semantic
-   content is being used. The model could be learning to predict structure perfectly while
-   ignoring semantics entirely.
+Seven phases of A/B/C experiments (DEC-001 through DEC-024) have produced one stable
+finding: Variant A (Maith IR) consistently trails BPE baselines (Variants B and C) by
+approximately 0.17 perplexity points. DEC-021 closed the last confound — the cold-start
+embedding initialisation disadvantage. The gap is real and attributable to representation
+quality, not setup.
 
-These two explanations call for completely different next steps:
-- If (1): invest in corpus expansion or IR pretraining (~weeks of engineering).
-- If (2): redesign the training objective before spending anything on data (~days of work).
+DEC-023 (Fix 3, IO marker simplification) produced the first improvement: perplexity
+1.2751, narrowing the gap to 0.145 bits/token. DEC-024 (flat-IR ablation) then revealed
+that the structural shape of Mathlib declarations alone — with all semantic content
+replaced by SLOT — achieves 0.077 bits/token, better than BPE. This raised a critical
+question that the existing experiments cannot answer.
 
-A probing task can distinguish them **using the existing corpus and existing trained
-models**, with no new training runs required. It is the cheapest possible gate on the
-most expensive possible decisions.
+### The ambiguity DEC-024 left open
+
+The flat-IR result has two competing interpretations, both consistent with the data:
+
+**Interpretation A — Data volume bottleneck:**
+The model has not seen enough examples to learn what gen:, entity IDs, and relation
+types mean across graphs. With 3.5k training examples and 1,999 unique gen: tokens
+(569 of which appear only once), many semantic tokens are effectively hapax legomena.
+The model predicts them no better than random, adding entropy without signal. More
+data would allow the model to learn gen:HMul.hMul always co-occurs with multiplication
+structure, giving semantic tokens real predictive value.
+
+**Interpretation B — Wrong training objective:**
+Next-token perplexity is the wrong signal for whether the IR's semantic content is
+useful. The model may be perfectly capable of encoding `gen:HMul.hMul` as a meaningful
+representation internally while still failing to predict it as the next token — because
+next-token prediction rewards local syntactic patterns, not global semantic structure.
+The training objective is not putting pressure on the part of the model that would use
+the semantic content.
+
+These two interpretations call for completely different responses:
+- If A: invest in corpus expansion or IR pretraining (weeks of engineering, GPU time)
+- If B: redesign the training objective or evaluation before any data investment
+
+The probing task is the cheapest experiment that can distinguish them.
+
+### What probing tasks measure
+
+A probing task trains a small linear classifier on top of **frozen** model
+representations. The key word is frozen — the model weights do not update during
+probing. If a property can be decoded from the representations by a linear classifier,
+it is linearly encoded in representation space. If it cannot, the representations do
+not carry that property in a usable form.
+
+Probing directly answers: does the model's internal representation of an IR sequence
+encode semantic content, regardless of whether that content helps next-token prediction?
 
 ---
 
-## The Core Idea
+## Experimental Design
 
-A probing task trains a small classifier on top of frozen model representations.
-If the representations encode a property (e.g. which Mathlib module a declaration
-came from), the classifier succeeds. If the representations don't encode it, the
-classifier fails regardless of how much it's trained.
+### What we compare
 
-The question: **do Variant A's IR representations encode module identity better than
-Variant C's BPE representations?**
+Four variants, all frozen, each contributing the mean-pooled final hidden layer
+(dim=896 for all Qwen2-based models) as the probe input:
 
-If yes: the IR is capturing semantic domain structure that BPE misses. Data volume
-is likely the bottleneck — more examples would let the main model exploit this.
+| Variant | Checkpoint | PPL | What it isolates |
+|---|---|---|---|
+| A v1.4.0 | `runs/variant_A_v1_4_0/checkpoint-final` | 1.2751 | Full IR — semantic + structural |
+| C Phase 6 | `runs/variant_C_phase6/checkpoint-final` | 1.1102 | BPE — surface text |
+| Flat-IR | `runs/variant_flat/checkpoint-final` | 1.0551 | Structure only, no semantics |
+| Random | Qwen2.5-Coder-0.5B pretrained, no fine-tuning | — | Baseline: Qwen priors only |
 
-If no: the IR representations are not more semantically informative than BPE despite
-the structured token format. The training objective or the representation design needs
-rethinking before adding data.
+The **decisive comparison** is A vs Flat-IR. Both were trained on the same corpus, same
+hardware, same hyperparameters — they differ only in whether semantic content is present
+in the token sequences. If A's probe accuracy substantially exceeds Flat-IR's, the
+semantic content is being encoded in the representations. If A ≈ Flat-IR, it is not.
 
----
+The **hypothesis comparison** is A vs C. If A's representations encode the probing
+property better than C's, the IR is capturing something BPE misses. If C beats A, BPE
+representations are richer for this property.
 
-## Task Design
-
-### Task: Module Classification
-
-Given the IR token sequence for a Mathlib declaration, predict which of the 14 modules
-it came from.
-
-**Why module classification:**
-- Labels are already in the corpus (`module` field) — no annotation needed.
-- 14 natural classes with known sizes (22–1,129 examples each).
-- Module identity is a genuine semantic property: `Mathlib.Algebra.Group.Basic` and
-  `Mathlib.Topology.Basic` have structurally similar declarations but semantically
-  different content. A representation that captures semantics should separate them;
-  one that only captures structure should not.
-- There is no shortcut: the IR token sequences do not contain module name strings,
-  so a classifier cannot cheat by memorising surface patterns.
-
-**Class distribution (from current corpus):**
-
-| Module | Examples |
-|---|---|
-| Mathlib.Algebra.Group.Defs | 1129 |
-| Mathlib.Algebra.Group.Basic | 548 |
-| Mathlib.Order.Lattice | 519 |
-| Mathlib.Algebra.Ring.Defs | 446 |
-| Mathlib.Order.Basic | 431 |
-| Mathlib.Algebra.Group.Subgroup.Basic | 393 |
-| Mathlib.Order.LatticeIntervals | 256 |
-| Mathlib.Algebra.Ring.GeomSum | 70 |
-| Mathlib.Topology.Basic | 69 |
-| Mathlib.Algebra.Ring.Basic | 68 |
-| Mathlib.Algebra.Group.NatPowAssoc | 28 |
-| Mathlib.Data.Nat.Basic | 27 |
-| Mathlib.Algebra.Module.Basic | 23 |
-| Mathlib.Data.Int.Basic | 22 |
-
-Note: the four smallest classes (Nat, Module, Int, NatPowAssoc) have 22–28 examples
-each — too few for reliable classification. These should be either merged into an
-`Other` class or excluded. See implementation notes below.
+The **Qwen prior check** is Random vs all others. If the pretrained Qwen model without
+any fine-tuning achieves similar probe accuracy to the fine-tuned variants, the probing
+result is driven by Qwen's pretraining, not by anything the IR or BPE training added.
 
 ### Probe architecture
 
-A linear probe: freeze the model, extract the CLS/mean-pool hidden state from the
-final transformer layer, train a single linear layer (hidden_dim → 14 classes) with
-cross-entropy loss.
+A single linear layer: `896 → N_classes`, trained with cross-entropy loss, no hidden
+layers, no non-linearity. This is the standard probing setup from Tenney et al. (2019)
+and Hewitt & Manning (2019). A linear probe succeeds only if the property is linearly
+separable in representation space — a stronger claim than a nonlinear probe, which can
+succeed even when the property is only weakly present.
 
-A linear probe is the right choice because:
-- A nonlinear probe can succeed even if the representation doesn't encode the property
-  cleanly — it just learns to decode it. Linear probes only succeed if the property is
-  linearly separable in representation space, which is a much stronger claim.
-- Training a linear layer takes seconds, not hours.
+Training: 100 epochs, Adam, lr=1e-3, batch size 32. These are deliberately
+over-powered for the task — the probe is small and the dataset is 4k examples, so 100
+epochs is fast (seconds to low minutes) and ensures the linear layer has fully converged
+before we read the accuracy.
 
-### Variants to compare
+### Input preparation
 
-Run the same probe on four frozen representations:
+For each corpus example:
+1. Tokenize the IR token sequence using the variant's vocabulary
+2. Truncate to 512 tokens (91.8% of examples fit; the rest are truncated uniformly
+   across all variants — no bias introduced)
+3. Forward-pass through the frozen model
+4. Extract the final hidden layer (shape: [seq_len, 896])
+5. Mean-pool across the sequence dimension → shape: [896]
+6. This 896-dim vector is the probe input
 
-| Probe variant | What it tests |
-|---|---|
-| Variant A v1.4.0 (full IR, 1.2751 PPL) | Does the best IR representation encode module identity? |
-| Variant C Phase 6 (BPE, 1.1102 PPL) | Does BPE encode module identity? |
-| Flat-IR (shape only, 1.0551 PPL) | Does structure alone encode module identity? |
-| Random baseline (untrained Qwen) | Lower bound — what random weights give |
+Mean pooling is used rather than CLS because the IR format does not have a designated
+CLS token and does not use causal masking in a way that concentrates information at
+position 0. Mean pooling is the standard choice for encoder-style probing of decoder
+models used in completion mode.
 
-The critical comparison is **A vs Flat-IR**. If A's probe accuracy >> Flat-IR's probe
-accuracy, the semantic content (gen: tokens, entity IDs) is being encoded in the
-representations even if it's not helping perplexity yet. If A ≈ Flat-IR, the semantic
-content is not making it into the representations at all.
+---
 
-The A vs C comparison answers the original hypothesis: does the IR encode domain
-semantics better than BPE?
+## Task 1: Module Classification (Primary)
+
+### Why this task
+
+Given an IR token sequence, predict which of the 14 Mathlib modules it came from.
+
+Labels are already in `corpus.jsonl` (`module` field) — no annotation. Module identity
+is a genuine semantic property: `Mathlib.Algebra.Group.Defs` declarations involve group
+laws; `Mathlib.Topology.Basic` involves topological spaces. The token sequences do not
+contain module name strings, so a classifier cannot cheat by memorising surface patterns.
+
+Importantly, 66.3% of gen: tokens appear in more than one module. This means the
+classifier cannot simply look at which gen: tokens appear — it must use how they combine
+structurally, which is exactly the semantic content we care about.
+
+### Class setup
+
+Full label space has 14 classes with highly imbalanced sizes:
+
+| Module (short name) | Examples | Use |
+|---|---|---|
+| Group.Defs | 1129 | Include |
+| Group.Basic | 548 | Include |
+| Order.Lattice | 519 | Include |
+| Ring.Defs | 446 | Include |
+| Order.Basic | 431 | Include |
+| Group.Subgroup.Basic | 393 | Include |
+| Order.LatticeIntervals | 256 | Include |
+| Ring.GeomSum | 70 | Include |
+| Topology.Basic | 69 | Include |
+| Ring.Basic | 68 | Include |
+| Group.NatPowAssoc | 28 | Merge → `Other` |
+| Data.Nat.Basic | 27 | Merge → `Other` |
+| Algebra.Module.Basic | 23 | Merge → `Other` |
+| Data.Int.Basic | 22 | Merge → `Other` |
+
+The four smallest classes (22–28 examples) are merged into an `Other` class (100 total
+examples) to avoid unreliable small-sample classification. Final label space: 11 classes.
+
+Split: 80% train, 20% eval, stratified by class. With 4,029 total examples this gives
+approximately 3,223 train / 806 eval — enough for a linear probe to converge.
+
+### Metrics
+
+- Overall top-1 accuracy
+- Per-class F1 (to surface whether small classes or minority-domain classes drive results)
+- Confusion matrix (to see which modules are confused — algebraically similar pairs like
+  Ring.Defs and Ring.Basic should be harder to separate than Topology.Basic vs Ring.Defs)
 
 ### What results mean
 
-| Result | Interpretation | Next step |
+| Result pattern | Interpretation | Next step |
 |---|---|---|
-| A probe >> Flat-IR probe, A probe ≈ C probe | IR encodes semantics, similar to BPE | Data volume is bottleneck; pursue corpus expansion |
-| A probe >> Flat-IR probe, A probe >> C probe | IR encodes semantics better than BPE | Strong signal for IR; data volume is bottleneck |
-| A probe ≈ Flat-IR probe, both < C probe | IR not encoding semantics; BPE is | Redesign: IR format or training objective is wrong |
-| A probe ≈ Flat-IR probe ≈ C probe | None encode module identity well | Task is too hard at this scale; try simpler probing task |
-| Random baseline ≈ all probes | Representations are degenerate | Training setup has a fundamental problem |
+| A >> Flat-IR (>10pp gap), A ≈ C | IR encodes module semantics; similar capacity to BPE | Semantic content is being learned. Data volume is likely bottleneck. Pursue corpus expansion. |
+| A >> Flat-IR (>10pp gap), A >> C | IR encodes module semantics better than BPE | Strong signal for IR hypothesis. Data volume is bottleneck. IR pretraining most promising. |
+| A >> Flat-IR (>10pp gap), C >> A | BPE encodes module semantics better than IR | Representations are richer in BPE. IR format may need redesign before more data helps. |
+| A ≈ Flat-IR (< 5pp gap), both < C | IR not encoding semantics; BPE is | Representation problem, not data problem. Redesign objective or IR format before investing in data. |
+| A ≈ Flat-IR ≈ C ≈ Random | None encode module identity | Task too hard at this scale, or all representations are similar here. Run Task 2 before concluding. |
+| Random ≈ Fine-tuned variants | Qwen priors dominate fine-tuning signal | Fine-tuning may not be changing representations meaningfully. Training setup needs review. |
+
+The 10pp threshold for "A >> Flat-IR" is pragmatic: a random baseline on 11 classes
+would achieve ~9% accuracy (uniform), and we expect fine-tuned representations to do
+substantially better than random. A 10pp gap between A and Flat-IR is large enough to
+be meaningful given the class count.
+
+---
+
+## Task 2: Graph Complexity Prediction (Secondary — run only if Task 1 is inconclusive)
+
+### Why this task
+
+If all four probes achieve similar accuracy on module classification, two conclusions
+are possible: the task is too hard, or the task is too easy. To distinguish, run a
+simpler structured prediction task.
+
+Given an IR token sequence, predict the operation count bucket: [0–5, 6–15, 16–40, 40+].
+
+Distribution in current corpus: 0-5 (28.2%), 6-15 (35.9%), 16-40 (23.9%), 40+ (12.0%).
+Four roughly-balanced classes derived directly from the graph structure.
+
+### What it tests
+
+Flat-IR encodes operation counts directly as structural tokens (IN_N, OUT_N, row type
+counts). A random baseline that simply counts row type tokens in the sequence would do
+well on this task. If Flat-IR achieves high accuracy and A matches it, both are learning
+graph size — uninteresting. If A substantially beats Flat-IR on this task, A is using
+semantic content to predict something about graph structure, which is the signal we want.
+
+This task is a weaker version of the module classification test but is easier to
+achieve high accuracy on, making it useful as a sanity check if Task 1 fails for all
+variants.
 
 ---
 
 ## Implementation Checklist
 
-### Step 1 — Write `python/probing_task.py`
-- [ ] Load corpus.jsonl; filter to examples with ≤512 tokens
-- [ ] Map module names to integer class IDs
-- [ ] Merge small classes (< 50 examples) into `Other` or exclude entirely
-- [ ] Split: 80% train, 20% eval, stratified by class
-- [ ] For each probe variant (A, C, Flat, Random):
-  - [ ] Load the corresponding trained model checkpoint from `runs/`
-  - [ ] Freeze all model weights
-  - [ ] Forward-pass each example; extract mean-pool of final hidden layer
-  - [ ] Train linear classifier (50 epochs, lr=1e-3, cross-entropy)
-  - [ ] Report eval accuracy and per-class F1
-- [ ] Write results to `runs/probing/results.json`
+### Phase 1 — Setup and data preparation
 
-### Step 2 — Identify checkpoint paths
-- [ ] `runs/variant_A_v1_4_0/` — confirm checkpoint file exists and is loadable
-- [ ] `runs/variant_C_phase6/` — confirm checkpoint file exists
-- [ ] `runs/variant_flat/` — confirm checkpoint file exists
-- [ ] Random baseline: load Qwen2.5-Coder-0.5B with no fine-tuning
+- [ ] **1.1** Verify all four checkpoint paths load correctly with transformers:
+  - [ ] `runs/variant_A_v1_4_0/checkpoint-final`
+  - [ ] `runs/variant_C_phase6/checkpoint-final`
+  - [ ] `runs/variant_flat/checkpoint-final`
+  - [ ] Qwen2.5-Coder-0.5B (HuggingFace pretrained, no fine-tuning)
+- [ ] **1.2** Confirm each checkpoint's `config.json` shows `hidden_size: 896`
+- [ ] **1.3** Write `python/extract_representations.py`:
+  - Load corpus.jsonl
+  - For each variant: tokenize each example using its vocabulary, truncate at 512,
+    forward-pass frozen model, mean-pool final hidden layer, save to
+    `runs/probing/representations_{variant}.pt` (shape: [N_examples, 896])
+  - Also save `runs/probing/labels.json` with module label per example
+  - Run for all four variants
+- [ ] **1.4** Verify representation files:
+  - Shape should be (4029, 896) for each variant
+  - No NaN or Inf values
+  - Representations for different examples should not be identical (sanity check)
 
-### Step 3 — Run and record
-- [ ] Run `python/probing_task.py`
-- [ ] Write results to `runs/probing/results.json`
-- [ ] Record in DECISION_LOG.md as DEC-025
+### Phase 2 — Task 1: Module classification probe
 
-### Step 4 — Interpret and decide
-- [ ] Compare A vs Flat-IR probe accuracy (the decisive comparison)
-- [ ] Compare A vs C probe accuracy (the hypothesis comparison)
-- [ ] Update PHASE_7_ROADMAP.md with next step based on results table above
-- [ ] If A >> Flat-IR: proceed to corpus expansion scoping (see below)
-- [ ] If A ≈ Flat-IR: open IR redesign question; schedule design session
+- [ ] **2.1** Write `python/probing_task.py`:
+  - Load representations from `runs/probing/representations_{variant}.pt`
+  - Map module strings to class IDs; merge bottom 4 into `Other`
+  - Stratified 80/20 split by class, fixed seed=42
+  - For each variant:
+    - [ ] Train linear probe (nn.Linear(896, 11), cross-entropy, Adam lr=1e-3, 100 epochs, batch=32)
+    - [ ] Eval: top-1 accuracy, per-class F1, confusion matrix
+  - Write results to `runs/probing/task1_results.json`
+- [ ] **2.2** Compute random baseline: uniform random assignment to 11 classes, report accuracy
+- [ ] **2.3** Run `python/probing_task.py` for all four variants
+- [ ] **2.4** Verify results are in `runs/probing/task1_results.json` with per-variant numbers
+
+### Phase 3 — Interpretation
+
+- [ ] **3.1** Compute the decisive gap: A accuracy minus Flat-IR accuracy
+- [ ] **3.2** Compute the hypothesis gap: A accuracy minus C accuracy
+- [ ] **3.3** Apply the results table from Task 1 above to select the interpretation
+- [ ] **3.4** Check per-class F1:
+  - Is Topology.Basic separated from algebra modules? (semantic discrimination)
+  - Are Ring.Defs and Ring.Basic confused? (expected — similar domain)
+  - Is `Other` performing reasonably? (sanity check on small-class merge)
+- [ ] **3.5** If A ≈ Flat-IR ≈ C (all within 5pp), proceed to Task 2 before concluding
+
+### Phase 4 — Task 2 (only if Task 1 inconclusive)
+
+- [ ] **4.1** Extend `python/probing_task.py` with `--task arity` flag
+- [ ] **4.2** Derive arity labels from corpus.jsonl graph.operations count, bin into 4 buckets
+- [ ] **4.3** Run arity probe for all four variants, write `runs/probing/task2_results.json`
+- [ ] **4.4** Apply interpretation: if A >> Flat-IR on arity, semantic content is present.
+  If A ≈ Flat-IR, the representations are dominated by structural shape only.
+
+### Phase 5 — Documentation
+
+- [ ] **5.1** Append DEC-025 to `docs/DECISION_LOG.md` with:
+  - All four probe accuracies for Task 1 (and Task 2 if run)
+  - The decisive gap (A - Flat-IR) and hypothesis gap (A - C)
+  - The selected interpretation from the results table
+  - Raw paths to `runs/probing/` result files
+- [ ] **5.2** Update `docs/PHASE_7_ROADMAP.md`:
+  - Mark this experiment as complete
+  - Replace the "next step: IR pretraining vs corpus expansion vs redesign" open question
+    with the specific path selected based on results
+- [ ] **5.3** Do NOT modify: `Corpus/`, `datasets/`, `datasets_flat/`, `Maith/`,
+  any `runs/variant_*/` directory
 
 ---
 
-## Secondary Task (if module classification is inconclusive)
+## Files To Create
 
-If all four probes achieve similar accuracy on module classification (i.e. the task
-is either too easy or too hard to discriminate), run a second probing task:
-
-**Task: Declaration arity prediction**  
-Given the IR token sequence, predict the number of `O` rows (operation count) binned
-into 4 buckets: 0–5, 6–15, 16–40, 40+.
-
-This tests whether A's representations encode graph complexity better than Flat-IR.
-Since Flat-IR encodes row counts directly as structural tokens, Flat-IR should be at
-ceiling on this task — if A matches Flat-IR, it's learning graph size. If A beats
-Flat-IR, it's learning something about how graph size relates to semantic content.
-
----
-
-## What This Does Not Test
-
-- Whether a better training objective (e.g. masked token prediction, contrastive
-  learning) would make the IR more useful — that is a separate experiment.
-- Whether the IR would outperform BPE at larger scale (10k+ examples) — the probing
-  task uses the current 4k corpus.
-- Whether the Lean decompiler (Phase 8d) would benefit from better representations.
-
----
-
-## Files Involved
-
-| File | Action |
+| File | Purpose |
 |---|---|
-| `python/probing_task.py` | Create — probe training and eval script |
-| `runs/probing/results.json` | Create — probe results (gitignored) |
-| `docs/DECISION_LOG.md` | Append DEC-025 entry after results |
-| `docs/PHASE_7_ROADMAP.md` | Update next-step based on results |
+| `python/extract_representations.py` | Forward-pass all four variants, save 896-dim representations |
+| `python/probing_task.py` | Train and eval linear probes for Task 1 and Task 2 |
+| `runs/probing/representations_A.pt` | Saved representations, Variant A (gitignored) |
+| `runs/probing/representations_C.pt` | Saved representations, Variant C (gitignored) |
+| `runs/probing/representations_flat.pt` | Saved representations, Flat-IR (gitignored) |
+| `runs/probing/representations_random.pt` | Saved representations, random Qwen (gitignored) |
+| `runs/probing/labels.json` | Module labels and arity labels per example |
+| `runs/probing/task1_results.json` | Module classification results, all four variants |
+| `runs/probing/task2_results.json` | Arity prediction results (if Task 1 inconclusive) |
 
-Do not modify: `Corpus/`, `datasets/`, `datasets_flat/`, `Maith/`, any existing
-`runs/variant_*/` directory.
+---
+
+## Known Risks and Mitigations
+
+**Risk: Checkpoint vocab mismatch**  
+Variant A uses vocab_A_v140.json (1,236 tokens); Flat-IR uses vocab_flat.json (11 tokens);
+Variant C uses Qwen's BPE tokenizer. Each model must be tokenized using its own vocabulary.
+The representations are all 896-dim regardless of tokenizer — the probe receives the same
+shape for all variants. Mitigation: verify checkpoint config.json vocab_size matches the
+tokenizer before extraction.
+
+**Risk: Flat-IR representations are degenerate**  
+With only 11 token types, many sequences will have identical or near-identical token
+distributions, potentially collapsing to nearly identical representations. This would
+inflate Flat-IR's probe accuracy by a different mechanism (the classifier learns that
+all examples with token pattern X are from module Y). Mitigation: after extraction,
+check that Flat-IR representations have meaningful variance (std across the 4029 examples
+should not be near zero).
+
+**Risk: Module classification is trivially solved by token frequency alone**  
+If certain gen: tokens appear exclusively in one module, a linear classifier could achieve
+high accuracy by learning "if gen:TopologicalSpace appears → Topology.Basic". This would
+inflate A's probe accuracy without proving the representations are rich. Mitigation: after
+running the probe, check the top 5 tokens that drive per-class decisions. If they are
+module-exclusive gen: tokens, the result is partially confounded and should be noted.
+The 66.3% cross-module gen: sharing suggests this is not a dominant effect, but it should
+be confirmed.
+
+**Risk: Memory pressure**  
+Loading four 365M-param models sequentially to extract representations may cause MPS
+memory pressure. Mitigation: extract one variant at a time, save to disk, then unload
+before loading the next. The `.pt` files will be approximately 4029 × 896 × 4 bytes ≈
+14 MB each — negligible.
 
 ---
 
 ## Estimated Effort
 
-| Step | Effort |
+| Step | Time |
 |---|---|
-| Write `probing_task.py` | ~2 hours |
-| Verify checkpoints are loadable | ~30 min |
-| Run all four probes | ~20 min (linear classifier, no GPU needed for probe training) |
-| Interpret and update docs | ~1 hour |
-| **Total** | **~4 hours** |
+| Phase 1: Setup and extraction script | 2–3 hours |
+| Phase 2: Probing task script | 1–2 hours |
+| Phase 3: Run extraction (4 variants) | 20–30 minutes (no GPU training) |
+| Phase 4: Run probing task | < 5 minutes |
+| Phase 5: Interpret and document | 1 hour |
+| **Total** | **5–7 hours** |
 
 ---
 
 ## References
 
-- DEC-024 — flat-IR ablation; open questions documented
-- `runs/variant_A_v1_4_0/results.json` — Variant A checkpoint
-- `runs/variant_C_phase6/results.json` — Variant C checkpoint
-- `runs/variant_flat/results.json` — Flat-IR checkpoint
-- `docs/PHASE_7_ROADMAP.md` — decision tree this experiment gates
+- DEC-024 — flat-IR ablation; open questions that motivate this experiment
+- DEC-021 — embedding projection; cold-start confound closed
+- DEC-023 — Fix 3 result; current Variant A best (1.2751)
+- `runs/variant_A_v1_4_0/checkpoint-final` — Variant A checkpoint
+- `runs/variant_C_phase6/checkpoint-final` — Variant C checkpoint
+- `runs/variant_flat/checkpoint-final` — Flat-IR checkpoint
+- `Corpus/corpus.jsonl` — 4,029 examples, labels source
+- Tenney et al. (2019) — "BERT Rediscovers the Classical NLP Pipeline" (probing methodology)
+- Hewitt & Manning (2019) — "A Structural Probe for Finding Syntax in Word Representations"
