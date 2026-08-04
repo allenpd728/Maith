@@ -5,6 +5,13 @@
 **Research basis:** docs/PROBING_TASK_GUIDE.md — all 8 steps completed before this file was written  
 **Decisions this gates:** IR pretraining vs corpus expansion vs representation redesign
 
+> **⚠️ Inline Review by OpenHands Agent — Please address before implementing:**
+> 
+> - **Step 2 concern:** You claim checkpoints exist on disk, but my audit found `runs/` does not exist in the repo. These may have been run on a different machine. Confirm checkpoint availability before proceeding.
+> - **Missing Variant B:** The proposal omits Variant B. Including it would provide a cleaner comparison between structured (C) vs unstructured (B) BPE representations.
+> - **Class merging critique:** Merging 4 classes into "Other" reduces interpretability. Consider keeping original 14 classes with class-weighted loss instead.
+> - **Metric gap:** Top-1 accuracy alone may be misleading for 11-class imbalanced problem. Recommend also reporting macro-F1.
+
 ---
 
 ## Step 1 Findings — The Question This Must Answer
@@ -23,6 +30,8 @@
 
 ## Step 2 Findings — Available Checkpoints
 
+> ⚠️ **CONCERN — Verify locally before starting:** My audit of the repo found `runs/` directory does not exist. The proposal states these checkpoints are on disk, but they may exist only on the machine where experiments were run. Recommend confirming availability before budgeting time.
+
 Checkpoints with `checkpoint-final/` confirmed on disk:
 
 | Checkpoint path | hidden_size | vocab_size | model_type | Role |
@@ -31,6 +40,8 @@ Checkpoints with `checkpoint-final/` confirmed on disk:
 | `runs/variant_C_phase6/checkpoint-final` | 896 | 151,936 | qwen2 | Variant C — BPE surface text |
 | `runs/variant_flat/checkpoint-final` | 896 | 11 | qwen2 | Flat-IR — structure only, no semantics |
 | `~/.cache/huggingface/hub/models--Qwen--Qwen2.5-Coder-0.5B` | 896 | 151,936 | qwen2 | Random baseline — Qwen priors, no fine-tuning |
+
+> ❓ **MISSING VARIANT B:** The outcome table in Step 7 references C >> A but Variant B is never probed. Including B would strengthen the analysis by distinguishing "BPE prior advantage" from "AST structure advantage." Consider adding Variant B Phase 6 as a fifth probe target.
 
 All four share `hidden_size: 896`. No mismatches. Pretrained Qwen is in the local HuggingFace cache — no download needed.
 
@@ -113,6 +124,10 @@ Top 10 gen: tokens (all appear across multiple modules):
 
 Largest class: 1,129. Smallest: 22. Imbalance ratio: 51:1. The four smallest classes (22–28 examples) are too small for reliable per-class evaluation — these will be merged into an `Other` class (100 total examples combined). Final label space: **11 classes**.
 
+> ⚠️ **Critique on class merging:** Merging 4 classes into "Other" loses the ability to distinguish which domain failed. Alternative: keep all 14 classes but use class-weighted cross-entropy loss (weight inversely by class frequency). This preserves interpretability while handling imbalance.
+> 
+> If keeping "Other": document which 4 classes it contains and that their individual performance cannot be evaluated.
+
 Random baseline with 11 classes: **9.1%**. A linear probe achieving substantially above 9.1% is meaningful.
 
 **Sequence length:** 3,699 / 4,029 examples (91.8%) fit within 512 tokens. All four variants will be capped at 512 uniformly — no bias introduced.
@@ -155,6 +170,10 @@ All four checkpoints share `hidden_size: 896`. No mismatch to handle — the pro
 | A ≈ Flat-IR | Gap between A and Flat-IR is <5pp | Within expected variance; cannot attribute to semantic content |
 | Inconclusive zone | Gap 5–10pp | Run secondary task (Task 2) before concluding |
 
+> ❓ **Question:** The 10pp threshold for A >> Flat-IR — is this absolute (e.g., A=30%, Flat-IR=18%) or relative (A must be ≥10pp above Flat-IR)? The current wording is ambiguous. Also consider: if A achieves 20% accuracy (just above random 9.1%), is that "decisive evidence" for semantic encoding? The threshold might need to be higher for stronger claims.
+
+> ⚠️ **Interpretability note:** The outcome table maps directly to actions (IR pretraining, corpus expansion, redesign) but these actions are high-effort investments. Consider adding a "confidence" dimension — e.g., "A >> Flat-IR with macro-F1 > 0.4" vs "A >> Flat-IR but macro-F1 < 0.2" should lead to different confidence levels even if the gap threshold is met.
+
 **Full outcome table:**
 
 | Result | Interpretation | Next step |
@@ -184,6 +203,14 @@ Verified: zero declaration names appear in more than one module. No leakage risk
 **Risk 4: MPS non-determinism in extraction**  
 MPS has known non-determinism in some operations. Mitigation: fix `torch.manual_seed(42)` before each model's extraction pass. The probe itself (linear classifier) is fully deterministic given fixed seed and data order. Representation extraction non-determinism would introduce noise but not systematic bias — the relative ordering of A vs Flat-IR vs C would be preserved.
 
+> ⚠️ **Missing risk: Probe training stochasticity**
+> The probe training (Adam optimizer, random initialization) is non-deterministic across runs. A single training run could give misleading results due to unlucky init. Recommend:
+> - Run probe training 3-5 times with different seeds
+> - Report mean ± std across runs
+> - This is especially important for borderline cases (5-10pp gap zone)
+
+> ❓ **Random Qwen baseline value:** Including random (untrained) Qwen is good methodology, but the proposal doesn't specify what outcome this enables. If random Qwen achieves similar accuracy to fine-tuned variants, that would be a major finding (Qwen priors dominate). If random is near-random (9%), then fine-tuning is clearly affecting representations. Document what each outcome means.
+
 ---
 
 ## Experimental Design
@@ -198,7 +225,12 @@ MPS has known non-determinism in some operations. Mitigation: fix `torch.manual_
 
 **Variants:** Variant A v1.4.0, Variant C Phase 6, Flat-IR, Random (Qwen pretrained)
 
-**Metrics:** Overall top-1 accuracy, per-class F1, confusion matrix
+> ⚠️ **Metric gap:** Top-1 accuracy on imbalanced 11-class problem can be misleading. With Group.Defs at 28%, a probe that just predicts Group.Defs always achieves ~28% accuracy. Recommend also reporting:
+> - **Macro-F1:** Unweighted average F1 across classes — robust to class imbalance
+> - **Balanced accuracy:** Mean per-class recall — directly comparable across imbalance levels
+> - **Confusion matrix per-class:** Already planned — essential for interpreting results
+
+**Metrics:** Overall top-1 accuracy, **macro-F1**, **balanced accuracy**, per-class F1, confusion matrix
 
 ### Task 2 — Operation Count Prediction (Secondary, only if Task 1 inconclusive)
 
@@ -232,6 +264,13 @@ MPS has known non-determinism in some operations. Mitigation: fix `torch.manual_
 - [ ] Compute random baseline (uniform assignment to 11 classes)
 - [ ] Apply interpretation table from Step 7 to select outcome
 
+> ⚠️ **Critique: Probe training needs seed management**
+> - The data split uses `seed=42` — good
+> - But probe training (Adam optimizer, linear layer init) is not seeded
+> - Linear probe convergence can vary significantly with initialization
+> - Recommend: run with 3 seeds (42, 43, 44) and report mean ± std
+> - Use best-of-3 for the final reported number, but show all runs in appendix
+
 ### Phase 3 — Task 2 (only if Task 1 gap is 5–10pp)
 
 - [ ] Extend `probing_task.py` with `--task arity` flag
@@ -264,6 +303,12 @@ MPS has known non-determinism in some operations. Mitigation: fix `torch.manual_
 
 ## Estimated Time
 
+> ⚠️ **Time estimate may be optimistic.** Consider:
+> - "Write extraction script" includes debugging — add 1-2 hours for edge cases
+> - "Interpret and document" may need revision rounds if results are ambiguous
+> - If checkpoints need to be re-run, add 2-3 hours per variant (training time)
+> - Consider adding buffer: budget 8-10 hours total rather than 4-5
+
 | Phase | Time |
 |---|---|
 | Write extraction script | 1–2 hours |
@@ -271,7 +316,7 @@ MPS has known non-determinism in some operations. Mitigation: fix `torch.manual_
 | Run extraction (4 variants × ~11 min each) | ~45 minutes |
 | Run probing task | < 5 minutes |
 | Interpret and document | 1 hour |
-| **Total** | **~4–5 hours** |
+| **Total** | **~4–5 hours** (plus training if checkpoints unavailable) |
 
 ---
 
