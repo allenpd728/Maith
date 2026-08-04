@@ -1196,3 +1196,44 @@ All future runs compared against this number unless otherwise noted.
 - docs/IR_V2_FIX_SPEC.md (Fix 2 spec)
 - python/normalisation_audit.py
 - DEC-021 (prior baseline)
+
+---
+
+### DEC-023 — Fix 3 (IO marker simplification) sets new Variant A best: 1.2751
+
+**Date:** 2026-08-03
+**Status:** Closed — new baseline established
+**Decision:** v1.4.0 IR format (IN_N/OUT_N tokens) is now the active format. Fix 3 is confirmed effective.
+
+#### Background
+
+Fix 3 replaced compound IO marker strings (inputs:FVAR_0,FVAR_1 / output:TERM_2) with
+arity count tokens (IN_N) and output position tokens (OUT_N). The hypothesis was that
+9,977 unique inputs: token types were diluting the vocabulary signal for gen: tokens.
+
+#### Experiment
+
+Single controlled run on v1.4.0 corpus (4,029 examples, same 14 modules, re-extracted):
+
+| Run | Vocab | Init | Perplexity |
+|---|---|---|---|
+| DEC-021 baseline (v1.2.0) | 8,144 | embed_project | 1.2978 |
+| v1.3.0 (polarity removed) | 8,221 | embed_project | 1.3717 |
+| v1.4.0 (IO markers) | 1,236 | embed_project | 1.2751 |
+
+#### Finding
+
+Vocab reduction from 8,221 to 1,236 tokens (85% reduction) improved perplexity by
+0.0966pp vs v1.3.0 and 0.0227pp vs DEC-021. First time Variant A has beaten the
+DEC-021 baseline. The IO marker token explosion was a real source of training noise.
+
+The gap to B/C (BPE baselines at 1.1295/1.1102) is now 0.145pp, down from 0.17pp.
+
+#### New baseline
+
+v1.4.0 + embed_project: perplexity 1.2751, 3,491 train examples, vocab 1,236 tokens.
+
+#### References
+- runs/variant_A_v1_4_0/results.json
+- docs/IR_V2_FIX_SPEC.md (Fix 3 spec)
+- DEC-022 (prior baseline, v1.3.0)
