@@ -262,6 +262,128 @@ def decompTest6 : TestResult :=
     "Default decompiler should produce output"
 
 /--
+Test 9: Verify output doesn't contain malformed "Eq.G" fragment.
+The Eq emission was previously malformed, emitting "Eq.G" where G is a variable.
+This test verifies the fix: Eq should be emitted as "Eq lhs rhs" without the type.
+-/
+def decompTest9 : TestResult :=
+  -- Build a graph that produces an Eq expression
+  let g : Graph := {
+    entities := [
+      mkBoundEntity 0 "G",
+      mkBoundEntity 1 "a",
+      mkTermEntity 0,
+      mkTermEntity 1,
+      mkTermEntity 2,
+      mkTermEntity 3
+    ]
+    attributes := [
+      mkAttr (EntityId.bound "∀:test/0/G") "typeclass" "Mul",
+      mkAttr (EntityId.term 0) "sort" "u"
+    ]
+    relations := [
+      mkRel (EntityId.bound "∀:test/0/G") (EntityId.term 0) RelationOp.eq,
+      mkRel (EntityId.bound "∀:test/1/a") (EntityId.term 1) RelationOp.eq,
+      mkRel (EntityId.term 3) (EntityId.term 1) RelationOp.eq  -- Creates an Eq from term3 to term1 (a)
+    ]
+    operations := [
+      mkOp [EntityId.bound "∀:test/0/G", EntityId.term 1] (EntityId.term 2) OperationOp.mul,
+      mkOp [EntityId.term 2] (EntityId.term 3) OperationOp.neg  -- Result = neg(mul(G, a))
+    ]
+  }
+  let result := Decompile.decompileGraph g
+  let hasEq := result.contains "Eq"
+  let hasMalformed := result.contains "Eq."
+  runTest "No malformed Eq.G in output"
+    (hasEq && !hasMalformed)
+    s!"Output should contain 'Eq' but not 'Eq.': {result}"
+
+/--
+Test 10: Verify ∀ keyword is present for forall binders.
+Previously, forall binders were emitted as "(name : type), body" (tuple syntax).
+This test verifies the fix: forall binders now use the ∀ keyword.
+-/
+def decompTest10 : TestResult :=
+  let g : Graph := {
+    entities := [
+      mkBoundEntity 0 "x",
+      mkBoundEntity 1 "y"
+    ]
+    attributes := []
+    relations := []
+    operations := []
+  }
+  let result := Decompile.decompileGraph g
+  let hasForall := result.contains "∀"
+  runTest "∀ keyword present for forall binders"
+    hasForall
+    s!"Output should contain ∀ keyword: {result}"
+
+/--
+Test 11: Verify universe level normalization.
+Previously, universe levels like "u_1 + 1" were emitted directly.
+This test verifies the fix: levels are normalized to "succ u_1".
+-/
+def decompTest11 : TestResult :=
+  let g : Graph := {
+    entities := [
+      mkBoundEntity 0 "G",
+      mkTermEntity 0
+    ]
+    attributes := [
+      mkAttr (EntityId.term 0) "sort" "u_1 + 1"
+    ]
+    relations := [
+      mkRel (EntityId.bound "∀:test/0/G") (EntityId.term 0) RelationOp.eq
+    ]
+    operations := []
+  }
+  let result := Decompile.decompileGraph g
+  let hasSucc := result.contains "succ"
+  let hasMalformed := result.contains "u_1 + 1"
+  runTest "Universe level normalized to succ"
+    (hasSucc && !hasMalformed)
+    s!"Level should be 'succ u_1' not 'u_1 + 1': {result}"
+
+/--
+Test 12: Verify Eq emission doesn't include type as suffix.
+This is a regression test for the Eq.G issue where the type variable
+was incorrectly appended to the Eq constructor name.
+-/
+def decompTest12 : TestResult :=
+  -- Build a graph with a term entity that produces an Eq expression
+  let g : Graph := {
+    entities := [
+      mkBoundEntity 0 "α",
+      mkBoundEntity 1 "x",
+      mkBoundEntity 2 "y",
+      mkTermEntity 0,
+      mkTermEntity 1,
+      mkTermEntity 2,
+      mkTermEntity 3
+    ]
+    attributes := [
+      mkAttr (EntityId.term 0) "sort" "u"
+    ]
+    relations := [
+      mkRel (EntityId.bound "∀:test/0/α") (EntityId.term 0) RelationOp.eq,
+      mkRel (EntityId.bound "∀:test/1/x") (EntityId.term 1) RelationOp.eq,
+      mkRel (EntityId.bound "∀:test/2/y") (EntityId.term 2) RelationOp.eq,
+      mkRel (EntityId.term 3) (EntityId.term 1) RelationOp.eq  -- Creates Eq(x, term3)
+    ]
+    operations := [
+      mkOp [EntityId.bound "∀:test/0/α", EntityId.term 1, EntityId.term 2] (EntityId.term 3) OperationOp.mul
+    ]
+  }
+  let result := Decompile.decompileGraph g
+  -- Check that Eq is followed by space, not by a dot
+  let hasEq := result.contains "Eq"
+  let hasMalformed := result.contains "Eq.α" || result.contains "Eq.α"
+  runTest "Eq followed by space, not dot"
+    (hasEq && !hasMalformed)
+    s!"Eq should be 'Eq lhs rhs' not 'Eq.α lhs rhs': {result}"
+
+/--
 Collect all decompiler tests (excluding IO tests).
 -/
 def decompilerTests : List TestResult := [
@@ -271,7 +393,11 @@ def decompilerTests : List TestResult := [
   decompTest4,
   decompTest5,
   decompTest6,
-  decompTest7
+  decompTest7,
+  decompTest9,
+  decompTest10,
+  decompTest11,
+  decompTest12
 ]
 
 def runAllDecompilerTests : IO Unit := do
