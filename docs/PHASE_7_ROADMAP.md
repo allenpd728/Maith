@@ -1,7 +1,7 @@
 # Phase 7 Roadmap: Path to Outperforming the AST Baseline
 
 **Written:** 2026-08-03  
-**Status:** Active — v1.3.0 retraining in progress  
+**Status:** Active — Phase 8 validation complete; probing experiment (DEC-025) in progress  
 **Baseline to beat:** Variant C (AST-split BPE), perplexity 1.1102, completion accuracy 91.4%
 
 ---
@@ -25,7 +25,7 @@ Six phases of A/B/C experiments plus DEC-021–024 have established:
 | Whether more data or different objective would close this gap | Open question |
 
 **Current state (2026-08-04):** Variant A v1.4.0 perplexity 1.2751 (best to date).
-Flat-IR ablation complete. Next decision: IR pretraining, corpus expansion, or probing task experiment.
+Flat-IR ablation complete (DEC-024). Probing experiment (DEC-025) underway — scripts on openhands/probing-scripts, execution by Kit. Next decision gates on DEC-025 outcome: corpus expansion / IR pretraining (if A encodes semantics) or format/objective redesign (if A ≈ Flat-IR).
 
 ---
 
@@ -179,7 +179,8 @@ v1.3.0 results
 | Normalisation audit findings | `docs/NORMALISATION_AUDIT.md` |
 | Qwen pretraining prior analysis | `docs/QWEN_PRIOR_ANALYSIS.md` |
 | Representation registration and evolution workflow | `docs/REPRESENTATION_EVOLUTION.md` |
-| Full experimental history DEC-001 to DEC-024 | `docs/DECISION_LOG.md` |
+| Full experimental history DEC-001 to DEC-025 | `docs/DECISION_LOG.md` |
+| Probing experiment spec | `docs/PROBING_TASK_FINAL.md` |
 | Phase 7 proof-term completion design (separate from this roadmap) | `docs/PHASE_7_DESIGN.md` |
 
 ---
