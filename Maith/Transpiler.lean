@@ -129,22 +129,38 @@ private def parseScopeInfo (scope : String) : (Nat × String) :=
 private def isForallBinder (scope : String) : Bool :=
   scope.startsWith "∀:"
 
+-- Normalize a universe level string to Lean syntax.
+-- Handles expressions like "u_1 + 1" -> "succ u_1", "u" -> "u", etc.
+private def normalizeLevel (level : String) : String :=
+  -- Check for patterns like "u_N + 1" and convert to "succ u_N"
+  let plusOne := " + 1"
+  if level.endsWith plusOne then
+    let base := level.dropEnd plusOne.length
+    s!"succ {base}"
+  else
+    level
+
 -- Pretty-print a decompiled expression
 private def exprToString (e : Expr) : String :=
   match e with
   | Expr.var name => name
   | Expr.sort level =>
     if level.isEmpty || level == "0" then "Prop"
-    else s!"Type.{level}"
+    else s!"Type.{normalizeLevel level}"
   | Expr.const name => name
   | Expr.forallBinder name type body =>
     let typeStr := exprToString type
     let bodyStr := exprToString body
-    s!"({name} : {typeStr}), {bodyStr}"
+    -- Use ∀ keyword with Lean 4 explicit binder syntax (name : Type)
+    s!"∀ ({name} : {typeStr}), {bodyStr}"
   | Expr.app fn arg =>
     s!"({exprToString fn} {exprToString arg})"
   | Expr.eq type lhs rhs =>
-    s!"Eq.{exprToString type} {exprToString lhs} {exprToString rhs}"
+    -- Emit proper Lean Eq syntax: Eq lhs rhs (without the type as explicit parameter
+    -- since it can be inferred in most contexts)
+    let lhsStr := exprToString lhs
+    let rhsStr := exprToString rhs
+    s!"Eq {lhsStr} {rhsStr}"
 
 -- Helper: extract binder name from scope
 private def getBinderName (scope : String) : String :=
