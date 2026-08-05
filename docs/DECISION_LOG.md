@@ -1291,3 +1291,71 @@ The flat-IR ablation was designed to test: "Is graph structure helping at all, o
 - Bigram baseline: PPL 2.38 on flat-IR eval, computed 2026-08-04
 - docs/PHASE_7_ROADMAP.md (decision tree, item 4)
 - DEC-023 (prior Variant A best, 1.2751)
+
+---
+
+### DEC-025 — Probing experiment: does Variant A encode semantic content?
+
+**Date:** 2026-08-05
+**Status:** 🟡 Pending — scripts written by OpenHands (openhands/probing-scripts), execution by Kit
+**Decision:** TBD — fill in after running python/extract_representations.py and python/probing_task.py
+
+#### Purpose
+
+DEC-024 established that Variant A's semantic content adds ~0.27 bits/token of unrecoverable prediction difficulty, but cannot determine whether this is a data volume problem or a training objective/format problem. This probing experiment resolves that ambiguity by testing whether semantic content is present in the model's internal representations at all, independent of perplexity.
+
+#### Experiment design
+
+See docs/PROBING_TASK_FINAL.md for full spec. Summary:
+
+- Freeze each trained checkpoint, forward-pass all 4,029 corpus examples
+- Mean-pool final hidden layer to 896-dim representation per example
+- Train linear probe to classify 11 Mathlib module classes
+- Compare Variant A vs Flat-IR (11-token shape-only) — gap is the key signal
+
+Variants probed: A v1.4.0 (vocab=1236), C phase6 (vocab=151936), Flat-IR (vocab=11), B phase6 (vocab=151936), Random Qwen (no fine-tuning)
+
+**Thresholds (set before running — from PROBING_TASK_FINAL.md Step 7):**
+
+| Label | Criterion | Meaning |
+|---|---|---|
+| A encodes semantics | A accuracy minus Flat-IR accuracy >= 10pp | Semantic content in representations; data volume is bottleneck |
+| Inconclusive | Gap 5-10pp | Run Task 2 (arity prediction) before concluding |
+| Flat matches A | Gap < 5pp | Semantic tokens not in representations; format/objective problem |
+
+#### Results
+
+<!-- Kit fills in after running the scripts -->
+
+| Variant | Accuracy (mean +/- std, 3 seeds) | Macro-F1 | Balanced Acc |
+|---|---|---|---|
+| Variant A v1.4.0 | — | — | — |
+| Variant C phase6 | — | — | — |
+| Flat-IR | — | — | — |
+| Variant B phase6 | — | — | — |
+| Random Qwen | — | — | — |
+| Random baseline | ~9.1% | — | — |
+
+A vs Flat-IR gap: — pp
+Outcome: <!-- A_encodes_semantics / inconclusive / flat_matches_A -->
+Task 2 needed: <!-- yes / no -->
+
+#### Interpretation
+
+<!-- Fill in after results land — use the outcome table from PROBING_TASK_FINAL.md -->
+
+#### Next step
+
+<!-- One of:
+  A_encodes_semantics: pursue corpus expansion to 10k+ examples or IR pretraining
+  flat_matches_A: redesign training objective or IR format before investing in data
+  inconclusive: run Task 2 (arity prediction), document combined finding
+-->
+
+#### References
+
+- docs/PROBING_TASK_FINAL.md — full experiment spec
+- python/extract_representations.py — representation extraction script (OpenHands, openhands/probing-scripts)
+- python/probing_task.py — linear probe training and evaluation (OpenHands, openhands/probing-scripts)
+- runs/probing/task1_results.json — raw results (gitignored, written at runtime)
+- DEC-024 — open questions this experiment resolves

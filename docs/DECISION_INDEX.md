@@ -88,7 +88,10 @@ IR pretraining), see `docs/PHASE_7_ROADMAP.md` and `docs/IR_V2_PROPOSAL.md`.
 | **DEC-014** | Recorded outside the main log — proof-term completion deferred to Phase 7; next-tactic prediction ruled out. See `docs/PHASE_7_DESIGN.md`. |
 | **DEC-008** | 3-epoch Variant A cold-start test — partially confirmed cold-start effect (1.39 → 1.26) but gap to B/C persisted |
 | DEC-009 | Appears after DEC-012 in the log file — written out of order as the warm-start investigation branched mid-phase |
-| DEC-022, DEC-023 | Planned — tokenizer study and normalisation audit results not yet written to the log |
+| **DEC-022** | Polarity tokens (neut) functioned as positional anchors — removal caused 0.074pp regression. Fix 2 deferred until corpus > 10k examples. New baseline: 1.3717 |
+| **DEC-023** | Fix 3 (IO markers) applied: vocab 8221 → 1236, Variant A perplexity 1.2751 — new best |
+| **DEC-024** | Flat-IR ablation: semantic content adds 0.27 bits/token unrecoverable cost at this scale. Raw PPL comparison invalid across vocab sizes; bits/token is correct metric. Probing experiment (DEC-025) needed to distinguish data-volume vs format problem |
+| **DEC-025** | 🟡 Pending — probing experiment in progress (scripts on openhands/probing-scripts) |
 
 ---
 
@@ -101,8 +104,10 @@ IR pretraining), see `docs/PHASE_7_ROADMAP.md` and `docs/IR_V2_PROPOSAL.md`.
 | Is it due to sequence length? | **Closed** — IR is 2x shorter than BPE (DEC-022) |
 | Is it due to Qwen pretraining prior? | **Unlikely** — 25.8% vocab overlap, Lean BPE worse than English |
 | Is the normaliser broken? | **Partially** — 93% rate is expected and correct; no fix needed |
-| Will v1.3.0 (polarity removal) narrow the gap? | **Pending** — retraining in progress |
+| Will v1.3.0 (polarity removal) narrow the gap? | **Closed** — DEC-022: regression confirmed, Fix 2 deferred |
 | Can the IR beat the AST (Variant C)? | **Open** — see `docs/PHASE_7_ROADMAP.md` |
+| Does Variant A encode semantic content in its representations? | **Pending** — DEC-025 probing experiment in progress |
+| Is Phase 8 validation complete? | **Yes** — 8a, 8a-ii, 8b, 8c, 8d all complete as of 2026-08-05 |
 
 ---
 
