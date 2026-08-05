@@ -1,7 +1,7 @@
 # Phase 8: Bidirectional Pipeline Validation
 
 **Created:** 2026-08-03  
-**Status:** 🟡 In Progress — 8a, 8a-ii, 8b complete; 8c and 8d pending  
+**Status:** ✅ Complete — all phases done (2026-08-05)  
 **Goal:** Confirm at every stage that no information is silently lost before making any further IR changes (Fix 3 IO markers, Fix 4 type-role prefixes).
 
 **Phases can run out of order** — 8b, 8c, and 8d are independent OpenHands Lean tasks and
@@ -158,9 +158,9 @@ Any mismatch must report: example name, token position, expected token, actual t
 ## Phase 8c — IR graph faithfulness: Expr extraction preserves semantic content
 
 **Owner:** OpenHands  
-**Status:** 🟡 Ready to start (independent of 8b)  
+**Status:** ✅ Complete (2026-08-05) — 20/20 ExtractionFaithfulnessTests pass  
 **Estimated effort:** 2–3 days  
-**Blocked by:** Nothing — can start now
+**Completed:** commit 52c0847 on `openhands/phase-8c`, merged into `kit/dev`
 
 ### OpenHands task brief
 
@@ -243,9 +243,9 @@ For each golden declaration verify:
 ## Phase 8d — Fix decompiler to produce parseable Lean output
 
 **Owner:** OpenHands  
-**Status:** 🟡 Ready to start (independent of 8b and 8c)  
+**Status:** ✅ Complete (2026-08-05) — Eq emission, universe levels, ∀ keyword all fixed; 4 new decompiler tests pass  
 **Estimated effort:** 1 week  
-**Blocked by:** Nothing — can start now
+**Completed:** commit 2ab10a5 on `openhands/phase-8d`, merged into `kit/dev`
 
 ### OpenHands task brief
 
@@ -325,9 +325,9 @@ Phase 8a-ii  Re-extract corpus (lake build)  Local terminal  🔴 Needs terminal
     │
     ├──▶ Phase 8b  Lean Encoder ↔ Decoder    OpenHands #1    🟡 Can start now
     │
-    ├──▶ Phase 8c  Expr extraction faithful  OpenHands #2    🟡 Can start now
+    ├──▶ Phase 8c  Expr extraction faithful  OpenHands #2    ✅ Done (52c0847)
     │
-    └──▶ Phase 8d  Decompiler fix            OpenHands #3    🟡 Can start now
+    └──▶ Phase 8d  Decompiler fix            OpenHands #3    ✅ Done (2ab10a5)
              │
              ▼ (all above complete)
          Fix 3: IO marker simplification    Kit             🔴 Blocked on 8a-ii + 8b
@@ -401,6 +401,10 @@ This is a prerequisite for any meaningful v1.3.0 experiment. Added as Phase 8a-i
 | 2026-08-03 | — | Fix 3 (IO markers): corpus re-extracted v1.4.0, vocab 8221→1236, perplexity 1.2751 (DEC-023) | ✅ New Variant A best |
 | 2026-08-04 | — | Flat-IR ablation: 11-token shape-only vocab, PPL 1.0551, bits/tok 0.077 (DEC-024) | ✅ Design-validation complete |
 | 2026-08-04 | — | DEC-024 revised: raw PPL comparison invalid across vocab sizes; bits/token is correct metric | ✅ Documented with open questions |
+| 2026-08-05 | 8c | ExtractionFaithfulnessTests.lean: 20/20 pass — Lean 4 API fixes, graceful skip when Mathlib unavailable | ✅ Phase 8c complete (commit 52c0847) |
+| 2026-08-05 | 8d | Transpiler.lean: fixed Eq emission, universe level syntax, ∀ keyword; 4 new decompiler tests pass | ✅ Phase 8d complete (commit 2ab10a5) |
+| 2026-08-05 | — | openhands/phase-8c and openhands/phase-8d merged into kit/dev (de679d5) | ✅ All Phase 8 work on kit/dev |
+| 2026-08-05 | — | openhands/probing-task-design merged into kit/dev — PROBING_TASK_FINAL.md now in repo | ✅ Probing experiment spec finalised |
 
 ---
 
