@@ -82,7 +82,7 @@ The full pipeline is implemented and validated. See section 7 for corpus results
 ### Build and tests
 
 - `lake build tests` passes (0 failures).
-- All tests pass (**66+ unit tests + corpus-pipeline/serializer integration checks**).
+- All tests pass (**77+ unit tests + corpus-pipeline/serializer integration checks**).
 
 **Python test suite** — all passing, 0 failures:
 
@@ -92,14 +92,17 @@ The full pipeline is implemented and validated. See section 7 for corpus results
 | `python/test_build_dataset.py` | 14 | Dataset construction, tokenization, splits |
 | `python/test_variant_config.py` | 6 | Variant A/B/C configuration validation |
 | `python/test_pipeline_integration.py` | 1 | End-to-end pipeline smoke test |
+| `python/test_probing_scripts.py` | 11 | Representation extraction and probing task |
 
 Run with:
 ```bash
 python3 python/test_train_regression.py
 python3 python/test_build_dataset.py
 python3 python/test_variant_config.py
-python3 python/test_pipeline_integration.py
+python3 python/test_probing_scripts.py
 ```
+
+> **Dependencies:** See [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) for required Python packages (torch, transformers, scikit-learn, etc.) and hardware requirements.
 
 ### While full A/B/C runs are active
 
