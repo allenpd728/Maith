@@ -18,6 +18,7 @@ import Tests.ProblemGeneratorTests
 import Tests.CorpusPipelineTests
 import Tests.CorpusSerializerTests
 import Tests.RoundTripTests
+import Tests.ExtractionFaithfulnessTests
 
 def main : IO Unit := do
   IO.println ""
@@ -39,6 +40,9 @@ def main : IO Unit := do
   Tests.CorpusPipeline.runAllCorpusPipelineTests
   Tests.CorpusSerializer.runAllCorpusSerializerTests
   Tests.runTestSuite "Phase 8b — Encoder ↔ Decoder Round-Trip (v1.3.0)" Tests.RoundTrip.roundTripTests
+  
+  -- Phase 8c: Extraction Faithfulness Tests
+  Tests.ExtractionFaithfulness.runAllExtractionFaithfulnessTests
   
   IO.println ""
   IO.println "╔════════════════════════════════════════════════════╗"
