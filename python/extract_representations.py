@@ -53,12 +53,17 @@ HIDDEN_SIZE = 896
 MAX_SEQ_LEN = 512
 EXTRACTION_SEED = 42
 
-# Checkpoint paths (relative to repo root)
+# Checkpoint paths — absolute, pointing at the canonical sandbox runs directory.
+# Update RUNS_DIR if the runs directory moves.
+_RUNS_DIR = os.environ.get(
+    "MAITH_RUNS_DIR",
+    "/Users/philipallen/Library/Caches/com.spotify.studio/.studio/artifacts/maith-runs/runs",
+)
 CHECKPOINTS = {
-    "A": "runs/variant_A_v1_4_0/checkpoint-final",
-    "C": "runs/variant_C_phase6/checkpoint-final",
-    "flat": "runs/variant_flat/checkpoint-final",
-    "B": "runs/variant_B_phase6/checkpoint-final",
+    "A":    os.path.join(_RUNS_DIR, "variant_A_v1_4_0", "checkpoint-final"),
+    "C":    os.path.join(_RUNS_DIR, "variant_C_phase6",  "checkpoint-final"),
+    "flat": os.path.join(_RUNS_DIR, "variant_flat",      "checkpoint-final"),
+    "B":    os.path.join(_RUNS_DIR, "variant_B_phase6",  "checkpoint-final"),
     "random": None,  # Loaded from HuggingFace cache
 }
 
@@ -145,6 +150,22 @@ def save_labels(examples: list[dict], out_dir: str) -> None:
     print(f"Saved labels ({len(labels)} examples) → {labels_path}")
 
 
+def patch_tokenizer_config(ckpt_path: str) -> None:
+    """
+    Fix extra_special_tokens field if it is a list (saved by older transformers).
+    Newer transformers expects a dict. Patches in-memory via a temp override file.
+    """
+    import json, os
+    cfg_path = os.path.join(ckpt_path, "tokenizer_config.json")
+    with open(cfg_path) as f:
+        cfg = json.load(f)
+    if isinstance(cfg.get("extra_special_tokens"), list):
+        cfg["extra_special_tokens"] = {}
+        with open(cfg_path, "w") as f:
+            json.dump(cfg, f, indent=2)
+        print(f"  Patched extra_special_tokens list→dict in {cfg_path}")
+
+
 def extract_representations_for_variant(
     variant: str,
     examples: list[dict],
@@ -161,10 +182,10 @@ def extract_representations_for_variant(
         print(f"Loading pretrained {BASE_MODEL} (no fine-tuning)...")
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL,
-            torch_dtype=torch.float32,
-            device_map=device,
+            dtype=torch.float32,
             trust_remote_code=True,
         )
+        model = model.to(device)
         tokenizer = AutoTokenizer.from_pretrained(
             BASE_MODEL,
             trust_remote_code=True,
@@ -172,12 +193,13 @@ def extract_representations_for_variant(
     else:
         ckpt_path = CHECKPOINTS[variant]
         print(f"Loading checkpoint: {ckpt_path}...")
+        patch_tokenizer_config(ckpt_path)
         model = AutoModelForCausalLM.from_pretrained(
             ckpt_path,
-            torch_dtype=torch.float32,
-            device_map=device,
+            dtype=torch.float32,
             trust_remote_code=True,
         )
+        model = model.to(device)
         tokenizer = AutoTokenizer.from_pretrained(
             ckpt_path,
             trust_remote_code=True,
