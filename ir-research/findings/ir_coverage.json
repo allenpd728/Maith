@@ -208,13 +208,12 @@
   },
   "attribute_density": {
     "total_entities": 153118,
-    "entities_with_zero_attributes": 132860,
-    "pct_zero_attributes": 86.77,
+    "entities_with_zero_attributes": 132220,
+    "pct_zero_attributes": 86.35,
     "per_entity_count_distribution": {
-      "1": 19446,
-      "0": 132860,
-      "2": 774,
-      "3plus": 38
+      "0": 132220,
+      "1": 20688,
+      "2": 210
     },
     "top_attribute_keys": [
       [
@@ -236,7 +235,7 @@
     ]
   },
   "normalisation": {
-    "collision_pairs": 2449,
+    "collision_pairs": 2577,
     "casesOn_count": 85,
     "recOn_count": 85,
     "flat_ctor_count": 85,
