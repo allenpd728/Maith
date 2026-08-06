@@ -39,3 +39,10 @@ datasets_phase5_v1/
 
 # Local Ollama model definitions — not part of the repo
 Modelfile
+
+# SSH keys and credentials — never commit
+*.key
+*.pem
+*_key
+*_key.pub
+authorized_keys
