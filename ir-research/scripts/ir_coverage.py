@@ -260,16 +260,19 @@ def compute_normalisation_collisions(entries: list[dict]) -> dict:
     flat_ctor_count = 0
     
     for tokens, names in token_groups.items():
-        if len(names) > 1:
-            # Collision! Find pairs with different names
-            for i, name_a in enumerate(names):
-                for name_b in names[i+1:]:
-                    if name_a != name_b:
-                        collision_pairs.append({
-                            "name_a": name_a,
-                            "name_b": name_b,
-                            "token_len": len(tokens),
-                        })
+        n = len(names)
+        if n > 1:
+            # Collision! Use n*(n-1)//2 formula for accurate counting
+            # of all distinct pairs in this group
+            collision_pairs.extend([
+                {
+                    "name_a": names[i],
+                    "name_b": names[j],
+                    "token_len": len(tokens),
+                }
+                for i in range(n)
+                for j in range(i + 1, n)
+            ])
         
         # Count normalisation targets
         for name in names:
