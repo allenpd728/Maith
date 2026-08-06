@@ -15,9 +15,9 @@ the root causes.
   - `scripts/`   — analysis and tooling scripts
   - `findings/`  — output files and summaries from each step
   - `proposals/` — IR schema proposals generated from findings
-- **Kit** does Steps 1–2 locally (corpus access required)
-- **OpenHands** does Step 3 (script authoring, SSH access for Lean + local runs)
+- **OpenHands** has SSH access to the sandbox and can run all steps locally
 - **Kit** reviews findings at each stage before merge into `kit/dev`
+- OpenHands works on feature branches (`openhands/ir-*`), Kit merges after review
 
 ---
 
@@ -116,41 +116,47 @@ fixes before handing to OpenHands.
 
 ---
 
-### Step 3 — IR Schema Iterator (OpenHands, SSH)
+### Step 3 — IR Schema Iterator (OpenHands, SSH) ✅ COMPLETE
 **Script**: `scripts/ir_schema_iterator.py`  
 **Output**: `proposals/ir_v2_schema.json`, `findings/schema_comparison.json`
+**Branch merged**: `openhands/ir-schema-step3`
 
-Using the findings from Steps 1–2, OpenHands authors an iterator that:
-1. Takes a proposed schema change (new row type, normalisation rule, polarity
-   collapse, etc.)
-2. Applies it to a sample of corpus entries
-3. Measures: token count delta, vocabulary coverage delta, redundancy ratio
-4. Writes a comparison entry to `findings/schema_comparison.json`
+4 changes evaluated, 3 approved:
 
-OpenHands also has Lean access via SSH — it can cross-check proposed AST
-mappings against `pp.all` output for representative declarations.
+| Change | Result | Status |
+|---|---|---|
+| C1 Polarity removal | ~32.6% theoretical token reduction | ✅ Approved |
+| C2 Typeclass enrichment | 134 typeclasses, 3,149 decls enriched, fixes 51-typeclass collapse | ✅ Approved |
+| C3 Attribute sparsity | 86.35% → ~0% zero-attr (projected) | ❌ Deferred — needs Lean cross-check |
+| C4 GEN_UNK mitigation | ~1,564 of 1,955 GEN_UNK tokens resolvable via namespace buckets | ✅ Approved |
 
-Review gate: Kit reviews `schema_comparison.json` and selects the changes that
-improve density without losing coverage before Step 4.
+Review gate: ✅ Passed — Kit reviewed schema_comparison.json, C1/C2/C4 approved.
 
 ---
 
-### Step 4 — Compression Gate (Kit, local)
+### Step 4 — Compression Gate (OpenHands, SSH)
 **Script**: `scripts/compression_gate.py`  
-**Output**: `findings/compression_gate.json`
+**Output**: `findings/compression_gate.json`  
+**Prompt**: `OPENHANDS_STEP4_PROMPT.md`
+**Branch**: `openhands/ir-compression-gate`
 
-Run the approved v2 schema across the full corpus and measure:
+Run the approved v2 schema (C1+C2+C4) across the full corpus and measure:
 - Bits-per-token (BPT) vs current IR and flat baseline
 - Vocabulary coverage (% of token positions filled by high-frequency tokens)
 - Redundancy ratio (entropy of token distribution)
+- Collision rate (projected reduction from C2 typeclass enrichment)
 
-Gate criteria (all must pass before a training run is scheduled):
-- BPT(v2) < BPT(A_current)
-- Redundancy(v2) < Redundancy(A_current)
-- Coverage(v2) >= Coverage(A_current)
+C3 included as an informational column — not a required pass criterion.
 
-If gate passes, produce the OpenHands prompt to update `MetaExtractor.lean`
-and regenerate datasets. If gate fails, return to Step 3 with a diagnosis.
+Gate criteria (all must pass for v2_C1C2C4):
+- BPT(v2) < BPT(current_A)
+- Redundancy(v2) < Redundancy(current_A)
+- Coverage(v2) >= Coverage(current_A)
+
+If gate passes → produce prompt to update `MetaExtractor.lean` and regenerate
+datasets. If gate fails → return to Step 3 with diagnosis.
+
+Review gate: Kit reviews `compression_gate.json` before any training run.
 
 ---
 
