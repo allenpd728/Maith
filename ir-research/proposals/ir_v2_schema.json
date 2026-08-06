@@ -4,7 +4,7 @@
       "change_id": "C1_polarity_removal",
       "approved": true,
       "schema_delta": "Remove polarity field from Entity, Attribute, Relation, Operation row types",
-      "estimated_token_reduction": "0.1%",
+      "estimated_token_reduction": "32.6%",
       "implementation_note": "MetaExtractor.lean: remove polarity from addEntity/addAttribute/addRelation/addOperation calls"
     },
     {
