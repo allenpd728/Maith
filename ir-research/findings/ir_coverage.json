@@ -1,0 +1,302 @@
+{
+  "corpus_size": 4029,
+  "polarity": {
+    "entities": {
+      "neut": 153118,
+      "pos": 0,
+      "neg": 0,
+      "pct_neut": 100.0
+    },
+    "attributes": {
+      "neut": 21108,
+      "pos": 0,
+      "neg": 0,
+      "pct_neut": 100.0
+    },
+    "relations": {
+      "neut": 48078,
+      "pos": 0,
+      "neg": 0,
+      "pct_neut": 100.0
+    },
+    "operations": {
+      "neut": 98494,
+      "pos": 0,
+      "neg": 0,
+      "pct_neut": 100.0
+    },
+    "overall": {
+      "neut": 320798,
+      "pos": 0,
+      "neg": 0,
+      "pct_neut": 100.0
+    }
+  },
+  "token_frequency": {
+    "vocab_size": 1236,
+    "gen_unk_collapses": 1352,
+    "frequency_buckets": {
+      "1x": 54,
+      "2_10x": 323,
+      "11_100x": 484,
+      "100plus_x": 323
+    },
+    "top_20": [
+      [
+        "E",
+        93598
+      ],
+      [
+        "O",
+        54776
+      ],
+      [
+        "R",
+        33433
+      ],
+      [
+        "eq",
+        31360
+      ],
+      [
+        "IN_2",
+        28143
+      ],
+      [
+        "FVAR_0",
+        14584
+      ],
+      [
+        "A",
+        13983
+      ],
+      [
+        "IN_1",
+        11136
+      ],
+      [
+        "TERM_0",
+        10341
+      ],
+      [
+        "IN_3",
+        7953
+      ],
+      [
+        "FVAR_1",
+        7479
+      ],
+      [
+        "FVAR_2",
+        7262
+      ],
+      [
+        "FVAR_3",
+        6505
+      ],
+      [
+        "sort",
+        6478
+      ],
+      [
+        "BVAR_0",
+        5936
+      ],
+      [
+        "TERM_2",
+        5443
+      ],
+      [
+        "TERM_3",
+        5181
+      ],
+      [
+        "TERM_1",
+        5119
+      ],
+      [
+        "FVAR_4",
+        4934
+      ],
+      [
+        "typeclass",
+        4890
+      ]
+    ],
+    "bottom_20_nonzero": [
+      [
+        "Lean.Name.anonymous",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \"_private\"",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \"Mathlib\"",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \"Order\"",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \"Basic\"",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \"term_\u227a_\"",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \" \u227a \"",
+        1
+      ],
+      [
+        "LinearOrder.min_def._autoParam",
+        1
+      ],
+      [
+        "Prop.partialOrder._proof_1",
+        1
+      ],
+      [
+        "Prop.partialOrder._proof_2",
+        1
+      ],
+      [
+        "ZeroMemClass",
+        1
+      ],
+      [
+        "Nat.succ",
+        1
+      ],
+      [
+        "IsMulTorsionFree",
+        1
+      ],
+      [
+        "Finite",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \"term_\u207b\u00b9'o_\"",
+        1
+      ],
+      [
+        "Lean.Literal.strVal \" \u207b\u00b9'o \"",
+        1
+      ],
+      [
+        "instSubsingletonPUnit",
+        1
+      ],
+      [
+        "LinearOrder.max_def._autoParam",
+        1
+      ],
+      [
+        "npowRec.match_1",
+        1
+      ],
+      [
+        "Subgroup.Characteristic",
+        1
+      ]
+    ]
+  },
+  "attribute_density": {
+    "total_entities": 153118,
+    "entities_with_zero_attributes": 132860,
+    "pct_zero_attributes": 86.77,
+    "per_entity_count_distribution": {
+      "1": 19446,
+      "0": 132860,
+      "2": 774,
+      "3plus": 38
+    },
+    "top_attribute_keys": [
+      [
+        "sort",
+        7927
+      ],
+      [
+        "literal",
+        7262
+      ],
+      [
+        "typeclass",
+        5797
+      ],
+      [
+        "let-binding",
+        122
+      ]
+    ]
+  },
+  "normalisation": {
+    "collision_pairs": 2449,
+    "casesOn_count": 85,
+    "recOn_count": 85,
+    "flat_ctor_count": 85,
+    "examples": [
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "CommMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "SubNegMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "AddRightCancelMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "CommGroup",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "DivInvMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "RightCancelMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "Semigroup",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "AddCancelMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "AddCommMonoid",
+        "token_len": 20
+      },
+      {
+        "name_a": "CancelMonoid",
+        "name_b": "AddSemigroup",
+        "token_len": 20
+      }
+    ]
+  },
+  "hard_fail_paths": {
+    "ir_construction_failed": 0,
+    "operation_arity_violations": 0,
+    "mvar_entities": 0,
+    "notes": "irConstructionFailed=0 confirmed from stats.json; No operation arity violations found; No mvar entities (? prefix) found"
+  }
+}
