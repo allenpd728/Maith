@@ -131,35 +131,11 @@ def evaluate_polarity_removal(seq_lengths: list[int], token_counts: Counter,
     avg_before = total_tokens_before / len(seq_lengths) if seq_lengths else 0
     
     # Polarity rows in graph: all are "neut" (100%)
-    # Removing polarity would save 1 token per row in encoded output
-    # But current encoder doesn't serialize polarity - measure what WOULD be saved
-    polarity_count = total_polarity_rows
+    # Current encoder does NOT serialize polarity to .tokens
+    # This change is THEORETICAL: what would be saved if encoder emitted polarity
     
-    # Estimate: ~1 polarity token per row in encoder output
-    # Average tokens per decl from stats.json is ~244.5
-    # Graph has ~38 entities + ~5 attrs + ~12 rels + ~24 ops = ~79 rows
-    # If 79/244.5 = 32% of tokens are polarity, that would be significant
-    
-    # Actually, from the analysis:
-    # - 320,798 polarity rows in graph
-    # - But only 661 "neg" tokens appear in .tokens (which are operation names, not polarity)
-    # - This means encoder doesn't serialize polarity fields currently
-    
-    # For the schema change: removing polarity means NOT emitting 1 token per graph row
-    # In current output, polarity is NOT serialized. The change would affect future encoding.
-    
-    avg_after = avg_before  # No change to current output (polarity not serialized)
-    
-    # What WOULD change: if we measure from graph, removing polarity would save
-    # one token per graph row in the encoded representation
-    # But since encoder doesn't currently serialize polarity, we report graph counts
-    # as the "potential savings" for a future encoder that includes polarity
-    
-    # From Step 2: 320,798 total polarity fields, all neut
-    # If encoded at 1 token/row, that's ~79.7 tokens/decl on average
-    
-    # Token reduction percentage relative to graph rows
     rows_per_decl = total_polarity_rows / len(seq_lengths) if seq_lengths else 0
+    avg_after = avg_before - rows_per_decl  # Projected reduction
     token_reduction_pct = (rows_per_decl / avg_before * 100) if avg_before else 0
     
     return {
@@ -170,7 +146,8 @@ def evaluate_polarity_removal(seq_lengths: list[int], token_counts: Counter,
         "token_reduction_pct": round(token_reduction_pct, 2),
         "polarity_rows_in_graph": total_polarity_rows,
         "polarity_tokens_in_encoded": 0,  # Encoder currently doesn't serialize polarity
-        "notes": f"Graph has {total_polarity_rows:,} polarity rows (all neut). Encoder would save ~{rows_per_decl:.0f} tokens/decl if polarity were removed."
+        "theoretical": True,
+        "notes": f"THEORETICAL: Current encoder omits polarity from .tokens. Removing would save ~{rows_per_decl:.0f} tokens/decl ({token_reduction_pct:.1f}%). Projected avg after: {avg_after:.1f} tokens/decl."
     }
 
 
@@ -431,8 +408,9 @@ def main():
     c1["collision_pairs_after"] = BASELINE["collision_pairs"]
     c1["new_token_types"] = 0
     results.append(c1)
-    print(f"  Token reduction: {c1['token_reduction_pct']:.1f}%", file=sys.stderr)
+    print(f"  Token reduction: {c1['token_reduction_pct']:.1f}% (theoretical)", file=sys.stderr)
     print(f"  Graph polarity rows: {c1['polarity_rows_in_graph']:,}", file=sys.stderr)
+    print(f"  Projected avg after: {c1['tokens_after_avg']:.1f} tokens/decl", file=sys.stderr)
     
     # C2: Typeclass enrichment
     print("\nEvaluating C2: Typeclass enrichment ...", file=sys.stderr)
