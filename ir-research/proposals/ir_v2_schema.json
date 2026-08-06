@@ -1,0 +1,32 @@
+{
+  "v2_changes": [
+    {
+      "change_id": "C1_polarity_removal",
+      "approved": true,
+      "schema_delta": "Remove polarity field from Entity, Attribute, Relation, Operation row types",
+      "estimated_token_reduction": "32.6%",
+      "implementation_note": "MetaExtractor.lean: remove polarity from addEntity/addAttribute/addRelation/addOperation calls"
+    },
+    {
+      "change_id": "C2_typeclass_enrichment",
+      "approved": true,
+      "schema_delta": "Add typeclass_name attribute to root entity of typeclass constructor declarations",
+      "estimated_token_reduction": "0% (adds tokens)",
+      "implementation_note": "MetaExtractor.lean: detect .casesOn/.recOn/.flat_ctor ops and add A:typeclass_name:{name} row"
+    },
+    {
+      "change_id": "C3_attribute_sparsity",
+      "approved": false,
+      "schema_delta": "Always emit sort_level for term entities, const_name for const entities",
+      "estimated_token_reduction": "0%",
+      "implementation_note": "Deferred to Step 4 - requires cross-check with Lean pp.all output"
+    },
+    {
+      "change_id": "C4_gen_unk_mitigation",
+      "approved": true,
+      "schema_delta": "Bucket rare gen:* ops by top-level namespace (GEN_ALGEBRA, GEN_ORDER, etc.)",
+      "estimated_token_reduction": "0% (replaces GEN_UNK with typed buckets)",
+      "implementation_note": "Encoder: add namespace bucketing for gen:* tokens below frequency threshold"
+    }
+  ]
+}
