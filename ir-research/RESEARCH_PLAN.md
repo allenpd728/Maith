@@ -35,22 +35,30 @@ full corpus.
 
 **Key findings:**
 
-1. **Parser bug confirmed, not IR gap.** The 52,709 `Expr.unknown` nodes from
-   the initial run were a bug in the string parser — `_KEYWORD_RE` didn't
-   handle `->`, `=>`, `:`, unicode subscripts (`₁ ₂`), or Greek variable names.
-   These are pretty-print artefacts with no corresponding `Lean.Expr`
-   constructor. `MetaExtractor.lean` has explicit match arms for every
-   constructor. **Roundtrip is not catastrophically broken.**
+1. **Parser bug confirmed, not IR gap — but the parser is more broken than
+   initially described.** The 52,709 `Expr.unknown` nodes were a bug in the
+   string parser, but the failure modes are multiple and inconsistent:
+   - Punctuation (`->`, `=>`, `:`) splits into orphan sibling nodes
+   - Unicode subscripts (`₁`, `₂`, `₃`) detach from their identifier — `G₁`
+     becomes two sibling nodes `G` and `₁` rather than one token
+   - Multi-token binder groups (`α : Sort.{u}`, `{n : Nat}`) are sometimes
+     swallowed whole as a single `Expr.unknown` leaf and sometimes split
+   The parser's behavior is inconsistent across examples, not a single clean
+   failure mode. **This parser is retired. It must not be reused or patched
+   for any downstream measurement step.** `MetaExtractor.lean` has explicit
+   match arms for every constructor. **Roundtrip is not catastrophically broken.**
 
 2. **Extraction success rate: 4,029/4,029 (100%).** `stats.json` reports zero
    `irConstructionFailed`, zero `encodingFailed`. Both hard-fail paths
    (`bvar` out-of-scope, operation arity) never fire in this corpus.
 
 3. **mvar frequency: 0.** No `?`-prefixed var entities appear in any of the
-   153,118 graph entities across the corpus. The mvar semantic bug is
-   not consequential for this Mathlib subset — either these declarations don't
-   use metavariables, or mvar-containing decls were filtered before corpus
-   build. **Reprioritised below the four IR design issues.**
+   153,118 graph entities across the corpus. Verified two independent ways:
+   (a) `collect_graph_entity_stats()` in `ast_explorer.py` iterating
+   `entry["graph"]["entities"]` parsed from JSON, and (b) a direct `jq`
+   query on `corpus.jsonl` with no Python involved — both return 0. The mvar
+   semantic bug is not consequential for this Mathlib subset. **Reprioritised
+   below the four IR design issues.**
 
 4. **Graph entity distribution (ground truth):**
    - `term`: 113,683 (74.2%) — anonymous fresh terms
@@ -72,9 +80,13 @@ Review gate: ✅ Passed — diagnosis confirmed coherent, Step 2 scoped.
 **Script**: `scripts/ir_coverage.py`  
 **Output**: `findings/ir_coverage.json`
 
-Operate directly on the IR graph data in `corpus.jsonl` (ground truth,
-parser-independent). Do NOT use the leanExpr string parser for coverage
-measurements.
+**Data source: `.graph` JSON only.** All measurements read `entry["graph"]`
+fields parsed from `corpus.jsonl` directly. The `leanExpr` string parser from
+`ast_explorer.py` is retired and must not be used or extended here — it has
+multiple inconsistent failure modes (subscript splitting, binder swallowing)
+that make any string-level parse of `leanExpr` untrustworthy for coverage
+statistics. The mvar check in Step 1 is the correct template: structured JSON
+field access, no string parsing of pretty-printed Lean.
 
 Measurements:
 
@@ -150,7 +162,7 @@ and regenerate datasets. If gate fails, return to Step 3 with a diagnosis.
 | Entity ID sparsity | IDs like `FVAR_0` appear rarely | Model can't build stable reps |
 | Normalisation gaps | `casesOn` vs `recOn`, `mk` vs `mk._flat_ctor` | Same structure, different tokens |
 | Attribute row density | 85% of entities have zero attribute rows | A rows mostly noise |
-| AST nodes dropped | Unknown — Step 1 will quantify | Unknown information loss |
+| AST nodes dropped | Step 1 complete — string parser retired, graph-only approach confirmed | Step 2 measures from .graph JSON |
 
 ---
 
