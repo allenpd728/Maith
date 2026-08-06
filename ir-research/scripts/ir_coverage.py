@@ -173,9 +173,24 @@ def compute_attribute_density(entries: list[dict]) -> dict:
         entities = graph.get("entities", [])
         attributes = graph.get("attributes", [])
         
-        # Map attributes to entities
-        # For term entities: use index
-        # For bound/var entities: use scope
+        # Build lookup maps:
+        # - For bound/var entities: (kind, scope) -> position
+        # - For term entities: term_index -> position
+        scope_to_pos = {}  # (kind, scope) -> entity index
+        term_index_to_pos = {}  # term_index -> entity index
+        term_counter = 0
+        
+        for idx, entity in enumerate(entities):
+            eid = entity.get("id", {})
+            ekind = eid.get("kind", "")
+            escope = eid.get("scope", "")
+            key = (ekind, escope)
+            scope_to_pos[key] = idx
+            if ekind == "term":
+                term_index_to_pos[term_counter] = idx
+                term_counter += 1
+        
+        # Map attributes to entity positions
         entity_attr_count = defaultdict(int)
         
         for attr in attributes:
@@ -187,22 +202,15 @@ def compute_attribute_density(entries: list[dict]) -> dict:
             attribute_keys[key] += 1
             
             # Match target to entity
-            matched = False
             if tkind == "term":
-                # term entities are indexed by position
-                if 0 <= tindex < len(entities):
-                    entity_attr_count[tindex] += 1
-                    matched = True
+                # term entities use a separate index (0, 1, 2, ...) not position
+                if tindex in term_index_to_pos:
+                    entity_attr_count[term_index_to_pos[tindex]] += 1
             else:
                 # bound/var entities: match by kind + scope
-                for idx, entity in enumerate(entities):
-                    eid = entity.get("id", {})
-                    ekind = eid.get("kind", "")
-                    escope = eid.get("scope", "")
-                    if ekind == tkind and escope == tscope:
-                        entity_attr_count[idx] += 1
-                        matched = True
-                        break
+                target_key = (tkind, tscope)
+                if target_key in scope_to_pos:
+                    entity_attr_count[scope_to_pos[target_key]] += 1
         
         # Count entities with zero attributes
         total_entities += len(entities)
