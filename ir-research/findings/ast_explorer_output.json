@@ -1,6 +1,172 @@
 {
   "corpus_size": 4029,
-  "node_type_frequency": {
+  "corrected_diagnosis": {
+    "summary": "The 52,709 Expr.unknown nodes reported in the initial Step 1 run are a BUG IN THE STRING PARSER, not evidence of information loss in the Lean extractor. The leanExpr field is a pretty-printed display string. The parser's _KEYWORD_RE does not handle: (1) arrow punctuation '->' and '=>', (2) type annotation ':' separators, (3) unicode subscript digits in variable names (\u2081 \u2082 \u2083), (4) Greek letter variable names (\u03b1 \u03b2). These are all surface syntax artefacts of pretty-printing \u2014 they do not correspond to Lean Expr constructors. MetaExtractor.lean operates on the elaborated Lean.Expr AST directly and has explicit match arms for every Expr constructor. stats.json confirms 4,029/4,029 declarations extracted successfully with 0 failures.",
+    "parser_unknowns_are_not_ir_gaps": true,
+    "extractor_coverage": "All Lean.Expr constructors have explicit match arms in MetaExtractor.lean",
+    "corpus_extraction_success_rate": "4029/4029 (100%)",
+    "real_problems_confirmed": [
+      "Polarity always neut (24% of tokens are noise) \u2014 IR design issue",
+      "Entity ID sparsity (rare gen:* tokens, GEN_UNK collapses) \u2014 IR design issue",
+      "Normalisation gaps (casesOn/recOn, mk/mk._flat_ctor) \u2014 IR design issue",
+      "Attribute row density (85% entities have zero A rows) \u2014 IR design issue",
+      "mvar mapped to var \u2014 semantic correctness issue (quantified below)",
+      "bvar-out-of-scope is a hard fail \u2014 scope quantified for Step 2",
+      "operation-arity failure is a hard fail \u2014 scope quantified for Step 2"
+    ]
+  },
+  "parser_unknown_examples": [
+    {
+      "head": ":",
+      "depth": 3,
+      "from_decl": "IsAddTorsionFree.rec",
+      "parser_diagnosis": "Type annotation separator \u2014 part of '(x : T)' binder syntax in pretty-print, not a standalone Expr node"
+    },
+    {
+      "head": "->",
+      "depth": 1,
+      "from_decl": "IsAddTorsionFree.rec",
+      "parser_diagnosis": "Arrow punctuation between binder and body \u2014 not a Lean Expr node, is part of forallE/lam syntax sugar in pretty-print"
+    },
+    {
+      "head": "=>",
+      "depth": 5,
+      "from_decl": "IsAddTorsionFree.rec",
+      "parser_diagnosis": "Arrow punctuation between binder and body \u2014 not a Lean Expr node, is part of forallE/lam syntax sugar in pretty-print"
+    },
+    {
+      "head": "{n : Nat}",
+      "depth": 3,
+      "from_decl": "IsAddTorsionFree.rec",
+      "parser_diagnosis": "Full binder string '(x : T)' not split by parser \u2014 regex didn't match past open paren"
+    },
+    {
+      "head": "\u2082",
+      "depth": 3,
+      "from_decl": "MulOneClass.ext",
+      "parser_diagnosis": "Unicode subscript digit \u2014 part of a variable name like 'G\u2081'; parser split on non-ASCII boundary"
+    }
+  ],
+  "graph_entity_stats": {
+    "total_entities": 153118,
+    "by_kind": {
+      "term": 113683,
+      "bound": 37741,
+      "var": 1694
+    },
+    "mvar_entities": {
+      "count": 0,
+      "unique_names": 0,
+      "note": "Metavariables (?-prefixed) mapped to EntityId.var \u2014 semantically wrong (unknown \u2260 constant)",
+      "examples": []
+    },
+    "var_top20": [
+      [
+        "Nat",
+        658
+      ],
+      [
+        "Int",
+        227
+      ],
+      [
+        "instNatCastInt",
+        83
+      ],
+      [
+        "Unit",
+        61
+      ],
+      [
+        "True",
+        49
+      ],
+      [
+        "Unit.unit",
+        34
+      ],
+      [
+        "AddMonoid.nsmul_succ._autoParam",
+        31
+      ],
+      [
+        "AddMonoid.nsmul_zero._autoParam",
+        31
+      ],
+      [
+        "SubNegMonoid.sub_eq_add_neg._autoParam",
+        20
+      ],
+      [
+        "SubNegMonoid.zsmul_neg'._autoParam",
+        20
+      ],
+      [
+        "SubNegMonoid.zsmul_succ'._autoParam",
+        20
+      ],
+      [
+        "SubNegMonoid.zsmul_zero'._autoParam",
+        20
+      ],
+      [
+        "Nat.instDvd",
+        20
+      ],
+      [
+        "Monoid.npow_succ._autoParam",
+        19
+      ],
+      [
+        "Monoid.npow_zero._autoParam",
+        19
+      ],
+      [
+        "AddMonoidWithOne.natCast_succ._autoParam",
+        17
+      ],
+      [
+        "AddMonoidWithOne.natCast_zero._autoParam",
+        17
+      ],
+      [
+        "False",
+        16
+      ],
+      [
+        "Lean.Syntax",
+        16
+      ],
+      [
+        "Lean.SourceInfo.none",
+        12
+      ]
+    ]
+  },
+  "extraction_failure_scope_for_step2": {
+    "bvar_out_of_scope": {
+      "location": "MetaExtractor.lean line ~287",
+      "condition": "De Bruijn index n >= binderCtx.length",
+      "current_handling": "failUnsupported \u2014 whole declaration extraction fails",
+      "step2_measurement": "Count declarations in corpus where this could fire: compare bvar indices against binder depth at each node. Also check stats.json irConstructionFailed count as upper bound.",
+      "known_corpus_failures": "stats.json reports 0 irConstructionFailed across 4,029 declarations \u2014 so bvar-out-of-scope either never fires in this corpus or those declarations were excluded before corpus build."
+    },
+    "operation_arity_failure": {
+      "location": "MetaExtractor.lean line ~203",
+      "condition": "Named operation (neg) with fewer than requiredInputs args",
+      "current_handling": "failUnsupported \u2014 whole declaration extraction fails",
+      "step2_measurement": "Count operations in graphs where op is neg/add/sub/mul/div/pow and input count < expected arity.",
+      "known_corpus_failures": "Same: 0 irConstructionFailed in stats.json \u2014 likely never fires for Neg.neg at arity 1 in this Mathlib subset."
+    },
+    "mvar_semantic_error": {
+      "location": "MetaExtractor.lean line ~161",
+      "condition": "Expr.mvar matched \u2014 name prefixed with '?'",
+      "current_handling": "Mapped to EntityId.var \u2014 treated as a named constant",
+      "step2_measurement": "Count var entities whose name starts with '?' in corpus graphs. Already measured in graph_entity_stats.mvar_entities.",
+      "severity_note": "If mvars appear at high frequency, the model is learning to treat 'unknown holes' as if they were specific constants \u2014 a fundamental semantic error that would corrupt relationship learning."
+    }
+  },
+  "node_type_frequency_from_string_parser": {
     "Expr.app_head": 88265,
     "Expr.const": 82846,
     "Expr.unknown": 52709,
@@ -12,6 +178,7 @@
     "Expr.lam": 1071
   },
   "ir_coverage": {
+    "note": "Based on string parser \u2014 see corrected_diagnosis. Use graph_entity_stats for ground truth.",
     "total_ast_node_types": 9,
     "covered_by_ir": 8,
     "uncovered_count": 1,

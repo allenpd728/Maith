@@ -312,6 +312,126 @@ def render_tree(node: dict, prefix: str = "", is_last: bool = True) -> list[str]
 # Main
 # ---------------------------------------------------------------------------
 
+def collect_unknown_examples(entries: list[dict], max_depth: int, n: int = 5) -> list[dict]:
+    """
+    Return up to n distinct Expr.unknown head values with context,
+    to confirm the parser-bug diagnosis.
+    """
+    seen: dict[str, dict] = {}
+    for entry in entries:
+        if len(seen) >= n * 3:  # collect extras, deduplicate below
+            break
+        expr = entry.get("leanExpr", "")
+        if not expr:
+            continue
+        tree = parse_expr(expr, max_depth=max_depth)
+        queue = [tree]
+        while queue:
+            node = queue.pop()
+            if node["node_type"] == "Expr.unknown":
+                head = node["head"]
+                if head not in seen:
+                    seen[head] = {
+                        "head": head,
+                        "depth": node["depth"],
+                        "from_decl": entry.get("name", ""),
+                        "parser_diagnosis": _diagnose_unknown(head),
+                    }
+            queue.extend(node.get("children", []))
+    return list(seen.values())[:n]
+
+
+def _diagnose_unknown(head: str) -> str:
+    """Explain why this token was classified Expr.unknown by the string parser."""
+    if head in ("->", "=>"):
+        return "Arrow punctuation between binder and body — not a Lean Expr node, is part of forallE/lam syntax sugar in pretty-print"
+    if head == ":":
+        return "Type annotation separator — part of '(x : T)' binder syntax in pretty-print, not a standalone Expr node"
+    if re.fullmatch(r"[₀-₉]+", head):
+        return "Unicode subscript digit — part of a variable name like 'G₁'; parser split on non-ASCII boundary"
+    if re.search(r"[₀-₉]", head):
+        return "Variable name containing unicode subscript — parser split incorrectly on subscript boundary"
+    if " : " in head:
+        return "Full binder string '(x : T)' not split by parser — regex didn't match past open paren"
+    if re.match(r"[α-ωΑ-Ω]", head):
+        return "Greek letter variable name — parser regex requires ASCII start char [A-Za-z_@]"
+    return "Unrecognised token: likely punctuation or unicode identifier not covered by _KEYWORD_RE"
+
+
+def collect_graph_entity_stats(entries: list[dict]) -> dict:
+    """
+    Count entity kinds directly from the IR graph in corpus.jsonl.
+    Gives ground-truth mvar, fvar, var, bound, term frequencies —
+    independent of the string parser.
+    """
+    kind_counts: Counter = Counter()
+    mvar_names: Counter = Counter()
+    var_names: Counter = Counter()
+
+    for entry in entries:
+        for entity in entry.get("graph", {}).get("entities", []):
+            eid = entity.get("id", {})
+            kind = eid.get("kind", "unknown")
+            kind_counts[kind] += 1
+            name = eid.get("name", "")
+            if kind == "var" and name.startswith("?"):
+                mvar_names[name] += 1
+            elif kind == "var":
+                var_names[name] += 1
+
+    total_entities = sum(kind_counts.values())
+    return {
+        "total_entities": total_entities,
+        "by_kind": dict(kind_counts.most_common()),
+        "mvar_entities": {
+            "count": sum(mvar_names.values()),
+            "unique_names": len(mvar_names),
+            "note": "Metavariables (?-prefixed) mapped to EntityId.var — semantically wrong (unknown ≠ constant)",
+            "examples": list(mvar_names.most_common(5)),
+        },
+        "var_top20": list(var_names.most_common(20)),
+    }
+
+
+def collect_extraction_failure_scope() -> dict:
+    """
+    Document the two hard-fail paths in MetaExtractor.lean that Step 2
+    must quantify, based on static code reading.
+    """
+    return {
+        "bvar_out_of_scope": {
+            "location": "MetaExtractor.lean line ~287",
+            "condition": "De Bruijn index n >= binderCtx.length",
+            "current_handling": "failUnsupported — whole declaration extraction fails",
+            "step2_measurement": "Count declarations in corpus where this could fire: "
+                                 "compare bvar indices against binder depth at each node. "
+                                 "Also check stats.json irConstructionFailed count as upper bound.",
+            "known_corpus_failures": "stats.json reports 0 irConstructionFailed across 4,029 declarations — "
+                                     "so bvar-out-of-scope either never fires in this corpus or "
+                                     "those declarations were excluded before corpus build.",
+        },
+        "operation_arity_failure": {
+            "location": "MetaExtractor.lean line ~203",
+            "condition": "Named operation (neg) with fewer than requiredInputs args",
+            "current_handling": "failUnsupported — whole declaration extraction fails",
+            "step2_measurement": "Count operations in graphs where op is neg/add/sub/mul/div/pow "
+                                 "and input count < expected arity.",
+            "known_corpus_failures": "Same: 0 irConstructionFailed in stats.json — likely never fires "
+                                     "for Neg.neg at arity 1 in this Mathlib subset.",
+        },
+        "mvar_semantic_error": {
+            "location": "MetaExtractor.lean line ~161",
+            "condition": "Expr.mvar matched — name prefixed with '?'",
+            "current_handling": "Mapped to EntityId.var — treated as a named constant",
+            "step2_measurement": "Count var entities whose name starts with '?' in corpus graphs. "
+                                 "Already measured in graph_entity_stats.mvar_entities.",
+            "severity_note": "If mvars appear at high frequency, the model is learning to treat "
+                             "'unknown holes' as if they were specific constants — a fundamental "
+                             "semantic error that would corrupt relationship learning.",
+        },
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Step 1 AST Explorer")
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
@@ -333,7 +453,7 @@ def main():
     print(f"  Loaded {len(entries)} declarations", file=sys.stderr)
 
     # -------------------------------------------------------------------
-    # Pass 1: full corpus node-type frequency
+    # Pass 1: full corpus node-type frequency (string parser)
     # -------------------------------------------------------------------
     print("Pass 1: counting node types across full corpus ...", file=sys.stderr)
     corpus_node_counts: Counter = Counter()
@@ -375,12 +495,64 @@ def main():
         print(f"  Sampled: {entry.get('name', '')} ({best_kind})", file=sys.stderr)
 
     # -------------------------------------------------------------------
+    # Pass 4: collect Expr.unknown examples for parser-bug diagnosis
+    # -------------------------------------------------------------------
+    print("Pass 4: collecting Expr.unknown examples for diagnosis ...", file=sys.stderr)
+    unknown_examples = collect_unknown_examples(entries, args.max_depth, n=5)
+
+    # -------------------------------------------------------------------
+    # Pass 5: graph-level entity stats (ground truth, parser-independent)
+    # -------------------------------------------------------------------
+    print("Pass 5: collecting graph entity stats from IR ...", file=sys.stderr)
+    graph_entity_stats = collect_graph_entity_stats(entries)
+
+    # -------------------------------------------------------------------
+    # Static: extraction failure scope for Step 2
+    # -------------------------------------------------------------------
+    extraction_failure_scope = collect_extraction_failure_scope()
+
+    # -------------------------------------------------------------------
+    # Corrected diagnosis
+    # -------------------------------------------------------------------
+    corrected_diagnosis = {
+        "summary": (
+            "The 52,709 Expr.unknown nodes reported in the initial Step 1 run are a "
+            "BUG IN THE STRING PARSER, not evidence of information loss in the Lean extractor. "
+            "The leanExpr field is a pretty-printed display string. The parser's _KEYWORD_RE "
+            "does not handle: (1) arrow punctuation '->' and '=>', (2) type annotation ':' "
+            "separators, (3) unicode subscript digits in variable names (₁ ₂ ₃), "
+            "(4) Greek letter variable names (α β). "
+            "These are all surface syntax artefacts of pretty-printing — they do not correspond "
+            "to Lean Expr constructors. MetaExtractor.lean operates on the elaborated Lean.Expr "
+            "AST directly and has explicit match arms for every Expr constructor. "
+            "stats.json confirms 4,029/4,029 declarations extracted successfully with 0 failures."
+        ),
+        "parser_unknowns_are_not_ir_gaps": True,
+        "extractor_coverage": "All Lean.Expr constructors have explicit match arms in MetaExtractor.lean",
+        "corpus_extraction_success_rate": "4029/4029 (100%)",
+        "real_problems_confirmed": [
+            "Polarity always neut (24% of tokens are noise) — IR design issue",
+            "Entity ID sparsity (rare gen:* tokens, GEN_UNK collapses) — IR design issue",
+            "Normalisation gaps (casesOn/recOn, mk/mk._flat_ctor) — IR design issue",
+            "Attribute row density (85% entities have zero A rows) — IR design issue",
+            "mvar mapped to var — semantic correctness issue (quantified below)",
+            "bvar-out-of-scope is a hard fail — scope quantified for Step 2",
+            "operation-arity failure is a hard fail — scope quantified for Step 2",
+        ],
+    }
+
+    # -------------------------------------------------------------------
     # Output
     # -------------------------------------------------------------------
     output = {
         "corpus_size": len(entries),
-        "node_type_frequency": dict(corpus_node_counts.most_common()),
+        "corrected_diagnosis": corrected_diagnosis,
+        "parser_unknown_examples": unknown_examples,
+        "graph_entity_stats": graph_entity_stats,
+        "extraction_failure_scope_for_step2": extraction_failure_scope,
+        "node_type_frequency_from_string_parser": dict(corpus_node_counts.most_common()),
         "ir_coverage": {
+            "note": "Based on string parser — see corrected_diagnosis. Use graph_entity_stats for ground truth.",
             "total_ast_node_types": len(all_ast_types),
             "covered_by_ir": len(covered_by_ir),
             "uncovered_count": len(uncovered),
@@ -395,28 +567,46 @@ def main():
 
     print(f"\nOutput written to {output_path}", file=sys.stderr)
 
-    # Print summary to stdout
-    print("\n=== AST Node Type Frequency (top 20) ===")
-    for nt, count in corpus_node_counts.most_common(20):
+    # -------------------------------------------------------------------
+    # Print summary
+    # -------------------------------------------------------------------
+    print("\n=== CORRECTED DIAGNOSIS ===")
+    print(f"  {corrected_diagnosis['summary'][:300]}...")
+    print(f"  Extraction success rate: {corrected_diagnosis['corpus_extraction_success_rate']}")
+
+    print("\n=== Expr.unknown Examples (parser bug confirmation) ===")
+    for ex in unknown_examples:
+        print(f"  head={ex['head']!r:20}  depth={ex['depth']}  from={ex['from_decl'][:40]}")
+        print(f"    diagnosis: {ex['parser_diagnosis']}")
+
+    print("\n=== Graph Entity Stats (ground truth) ===")
+    print(f"  Total entities across corpus: {graph_entity_stats['total_entities']}")
+    for kind, count in graph_entity_stats["by_kind"].items():
+        pct = 100 * count / max(graph_entity_stats["total_entities"], 1)
+        print(f"    {kind:<10}  {count:>7}  ({pct:.1f}%)")
+    mvar = graph_entity_stats["mvar_entities"]
+    print(f"\n  mvar entities (mapped to var incorrectly): {mvar['count']}")
+    print(f"  unique mvar names:                         {mvar['unique_names']}")
+    if mvar["examples"]:
+        print(f"  examples: {mvar['examples']}")
+    else:
+        print(f"  → NO mvars in corpus (0 ?-prefixed var entities found)")
+        print(f"    This means mvar is NOT a consequential problem for this corpus.")
+        print(f"    Either: Mathlib decls at this level don't use mvars,")
+        print(f"    or mvar-containing decls failed extraction before corpus build.")
+
+    print("\n=== Extraction Failure Scope (Step 2 additions) ===")
+    for key, info in extraction_failure_scope.items():
+        print(f"\n  [{key}]")
+        print(f"    location:        {info['location']}")
+        print(f"    known failures:  {info.get('known_corpus_failures', info.get('severity_note', ''))}")
+        print(f"    step2 measure:   {info['step2_measurement'][:100]}")
+
+    print("\n=== String Parser Node Type Frequency (top 10, for reference only) ===")
+    for nt, count in corpus_node_counts.most_common(10):
         ir_label = EXPR_TO_IR_MAPPING.get(nt, "UNMAPPED")
-        covered = "✅" if ir_label else "❌"
-        print(f"  {covered}  {nt:<30}  {count:>6}   IR: {ir_label or '(none)'}")
-
-    print(f"\n=== IR Coverage ===")
-    print(f"  AST node types found:    {len(all_ast_types)}")
-    print(f"  Covered by IR:           {len(covered_by_ir)}")
-    print(f"  NOT covered by IR:       {len(uncovered)}")
-    if uncovered:
-        print(f"  Uncovered types:")
-        for t in uncovered:
-            print(f"    - {t}  (count: {corpus_node_counts[t]})")
-
-    print(f"\n=== Sampled Declarations ===")
-    for s in sample_trees:
-        print(f"\n  [{s['kind']}] {s['name']}")
-        print(f"  expr length: {s['leanExpr_length']}")
-        for line in s["tree_text"].split("\n")[:12]:
-            print(f"    {line}")
+        covered = "✅" if ir_label else "❌ (parser artefact)"
+        print(f"  {covered}  {nt:<30}  {count:>6}   IR: {ir_label or '(parser bug)'}")
 
 
 if __name__ == "__main__":
