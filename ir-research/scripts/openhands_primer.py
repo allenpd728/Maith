@@ -2,30 +2,33 @@
 """
 openhands_primer.py
 
-Starts an ngrok TCP tunnel, then emits a ready-to-paste OpenHands primer
-that includes:
-  - SSH connection details (host, port, user, private key)
-  - Repo path and branch instructions
-  - Local file paths (gitignored files OpenHands needs to access via SSH)
-  - The full task prompt
+Starts an ngrok TCP tunnel, then emits a ready-to-paste OpenHands primer.
+
+SSH key workflow (no private key sharing):
+  1. Run this script — it starts ngrok and prints the primer.
+  2. Paste the primer into OpenHands to kick off the session.
+  3. OpenHands' FIRST task is to print their public key.
+  4. Paste their public key back to Kit.
+  5. Kit tells you to run:
+       echo '<their-pub-key>' >> ~/.ssh/authorized_keys
+       chmod 600 ~/.ssh/authorized_keys
+  6. OpenHands can then connect to the sandbox with their own key.
+     No private keys are ever shared or written to the repo.
 
 Usage:
     python3 ir-research/scripts/openhands_primer.py \
-        --prompt   ir-research/OPENHANDS_STEP2_PROMPT.md \
-        --branch   kit/ir-design-research \
-        --push-to  kit/ir-design-research \
-        --repo     ~/Library/Caches/com.spotify.studio/.studio/artifacts/maith-repo \
+        --prompt      ir-research/OPENHANDS_STEP3_PROMPT.md \
+        --branch      kit/ir-design-research \
+        --push-to     openhands/ir-schema-step3 \
+        --repo        ~/Library/Caches/com.spotify.studio/.studio/artifacts/maith-repo \
         --local-files Corpus/corpus.jsonl,datasets/vocab_A.json,datasets/train_A.jsonl,Corpus/stats.json \
-        --key-path ~/.ssh/openhands_key \
-        --ssh-port 22 \
-        --user     philipallen
+        --ngrok-addr  tcp://4.tcp.ngrok.io:15643 \
+        --user        philipallen
 
 The script:
-  1. Starts ngrok tcp <ssh-port> (if not already tunnelling on that port)
-  2. Waits for the public TCP address
-  3. Reads the prompt file
-  4. Reads the private key file
-  5. Prints a formatted primer block to stdout — copy-paste into OpenHands
+  1. Starts ngrok tcp <ssh-port> (or accepts a pre-existing address via --ngrok-addr)
+  2. Reads the prompt file
+  3. Prints a formatted primer block to stdout — copy-paste into OpenHands
 
 Press Ctrl-C to stop ngrok when OpenHands is done.
 """
@@ -108,18 +111,29 @@ def build_primer(
     branch: str,
     push_to: str,
     local_files: list[str],
-    private_key_content: str,
     prompt_content: str,
-    pub_key: str | None,
 ) -> str:
     local_files_block = "\n".join(f"  - {repo_path}/{f}" for f in local_files)
 
     primer = f"""
 # OpenHands Session Primer
 
-## SSH Access
+## First task: provide your public key
 
-Connect to the sandbox machine via:
+Before doing any other work, print your SSH public key:
+
+```bash
+cat ~/.ssh/id_ed25519.pub || cat ~/.ssh/id_rsa.pub
+```
+
+Paste the output back to Kit. Kit will tell you to run the corresponding
+`echo '...' >> ~/.ssh/authorized_keys` command on your side to add it,
+then you will be able to connect to the sandbox directly with your own key
+for the rest of this session and future sessions.
+
+---
+
+## SSH Access to sandbox
 
 ```
 Host: {ngrok_host}
@@ -127,16 +141,13 @@ Port: {ngrok_port}
 User: {ssh_user}
 ```
 
-Private key (save as `~/.ssh/maith_sandbox` and `chmod 600`):
-
-```
-{private_key_content.strip()}
-```
-
 SSH command:
 ```
-ssh -i ~/.ssh/maith_sandbox -p {ngrok_port} {ssh_user}@{ngrok_host}
+ssh -p {ngrok_port} {ssh_user}@{ngrok_host}
 ```
+
+Note: the ngrok tunnel is only open during active sessions. Kit will provide
+a fresh address at the start of each new session.
 
 ---
 
@@ -144,24 +155,34 @@ ssh -i ~/.ssh/maith_sandbox -p {ngrok_port} {ssh_user}@{ngrok_host}
 
 **Local path on sandbox**: `{repo_path}`
 
-Clone is already present on the sandbox — do not re-clone. Just SSH in and work directly in that directory.
+Do NOT re-clone. SSH in and work directly in that directory.
 
-**Branch to work on**: `{branch}`
-**Push to**: `{push_to}`
+**Branch to read/reference**: `{branch}`
+**Branch to push to**: `{push_to}`
 
 ```bash
 cd {repo_path}
+git fetch origin
 git checkout {branch}
 git pull origin {branch}
+git checkout -b {push_to}
 ```
 
 ---
 
-## Local files (gitignored — only accessible via SSH)
+## Local files (gitignored — only accessible via SSH on sandbox)
 
-These files are not in the remote GitHub repo. Access them on the sandbox via SSH:
+These files are not in the remote GitHub repo:
 
 {local_files_block}
+
+---
+
+## Python
+
+```
+/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+```
 
 ---
 
@@ -171,14 +192,13 @@ These files are not in the remote GitHub repo. Access them on the sandbox via SS
 
 ---
 
-## Commit and push
+## Commit and push when done
 
-When done:
 ```bash
 git push origin {push_to}
 ```
 
-Do NOT open a PR — the reviewer (Kit) will inspect the branch directly.
+Do NOT open a PR — Kit reviews the branch directly before merging.
 """.strip()
 
     return primer
@@ -187,49 +207,39 @@ Do NOT open a PR — the reviewer (Kit) will inspect the branch directly.
 def main():
     parser = argparse.ArgumentParser(description="Generate OpenHands session primer")
     parser.add_argument("--prompt",      required=True,  help="Path to task .md prompt file")
-    parser.add_argument("--branch",      required=True,  help="Branch OpenHands works on")
-    parser.add_argument("--push-to",     default=None,   help="Branch to push to (default: same as --branch)")
+    parser.add_argument("--branch",      required=True,  help="Branch OpenHands reads/references")
+    parser.add_argument("--push-to",     default=None,   help="Branch OpenHands pushes to (default: same as --branch)")
     parser.add_argument("--repo",        default="~/Library/Caches/com.spotify.studio/.studio/artifacts/maith-repo",
                         help="Absolute local path to the repo on the sandbox machine")
     parser.add_argument("--local-files", default="",
                         help="Comma-separated list of gitignored files (relative to repo root)")
-    parser.add_argument("--key-path",    required=True,  help="Path to the SSH private key to share with OpenHands")
-    parser.add_argument("--ssh-port",    type=int, default=22, help="Local SSH port (default: 22)")
+    parser.add_argument("--ssh-port",    type=int, default=22, help="Local SSH port to tunnel (default: 22)")
     parser.add_argument("--user",        default=os.environ.get("USER", "user"), help="SSH username")
-    parser.add_argument("--openhands-pub-key", default=None,
-                        help="OpenHands public key to include in authorized_keys instructions")
-    parser.add_argument("--no-ngrok",   action="store_true",
-                        help="Skip starting ngrok — use if tunnel is already running")
+    parser.add_argument("--ngrok-addr",  default=None,
+                        help="Pre-existing ngrok TCP address e.g. tcp://4.tcp.ngrok.io:15643 — skips starting ngrok")
     args = parser.parse_args()
 
     push_to = args.push_to or args.branch
 
     # --- Resolve paths ---
     prompt_path = Path(args.prompt).expanduser()
-    key_path    = Path(args.key_path).expanduser()
     repo_path   = str(Path(args.repo).expanduser())
 
     if not prompt_path.exists():
         print(f"ERROR: prompt file not found: {prompt_path}", file=sys.stderr)
         sys.exit(1)
 
-    if not key_path.exists():
-        print(f"ERROR: private key not found: {key_path}", file=sys.stderr)
-        sys.exit(1)
-
     prompt_content = prompt_path.read_text()
-    private_key    = key_path.read_text()
     local_files    = [f.strip() for f in args.local_files.split(",") if f.strip()]
 
     # --- ngrok ---
     ngrok_proc = None
-    if args.no_ngrok:
-        result = find_existing_ngrok_tcp()
-        if not result:
-            print("ERROR: --no-ngrok set but no existing TCP tunnel found.", file=sys.stderr)
-            sys.exit(1)
-        ngrok_host, ngrok_port = result
-        print(f"Using existing ngrok tunnel: {ngrok_host}:{ngrok_port}", file=sys.stderr)
+    if args.ngrok_addr:
+        # Use supplied address directly — e.g. tcp://4.tcp.ngrok.io:15643
+        addr = args.ngrok_addr.replace("tcp://", "")
+        ngrok_host, ngrok_port_str = addr.rsplit(":", 1)
+        ngrok_port = int(ngrok_port_str)
+        print(f"Using supplied ngrok address: {ngrok_host}:{ngrok_port}", file=sys.stderr)
     else:
         existing = find_existing_ngrok_tcp()
         if existing:
@@ -247,9 +257,7 @@ def main():
         branch=args.branch,
         push_to=push_to,
         local_files=local_files,
-        private_key_content=private_key,
         prompt_content=prompt_content,
-        pub_key=args.openhands_pub_key,
     )
 
     print("\n" + "=" * 70)
