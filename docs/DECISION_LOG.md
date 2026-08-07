@@ -1296,9 +1296,9 @@ The flat-IR ablation was designed to test: "Is graph structure helping at all, o
 
 ### DEC-025 — Probing experiment: does Variant A encode semantic content?
 
-**Date:** 2026-08-05
-**Status:** 🟡 Pending — scripts written by OpenHands (openhands/probing-scripts), execution by Kit
-**Decision:** TBD — fill in after running python/extract_representations.py and python/probing_task.py
+**Date:** 2026-08-07
+**Status:** ✅ Complete
+**Decision:** A_encodes_semantics — IR representations carry strong semantic content; pursue v2 IR + corpus expansion
 
 #### Purpose
 
@@ -1325,32 +1325,44 @@ Variants probed: A v1.4.0 (vocab=1236), C phase6 (vocab=151936), Flat-IR (vocab=
 
 #### Results
 
-<!-- Kit fills in after running the scripts -->
+Ran 2026-08-07. Variants A and flat only (B, C, random not needed — gap was decisive).
 
-| Variant | Accuracy (mean +/- std, 3 seeds) | Macro-F1 | Balanced Acc |
+| Variant | Accuracy (mean ± std, 3 seeds) | Macro-F1 | Balanced Acc |
 |---|---|---|---|
-| Variant A v1.4.0 | — | — | — |
-| Variant C phase6 | — | — | — |
-| Flat-IR | — | — | — |
-| Variant B phase6 | — | — | — |
-| Random Qwen | — | — | — |
-| Random baseline | ~9.1% | — | — |
+| Variant A v1.4.0 | **75.4% ± 1.7%** | 0.703 ± 0.050 | 0.700 ± 0.025 |
+| Flat-IR | 13.6% ± 1.5% | 0.042 ± 0.005 | 0.103 ± 0.002 |
+| Random baseline | 9.1% | — | — |
 
-A vs Flat-IR gap: — pp
-Outcome: <!-- A_encodes_semantics / inconclusive / flat_matches_A -->
-Task 2 needed: <!-- yes / no -->
+A vs Flat-IR gap: **61.9 pp**
+Outcome: **A_encodes_semantics**
+Task 2 needed: No — gap is unambiguous
+
+Per-class F1 (Variant A, best seed):
+- Algebra.Group.Defs: 0.720
+- Algebra.Group.Basic: 0.816
+- Order.Lattice: 0.824
+- Algebra.Ring.Defs: 0.626
+- Order.Basic: 0.850
+- Group.Subgroup.Basic: 0.866
+- Order.LatticeIntervals: 0.950
+- Algebra.Ring.GeomSum: 0.714
+- Topology.Basic: 0.667
+- Algebra.Ring.Basic: 0.267 ← weakest (likely overlap with Ring.Defs)
+- Other: 0.571
 
 #### Interpretation
 
-<!-- Fill in after results land — use the outcome table from PROBING_TASK_FINAL.md -->
+The result is unambiguous. A 62pp gap between Variant A (75.4%) and Flat-IR (13.6%) — barely above the 9.1% random baseline — confirms that Variant A's representations carry strong Mathlib-structured semantic content. A linear probe alone is sufficient to distinguish 11 Mathlib modules with 75% accuracy, meaning the information is linearly decodable from the final hidden states.
+
+Flat-IR at 13.6% confirms the shape-only baseline encodes almost no module-identifying content — the model learns structural sequence patterns but not mathematical identity.
+
+The higher perplexity of Variant A vs Flat-IR (DEC-024: ~0.27 bits/token gap) is therefore a task difficulty artifact, not a failure to learn. Predicting the next semantic token (e.g. `typeclass_name:Group`, `gen:Mathlib.Algebra...`) is genuinely harder than predicting the next SLOT. The model is working correctly — it is learning a harder, more informative task.
+
+The weakest class is Algebra.Ring.Basic (F1=0.267), likely due to semantic overlap with Ring.Defs. This is expected and is not a concern at this stage.
 
 #### Next step
 
-<!-- One of:
-  A_encodes_semantics: pursue corpus expansion to 10k+ examples or IR pretraining
-  flat_matches_A: redesign training objective or IR format before investing in data
-  inconclusive: run Task 2 (arity prediction), document combined finding
--->
+A_encodes_semantics → proceed with v2 IR implementation and corpus rebuild. The improved typeclass_name tokens (C2) should directly improve Ring.Basic/Ring.Defs disambiguation in future probing runs.
 
 #### References
 
