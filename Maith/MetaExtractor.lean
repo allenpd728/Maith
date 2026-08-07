@@ -84,6 +84,39 @@ private def getTypeclassName (e : Expr) : String :=
   | .const name _ => name.toString
   | _ => "(unknown)"
 
+-- Extract the short (unqualified) name of the head constant from an application.
+-- Used for typeclass_name attribute: "Group" instead of "Mathlib.Algebra.Group.Basic.Group".
+private def getTypeclassShortName (e : Expr) : String :=
+  match e.getAppFn with
+  | .const name _ =>
+    match name.components.getLast? with
+    | some part => part.toString
+    | none => name.toString
+  | _ => "(unknown)"
+
+-- Bucket a fully-qualified Lean name to its top-level namespace component.
+-- "Mathlib.Algebra.Group.Basic.mul_comm" -> "GEN_ALGEBRA"
+-- "Lean.Parser.Term.fun" -> "GEN_LEAN"
+-- Names with no dots -> "GEN_UNKNOWN"
+-- This reduces ~1,999 unique gen:* vocab entries to ~20 stable bucket tokens.
+private def bucketGenName (qualifiedName : String) : String :=
+  match qualifiedName.splitOn "." with
+  | first :: _ =>
+    let upper := first.toUpper
+    match upper with
+    | "MATHLIB"  => "GEN_MATHLIB"
+    | "ALGEBRA"  => "GEN_ALGEBRA"
+    | "ORDER"    => "GEN_ORDER"
+    | "TOPOLOGY" => "GEN_TOPOLOGY"
+    | "ANALYSIS" => "GEN_ANALYSIS"
+    | "LOGIC"    => "GEN_LOGIC"
+    | "DATA"     => "GEN_DATA"
+    | "LEAN"     => "GEN_LEAN"
+    | "INIT"     => "GEN_INIT"
+    | "STD"      => "GEN_STD"
+    | _          => "GEN_UNKNOWN"
+  | [] => "GEN_UNKNOWN"
+
 -- Push `id` as the innermost binder for the duration of `action`, then pop it.
 private def withBinder {α : Type} (id : EntityId) (action : ExtractM α) : ExtractM α := do
   modify (fun st => { st with binderCtx := id :: st.binderCtx })
@@ -190,7 +223,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
           -- Unexpected arity: treat as a generic operation to avoid extraction failure.
           let argIds ← args.mapM extractExprEntityId
           let outputId ← freshTerm
-          addOperation argIds outputId (.generic fnName.toString)
+          addOperation argIds outputId (.generic (bucketGenName fnName.toString))
           pure outputId
         else do
           let srcId ← extractExprEntityId relationArgs[0]!
@@ -216,7 +249,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
         -- representation which is a separate IR extension.
         let argIds ← args.mapM extractExprEntityId
         let outputId ← freshTerm
-        addOperation argIds outputId (.generic fnName.toString)
+        addOperation argIds outputId (.generic (bucketGenName fnName.toString))
         pure outputId
     | _ =>
       -- HOF application: the function head is a bvar, fvar, or other non-constant
@@ -246,6 +279,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     match binderInfo with
     | .instImplicit =>
       addAttribute binderId "typeclass" (getTypeclassName binderType)
+      addAttribute binderId "typeclass_name" (getTypeclassShortName binderType)
     | .implicit | .strictImplicit =>
       match typeIdOpt with
       | some typeId => addRelation binderId typeId .eq
@@ -270,6 +304,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     match binderInfo with
     | .instImplicit =>
       addAttribute binderId "typeclass" (getTypeclassName binderType)
+      addAttribute binderId "typeclass_name" (getTypeclassShortName binderType)
     | .implicit | .strictImplicit =>
       match typeIdOpt with
       | some typeId => addRelation binderId typeId .eq
@@ -306,7 +341,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     -- stable: "proj:Semigroup.toMul/0" is a distinct, deterministic op token.
     let structId  ← extractExprEntityId struct
     let outputId  ← freshTerm
-    let opLabel   := s!"proj:{typeName}/{idx}"
+    let opLabel   := s!"proj:{bucketGenName typeName.toString}/{idx}"
     addOperation [structId] outputId (.generic opLabel)
     pure outputId
   | .mdata _ body => extractExprEntityId body
