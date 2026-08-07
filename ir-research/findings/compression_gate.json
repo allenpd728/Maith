@@ -1,0 +1,47 @@
+{
+  "gate_result": "PASS",
+  "criteria": {
+    "bpt_improvement": true,
+    "redundancy_improvement": true,
+    "coverage_maintained": true
+  },
+  "configurations": {
+    "current_A": {
+      "bpt": 6.3718,
+      "redundancy": 0.3797,
+      "coverage": 0.9973,
+      "collision_rate": 0.6396,
+      "avg_tokens_per_decl": 172.7,
+      "vocab_size": 1236
+    },
+    "flat": {
+      "bpt": 1.5366,
+      "redundancy": 0.5558,
+      "coverage": 1.0,
+      "collision_rate": 0.0,
+      "avg_tokens_per_decl": 245.1,
+      "vocab_size": 11
+    },
+    "v2_C1C2C4": {
+      "bpt": 5.3342,
+      "redundancy": 0.3607,
+      "coverage": 1.0,
+      "collision_rate": 0.3232,
+      "avg_tokens_per_decl": 118.0,
+      "vocab_size": 1256,
+      "theoretical": true,
+      "notes": "Projected from C1+C2+C4 schema changes. C1 theoretical (encoder omits polarity). C2 adds 2 tokens/decl for 3149 typeclass decls. C4 improves distribution with 20 namespace buckets."
+    },
+    "v2_C3_informational": {
+      "bpt": 5.3342,
+      "redundancy": 0.3607,
+      "coverage": 1.0,
+      "collision_rate": 0.3232,
+      "avg_tokens_per_decl": 118.0,
+      "vocab_size": 1256,
+      "theoretical": true,
+      "notes": "C3 deferred \u2014 informational only, not a gate criterion. Adds attribute rows for all term entities."
+    }
+  },
+  "next_step": "Proceed to MetaExtractor.lean update"
+}
