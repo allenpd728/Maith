@@ -99,23 +99,52 @@ private def getTypeclassShortName (e : Expr) : String :=
 -- "Lean.Parser.Term.fun" -> "GEN_LEAN"
 -- Names with no dots -> "GEN_UNKNOWN"
 -- This reduces ~1,999 unique gen:* vocab entries to ~20 stable bucket tokens.
+-- Map a single component string to a bucket, or return none.
+private def bucketComponent (c : String) : Option String :=
+  match c.toUpper with
+  | "ALGEBRA"    => some "GEN_ALGEBRA"
+  | "ORDER"      => some "GEN_ORDER"
+  | "TOPOLOGY"   => some "GEN_TOPOLOGY"
+  | "ANALYSIS"   => some "GEN_ANALYSIS"
+  | "LOGIC"      => some "GEN_LOGIC"
+  | "DATA"       => some "GEN_DATA"
+  | "LEAN"       => some "GEN_LEAN"
+  | "INIT"       => some "GEN_INIT"
+  | "STD"        => some "GEN_STD"
+  | "MATHLIB"    => some "GEN_MATHLIB"
+  | "MODULE"     => some "GEN_ALGEBRA"   -- Module theory lives under Algebra
+  | "RING"       => some "GEN_ALGEBRA"
+  | "GROUP"      => some "GEN_ALGEBRA"
+  | "FIELD"      => some "GEN_ALGEBRA"
+  | "LINEAR"     => some "GEN_ALGEBRA"
+  | "CATEGORY"   => some "GEN_ALGEBRA"
+  | "METRIC"     => some "GEN_TOPOLOGY"
+  | "FILTER"     => some "GEN_TOPOLOGY"
+  | "MEASURE"    => some "GEN_ANALYSIS"
+  | "SET"        => some "GEN_DATA"
+  | "FINSET"     => some "GEN_DATA"
+  | "LIST"       => some "GEN_DATA"
+  | "MULTISET"   => some "GEN_DATA"
+  | "NAT"        => some "GEN_DATA"
+  | "INT"        => some "GEN_DATA"
+  | "RAT"        => some "GEN_DATA"
+  | _            => none
+
 private def bucketGenName (qualifiedName : String) : String :=
-  match qualifiedName.splitOn "." with
-  | first :: _ =>
-    let upper := first.toUpper
-    match upper with
-    | "MATHLIB"  => "GEN_MATHLIB"
-    | "ALGEBRA"  => "GEN_ALGEBRA"
-    | "ORDER"    => "GEN_ORDER"
-    | "TOPOLOGY" => "GEN_TOPOLOGY"
-    | "ANALYSIS" => "GEN_ANALYSIS"
-    | "LOGIC"    => "GEN_LOGIC"
-    | "DATA"     => "GEN_DATA"
-    | "LEAN"     => "GEN_LEAN"
-    | "INIT"     => "GEN_INIT"
-    | "STD"      => "GEN_STD"
-    | _          => "GEN_UNKNOWN"
-  | [] => "GEN_UNKNOWN"
+  -- Walk up to 3 components looking for a recognisable namespace bucket.
+  -- "Mathlib.Algebra.Group.Basic.mul_comm" → first="Mathlib" → GEN_MATHLIB
+  -- "Algebra.Ring.Defs.add_comm"           → first="Algebra" → GEN_ALGEBRA
+  -- "IsAddTorsionFree.rec"                  → first not matched,
+  --                                           second not present → GEN_UNKNOWN
+  let parts := qualifiedName.splitOn "."
+  let rec tryParts : List String → String
+    | []      => "GEN_UNKNOWN"
+    | c :: cs =>
+      match bucketComponent c with
+      | some b => b
+      | none   => tryParts cs
+  -- Only scan the first 3 components to avoid matching deep leaf names
+  tryParts (parts.take 3)
 
 -- Push `id` as the innermost binder for the duration of `action`, then pop it.
 private def withBinder {α : Type} (id : EntityId) (action : ExtractM α) : ExtractM α := do
