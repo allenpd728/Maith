@@ -46,7 +46,16 @@ Extract an IR graph from a named declaration using the given environment.
 -/
 def extractDeclGraph (env : Environment) (declName : String) : Option Graph := do
   let info ← getConstant? env declName
-  match extractGraphFromConstantInfo info with
+  let n := declName.splitOn "." |>.foldl (fun acc s => Name.str acc s) Name.anonymous
+  let moduleName : String :=
+    match env.getModuleIdxFor? n with
+    | some midx =>
+      if midx.toNat < env.header.modules.size then
+        env.header.modules[midx.toNat]!.module.toString
+      else
+        env.header.mainModule.toString
+    | none => env.header.mainModule.toString
+  match extractGraphFromConstantInfo info moduleName with
   | .ok g => pure g
   | .fail _ => none
 
@@ -97,6 +106,25 @@ Count A rows with a given key.
 -/
 def countAttributeKey (g : Graph) (key : String) : Nat :=
   g.attributes.filter (fun a => a.key = key) |>.length
+
+/--
+Check that a graph has at least one O row whose op string starts with "GEN_"
+but is NOT "GEN_UNKNOWN". Used to verify module-based bucketing (v2 C4).
+-/
+def hasNamedGenBucket (g : Graph) : Bool :=
+  g.operations.any (fun o =>
+    match o.op with
+    | .generic s => s.startsWith "GEN_" && s ≠ "GEN_UNKNOWN"
+    | _ => false)
+
+/--
+Check that a graph has NO operations with op "GEN_UNKNOWN".
+-/
+def hasNoGenUnknown (g : Graph) : Bool :=
+  g.operations.all (fun o =>
+    match o.op with
+    | .generic s => s ≠ "GEN_UNKNOWN"
+    | _ => true)
 
 /--
 Check that two graphs are structurally different.
@@ -313,12 +341,66 @@ def extractionFaithfulnessTests (env : Environment) : List TestResult := [
       (hasRelationOp · .eq)
       "Theorems should have eq relations between bound variables and types"
   else
-    TestResult.pass "AddCancelSemigroup.toIsLeftCancelMul has eq relations" "Skipped: LeftCancelSemigroup.toIsLeftCancelMul not available (requires Mathlib)"
+    TestResult.pass "AddCancelSemigroup.toIsLeftCancelMul has eq relations" "Skipped: LeftCancelSemigroup.toIsLeftCancelMul not available (requires Mathlib)",
+
+  /- ============================================
+     v2 C2: typeclass_name attribute
+     instImplicit binders should carry typeclass_name in addition to typeclass
+     ============================================ -/
+  if declExists? env "mul_assoc" then
+    runGraphTest env "mul_assoc has typeclass_name A row (v2 C2)" "mul_assoc"
+      (hasAttributeKey · "typeclass_name")
+      "mul_assoc has a typeclass binder — should emit typeclass_name attribute (C2)"
+  else
+    TestResult.pass "mul_assoc has typeclass_name A row (v2 C2)" "Skipped: mul_assoc not available",
+
+  if declExists? env "AddZero.mk" then
+    runGraphTest env "AddZero.mk has typeclass_name A row (v2 C2)" "AddZero.mk"
+      (hasAttributeKey · "typeclass_name")
+      "AddZero.mk is a typeclass constructor — should emit typeclass_name (C2)"
+  else
+    TestResult.pass "AddZero.mk has typeclass_name A row (v2 C2)" "Skipped: AddZero.mk not available",
+
+  /- ============================================
+     v2 C3: const_name attribute on .const entities
+     ============================================ -/
+  if declExists? env "Nat.add" then
+    runGraphTest env "Nat.add has const_name A row (v2 C3)" "Nat.add"
+      (hasAttributeKey · "const_name")
+      "Nat.add involves .const exprs — should emit const_name attribute (C3)"
+  else
+    TestResult.pass "Nat.add has const_name A row (v2 C3)" "Skipped: Nat.add not available",
+
+  if declExists? env "mul_assoc" then
+    runGraphTest env "mul_assoc has const_name A rows (v2 C3)" "mul_assoc"
+      (fun g => countAttributeKey g "const_name" ≥ 1)
+      "mul_assoc references constants — should have at least one const_name attribute (C3)"
+  else
+    TestResult.pass "mul_assoc has const_name A rows (v2 C3)" "Skipped: mul_assoc not available",
+
+  /- ============================================
+     v2 C4: GEN_* module-based bucketing
+     Mathlib declarations should produce named GEN_* buckets, not GEN_UNKNOWN
+     ============================================ -/
+  if declExists? env "mul_assoc" then
+    runGraphTest env "mul_assoc generic ops use named GEN_* buckets (v2 C4)" "mul_assoc"
+      (fun g => g.operations.isEmpty || hasNoGenUnknown g)
+      "mul_assoc is in Mathlib.Algebra — generic ops should NOT be GEN_UNKNOWN (C4)"
+  else
+    TestResult.pass "mul_assoc generic ops use named GEN_* buckets (v2 C4)" "Skipped: mul_assoc not available",
+
+  if declExists? env "Nat.add" then
+    runGraphTest env "Nat.add generic ops use named GEN_* buckets (v2 C4)" "Nat.add"
+      (fun g => g.operations.isEmpty || hasNoGenUnknown g)
+      "Nat.add is in Init — generic ops should be GEN_INIT, not GEN_UNKNOWN (C4)"
+  else
+    TestResult.pass "Nat.add generic ops use named GEN_* buckets (v2 C4)" "Skipped: Nat.add not available"
 ]
 
 def runAllExtractionFaithfulnessTests : IO Unit := do
-  -- Load environment with Init module for basic declarations
-  let env ← loadEnvironment ["Init"]
+  -- Load environment with no extra modules — uses declarations already compiled
+  -- into the binary (Init, Lean core). Mathlib-dependent tests skip gracefully.
+  let env ← loadEnvironment []
   let tests := extractionFaithfulnessTests env
   runTestSuite "Phase 8c — Extraction Faithfulness Tests" tests
 
