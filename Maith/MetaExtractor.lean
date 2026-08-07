@@ -19,6 +19,7 @@ structure ExtractedDeclaration where
 private structure ExtractionState where
   nextTerm   : Nat            := 0
   declName   : String         := ""
+  declModule : String         := ""
   binderCtx  : List EntityId  := []   -- head = innermost binder (De Bruijn 0)
   entities   : List Entity    := []
   attributes : List Attribute := []
@@ -146,6 +147,18 @@ private def bucketGenName (qualifiedName : String) : String :=
   -- Only scan the first 3 components to avoid matching deep leaf names
   tryParts (parts.take 3)
 
+-- Bucket from the current module string in ExtractionState.
+-- Replaces name-parsing heuristic with module-based bucketing.
+private def bucketFromModule (st : ExtractionState) : String :=
+  let parts := st.declModule.splitOn "."
+  let rec tryParts : List String → String
+    | []      => "GEN_UNKNOWN"
+    | c :: cs =>
+      match bucketComponent c with
+      | some b => b
+      | none   => tryParts cs
+  tryParts parts
+
 -- Push `id` as the innermost binder for the duration of `action`, then pop it.
 private def withBinder {α : Type} (id : EntityId) (action : ExtractM α) : ExtractM α := do
   modify (fun st => { st with binderCtx := id :: st.binderCtx })
@@ -213,6 +226,7 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
   | .const name _ =>
     let id := EntityId.var name.toString
     addEntity id
+    addAttribute id "const_name" name.toString
     pure id
   | .fvar fvarId =>
     let id := EntityId.var fvarId.name.toString
@@ -252,7 +266,8 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
           -- Unexpected arity: treat as a generic operation to avoid extraction failure.
           let argIds ← args.mapM extractExprEntityId
           let outputId ← freshTerm
-          addOperation argIds outputId (.generic (bucketGenName fnName.toString))
+          let bucket ← bucketFromModule <$> get
+          addOperation argIds outputId (.generic bucket)
           pure outputId
         else do
           let srcId ← extractExprEntityId relationArgs[0]!
@@ -278,7 +293,8 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
         -- representation which is a separate IR extension.
         let argIds ← args.mapM extractExprEntityId
         let outputId ← freshTerm
-        addOperation argIds outputId (.generic (bucketGenName fnName.toString))
+        let bucket ← bucketFromModule <$> get
+        addOperation argIds outputId (.generic bucket)
         pure outputId
     | _ =>
       -- HOF application: the function head is a bvar, fvar, or other non-constant
@@ -370,7 +386,8 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     -- stable: "proj:Semigroup.toMul/0" is a distinct, deterministic op token.
     let structId  ← extractExprEntityId struct
     let outputId  ← freshTerm
-    let opLabel   := s!"proj:{bucketGenName typeName.toString}/{idx}"
+    let bucket ← bucketFromModule <$> get
+    let opLabel   := s!"proj:{bucket}/{idx}"
     addOperation [structId] outputId (.generic opLabel)
     pure outputId
   | .mdata _ body => extractExprEntityId body
@@ -408,9 +425,9 @@ private def constantValueExpr? : ConstantInfo → Option Expr
   -- and produces cleaner signal: the statement is what should be learned.
   | _ => none
 
-def extractGraphFromConstantInfo (info : ConstantInfo) : ProcessingResult Graph :=
+def extractGraphFromConstantInfo (info : ConstantInfo) (module : String) : ProcessingResult Graph :=
   let declName := canonicaliseDeclName info.name.toString
-  let initState : ExtractionState := { declName }
+  let initState : ExtractionState := { declName, declModule := module }
   -- Extract the type first.
   match (extractExprEntityId info.type).run initState with
   | .error msg => .fail s!"type extraction failed: {msg}"
@@ -421,13 +438,13 @@ def extractGraphFromConstantInfo (info : ConstantInfo) : ProcessingResult Graph 
     | some valueExpr =>
       -- Continue nextTerm from where type extraction left off so that
       -- EntityId.term indices are monotonically increasing and never collide.
-      let valueInitState : ExtractionState := { declName, nextTerm := typeState.nextTerm }
+      let valueInitState : ExtractionState := { declName, declModule := module, nextTerm := typeState.nextTerm }
       match (extractExprEntityId valueExpr).run valueInitState with
       | .error msg => .fail s!"value extraction failed: {msg}"
       | .ok (_, valState) => .ok (mergeGraphs typeGraph valState.toGraph)
 
 def extractGraphFromDeclaration (decl : ExtractedDeclaration) : ProcessingResult Graph :=
-  extractGraphFromConstantInfo decl.info
+  extractGraphFromConstantInfo decl.info decl.module
 
 def loadEnvironment (moduleNames : List String) : IO Environment := do
   let sysroot ← Lean.findSysroot
