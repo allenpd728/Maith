@@ -1,7 +1,7 @@
 {
-  "gate_result": "PASS",
+  "gate_result": "PARTIAL",
   "criteria": {
-    "bpt_improvement": true,
+    "bpt_improvement": false,
     "redundancy_improvement": true,
     "coverage_maintained": true
   },
@@ -23,25 +23,27 @@
       "vocab_size": 11
     },
     "v2_C1C2C4": {
-      "bpt": 5.3342,
-      "redundancy": 0.3607,
-      "coverage": 1.0,
-      "collision_rate": 0.3232,
-      "avg_tokens_per_decl": 118.0,
+      "bpt": 6.411,
+      "redundancy": 0.3772,
+      "coverage": 0.9973,
+      "collision_rate": 0.6396,
+      "avg_tokens_per_decl": 174.5,
       "vocab_size": 1256,
-      "theoretical": true,
-      "notes": "Projected from C1+C2+C4 schema changes. C1 theoretical (encoder omits polarity). C2 adds 2 tokens/decl for 3149 typeclass decls. C4 improves distribution with 20 namespace buckets."
+      "c1_note": "No effect on current encoder output \u2014 polarity was never serialized",
+      "simulation": true,
+      "notes": "Computed from simulated token stream. C2: +2 tokens for 3149 typeclass decls (6298 total new tokens). C4: 1564 GEN_UNK replaced with 20 namespace bucket tokens. C1: No effect (encoder omits polarity)."
     },
     "v2_C3_informational": {
-      "bpt": 5.3342,
-      "redundancy": 0.3607,
-      "coverage": 1.0,
-      "collision_rate": 0.3232,
-      "avg_tokens_per_decl": 118.0,
+      "bpt": 6.411,
+      "redundancy": 0.3772,
+      "coverage": 0.9973,
+      "collision_rate": 0.6396,
+      "avg_tokens_per_decl": 174.5,
       "vocab_size": 1256,
-      "theoretical": true,
+      "c1_note": "No effect on current encoder output \u2014 polarity was never serialized",
+      "simulation": true,
       "notes": "C3 deferred \u2014 informational only, not a gate criterion. Adds attribute rows for all term entities."
     }
   },
-  "next_step": "Proceed to MetaExtractor.lean update"
+  "next_step": "Return to Step 3"
 }

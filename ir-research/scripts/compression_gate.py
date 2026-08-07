@@ -6,7 +6,7 @@ Output: ir-research/findings/compression_gate.json
 
 Compares three configurations:
 1. current_A - existing IR (variant A, 1,236 vocab tokens)
-2. v2_C1C2C4 - current IR with C1+C2+C4 applied (projected)
+2. v2_C1C2C4 - current IR with C1+C2+C4 applied (simulated from real data)
 3. flat - flat baseline (11 tokens, lower bound)
 4. v2_C3_informational - C1+C2+C3+C4 projected (informational only)
 
@@ -25,19 +25,20 @@ from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
-# Metrics from Step 2 and Step 3
+# Constants from Step 2 and Step 3
 # ---------------------------------------------------------------------------
 BASELINE = {
     "collision_pairs": 2577,
     "total_declarations": 4029,
-    "avg_tokens_per_decl_A": 244.5,  # from stats.json
-    "avg_tokens_per_decl_flat": 11.0,  # flat baseline
-    "polarity_token_reduction_pct": 32.57,  # from schema_comparison.json C1
     "typeclass_enriched_decls": 3149,  # from schema_comparison.json C2
     "new_tokens_per_typeclass_decl": 2,  # from schema_comparison.json C2
-    "gen_unk_tokens": 1955,  # from schema_comparison.json C4
     "gen_unk_resolvable": 1564,  # from schema_comparison.json C4
 }
+
+# Synthetic token IDs for simulation
+TYPEFIELD_TOKEN_IDS = [9999, 9998]  # C2: typefield_name tokens
+BUCKET_TOKEN_IDS = list(range(9980, 10000))  # C4: 20 namespace bucket tokens
+GEN_UNK_ID = 4  # From vocab_A.json
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +68,17 @@ def load_train_data(train_path: str, id_to_token: dict) -> tuple[list[list[int]]
                 token_counts[id_to_token.get(tid, f"<{tid}>")] += 1
     
     return all_token_ids, token_counts, len(all_token_ids)
+
+
+def load_train_data_with_indices(train_path: str) -> list[tuple[int, list[int]]]:
+    """Load training data with original indices."""
+    entries = []
+    with open(train_path) as f:
+        for idx, line in enumerate(f):
+            entry = json.loads(line)
+            ids = entry.get("input_ids", [])
+            entries.append((idx, ids))
+    return entries
 
 
 def compute_bpt(token_counts: Counter, total_tokens: int) -> float:
@@ -182,96 +194,125 @@ def measure_flat(train_path: str, vocab_path: str) -> dict:
     }
 
 
-def measure_v2_C1C2C4(current_metrics: dict) -> dict:
+def simulate_v2_token_stream(train_path: str) -> tuple[list[int], Counter, int]:
     """
-    Project v2_C1C2C4 metrics from current_A with C1+C2+C4 changes.
+    Simulate v2 token stream with C2 and C4 applied.
     
-    C1: 32.6% token reduction (theoretical - encoder currently omits polarity)
-    C2: +2 tokens per typeclass declaration (3,149 decls)
-    C4: Replace GEN_UNK with namespace buckets (same count, improved distribution)
+    C1: No effect — encoder currently omits polarity (100% neut).
+    C2: Add 2 synthetic typefield tokens to first 3,149 declarations.
+    C4: Replace first 1,564 GEN_UNK tokens with 20 namespace bucket tokens.
+    
+    Returns (all_token_ids, token_counts, total_tokens).
     """
-    # Start with current_A metrics
-    bpt = current_metrics["bpt"]
-    redundancy = current_metrics["redundancy"]
-    coverage = current_metrics["coverage"]
-    avg_tokens = current_metrics["avg_tokens_per_decl"]
-    vocab_size = current_metrics["vocab_size"]
+    # Load train data
+    entries = load_train_data_with_indices(train_path)
     
-    # C1: 32.6% token reduction
-    # Since encoder currently omits polarity, this is THEORETICAL
-    # If we apply 32.6% reduction, we get ~164.9 tokens/decl
-    c1_reduction = BASELINE["polarity_token_reduction_pct"] / 100.0
-    tokens_after_c1 = avg_tokens * (1 - c1_reduction)
+    # C2: Apply typefield tokens to first 3,149 declarations
+    typeclass_count = BASELINE["typeclass_enriched_decls"]
+    modified_token_lists = []
+    decl_lens = []
     
-    # C2: +2 tokens per typeclass declaration (3,149 decls)
-    # This ADDS tokens - only for enriched declarations
-    typeclass_token_increase = (
-        BASELINE["typeclass_enriched_decls"] * BASELINE["new_tokens_per_typeclass_decl"]
+    for idx, ids in entries:
+        if idx < typeclass_count:
+            # C2: Add 2 synthetic tokens for typeclass declarations
+            modified_ids = ids + TYPEFIELD_TOKEN_IDS
+        else:
+            modified_ids = ids
+        modified_token_lists.append(modified_ids)
+        decl_lens.append(len(modified_ids))
+    
+    # Flatten the token list
+    all_token_ids = []
+    for ids in modified_token_lists:
+        all_token_ids.extend(ids)
+    
+    # C4: Replace first 1,564 GEN_UNK tokens with namespace bucket tokens
+    gen_unk_resolvable = BASELINE["gen_unk_resolvable"]
+    bucket_idx = 0
+    
+    for i in range(len(all_token_ids)):
+        if gen_unk_resolvable <= 0:
+            break
+        if all_token_ids[i] == GEN_UNK_ID:
+            all_token_ids[i] = BUCKET_TOKEN_IDS[bucket_idx % len(BUCKET_TOKEN_IDS)]
+            bucket_idx += 1
+            gen_unk_resolvable -= 1
+    
+    # Compute token counts (treating unknown token IDs as strings)
+    token_counts = Counter()
+    for tid in all_token_ids:
+        token_counts[tid] += 1
+    
+    return all_token_ids, token_counts, len(all_token_ids)
+
+
+def measure_v2_C1C2C4(train_path: str, vocab_path: str) -> dict:
+    """
+    Compute v2_C1C2C4 metrics from simulated token stream.
+    
+    C1: No effect — encoder currently omits polarity (100% neut).
+        Added as a note in the output.
+    C2: +2 synthetic tokens for 3,149 typeclass declarations.
+    C4: Replace 1,564 GEN_UNK with 20 namespace bucket tokens.
+    """
+    # Get simulated token stream
+    all_ids, token_counts, total_tokens = simulate_v2_token_stream(train_path)
+    
+    # Load vocab to get vocab size
+    token_to_id, id_to_token = load_vocab(vocab_path)
+    vocab_size = len(token_to_id) + len(BUCKET_TOKEN_IDS)  # +20 bucket tokens
+    
+    # Compute metrics from simulated stream
+    bpt = compute_bpt(token_counts, total_tokens)
+    redundancy = compute_redundancy(token_counts, total_tokens, vocab_size)
+    coverage = compute_coverage(token_counts, total_tokens)
+    collision_rate = compute_collision_rate(
+        BASELINE["collision_pairs"],
+        BASELINE["total_declarations"]
     )
-    num_decls = BASELINE["total_declarations"]
-    avg_tokens_after_c2 = tokens_after_c1 + (typeclass_token_increase / num_decls)
     
-    # BPT estimation: 
-    # - C1 reduces tokens (good for BPT if tokens are redundant)
-    # - C2 adds tokens (may affect BPT)
-    # - C4 improves distribution (reduces entropy, improves BPT)
-    # 
-    # For BPT: fewer tokens at same bits = lower BPT (good)
-    # But added tokens for C2 increase bits
-    # Net effect: C1 reduces BPT proportionally
-    net_bpt_change = c1_reduction  # Approximate: BPT reduces with fewer tokens
-    bpt_after = bpt * (1 - net_bpt_change * 0.5)  # Conservative estimate
-    
-    # Redundancy: C4 namespace bucketing reduces entropy
-    # With 20 buckets instead of 1 GEN_UNK, distribution improves
-    # Estimate: 5-10% redundancy improvement from C4
-    redundancy_improvement = 0.05  # Conservative
-    redundancy_after = redundancy * (1 - redundancy_improvement)
-    
-    # Coverage: fewer tokens / same high-frequency tokens = higher coverage
-    coverage_after = min(1.0, coverage / (1 - c1_reduction))
-    
-    # Collision rate: C2 typeclass enrichment eliminates 51-typeclass collisions
-    # 51 declarations * 50 / 2 = 1,275 collision pairs eliminated
-    collisions_eliminated = 51 * 50 // 2
-    remaining_collisions = BASELINE["collision_pairs"] - collisions_eliminated
-    collision_rate_after = compute_collision_rate(remaining_collisions, num_decls)
-    
-    # Vocab: C4 adds ~20 namespace bucket tokens
-    vocab_size_after = vocab_size + 20
-    
-    # Avg tokens after all changes
-    avg_tokens_final = avg_tokens_after_c2
+    # Avg tokens per decl
+    entries = load_train_data_with_indices(train_path)
+    typeclass_count = BASELINE["typeclass_enriched_decls"]
+    total_tokens_with_c2 = sum(
+        len(ids) + len(TYPEFIELD_TOKEN_IDS) if idx < typeclass_count else len(ids)
+        for idx, ids in entries
+    )
+    avg_tokens = total_tokens_with_c2 / len(entries) if entries else 0
     
     return {
-        "bpt": round(bpt_after, 4),
-        "redundancy": round(redundancy_after, 4),
-        "coverage": round(coverage_after, 4),
-        "collision_rate": round(collision_rate_after, 4),
-        "avg_tokens_per_decl": round(avg_tokens_final, 1),
-        "vocab_size": vocab_size_after,
-        "theoretical": True,
-        "notes": "Projected from C1+C2+C4 schema changes. C1 theoretical (encoder omits polarity). C2 adds 2 tokens/decl for 3149 typeclass decls. C4 improves distribution with 20 namespace buckets."
+        "bpt": round(bpt, 4),
+        "redundancy": round(redundancy, 4),
+        "coverage": round(coverage, 4),
+        "collision_rate": round(collision_rate, 4),
+        "avg_tokens_per_decl": round(avg_tokens, 1),
+        "vocab_size": vocab_size,
+        "c1_note": "No effect on current encoder output — polarity was never serialized",
+        "simulation": True,
+        "notes": (
+            "Computed from simulated token stream. "
+            "C2: +2 tokens for 3149 typeclass decls (6298 total new tokens). "
+            "C4: 1564 GEN_UNK replaced with 20 namespace bucket tokens. "
+            "C1: No effect (encoder omits polarity)."
+        )
     }
 
 
-def measure_v2_C3_informational(current_metrics: dict) -> dict:
+def measure_v2_C3_informational(train_path: str, vocab_path: str) -> dict:
     """
     Project v2_C1C2C3+C4 metrics (informational only).
     C3 adds attributes for term entities - increases tokens but improves coverage.
     """
     # Start from v2_C1C2C4
-    v2_c1c2c4 = measure_v2_C1C2C4(current_metrics)
+    v2_c1c2c4 = measure_v2_C1C2C4(train_path, vocab_path)
     
     # C3: Add sort/const attributes for all term entities
     # From schema_comparison: 132,220 entities with zero attrs
     # Adding attrs increases tokens but may improve IR semantics
-    # Estimate: ~1-2 tokens per term entity on average
-    # But this is informational only
+    # This is informational only - we keep the C1C2C4 metrics as the primary
     
     return {
         **v2_c1c2c4,
-        "theoretical": True,
         "notes": "C3 deferred — informational only, not a gate criterion. Adds attribute rows for all term entities."
     }
 
@@ -305,16 +346,16 @@ def main():
     print(f"  Redundancy: {flat['redundancy']:.4f}", file=sys.stderr)
     print(f"  Coverage: {flat['coverage']:.4f}", file=sys.stderr)
     
-    # Project v2_C1C2C4
-    print("Projecting v2_C1C2C4...", file=sys.stderr)
-    v2_c1c2c4 = measure_v2_C1C2C4(current_a)
+    # Simulate and measure v2_C1C2C4 from token stream
+    print("Simulating v2_C1C2C4 from token stream...", file=sys.stderr)
+    v2_c1c2c4 = measure_v2_C1C2C4(args.train_a, args.vocab_a)
     print(f"  BPT: {v2_c1c2c4['bpt']:.4f}", file=sys.stderr)
     print(f"  Redundancy: {v2_c1c2c4['redundancy']:.4f}", file=sys.stderr)
     print(f"  Coverage: {v2_c1c2c4['coverage']:.4f}", file=sys.stderr)
     
     # Project v2_C3_informational
     print("Projecting v2_C1C2C3+C4 (informational)...", file=sys.stderr)
-    v2_c3 = measure_v2_C3_informational(current_a)
+    v2_c3 = measure_v2_C3_informational(args.train_a, args.vocab_a)
     
     # Apply gate criteria
     print("\n=== GATE CRITERIA ===", file=sys.stderr)
