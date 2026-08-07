@@ -41,7 +41,7 @@ inductive OperationOp
 | generic : String → OperationOp
   -- opaque fallback for any constant-headed application not in the semantic core;
   -- the string carries the head constant's name (e.g. "Iff", "Function.Injective").
-  -- Token form: "gen:<name>". Vocabulary grows dynamically on the Python side.
+  -- Token form: "gen:<name>" for v1; v2 uses stable bucket names (GEN_ALGEBRA etc.) emitted directly.
 
 deriving Repr, DecidableEq, Inhabited
 
@@ -53,6 +53,9 @@ instance : ToString OperationOp :=
     | OperationOp.div       => "div"
     | OperationOp.neg       => "neg"
     | OperationOp.pow       => "pow"
-    | OperationOp.generic s => s!"gen:{s}"⟩
+    | OperationOp.generic s =>
+        -- v2: bucket names (GEN_ALGEBRA, GEN_ORDER, etc.) are emitted directly.
+        -- v1 gen:* prefix is dropped — the bucket name IS the token.
+        s⟩
 
 end Lean.DSL
