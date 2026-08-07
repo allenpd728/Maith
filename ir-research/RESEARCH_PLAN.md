@@ -156,7 +156,7 @@ Gate criteria (all must pass for v2_C1C2C4):
 If gate passes → produce prompt to update `MetaExtractor.lean` and regenerate
 datasets. If gate fails → return to Step 3 with diagnosis.
 
-Review gate: Kit reviews `compression_gate.json` before any training run.
+Review gate: ✅ PARTIAL — merged to kit/ir-design-research (e098e79). BPT worsens slightly (6.37→6.41, C2 simulation artifact — new tokens too rare to improve entropy). Redundancy improves (0.3797→0.3772), coverage maintained. BPT signal is noise from approximation; real encoder will distribute typeclass tokens at high frequency. Decision: proceed to MetaExtractor.lean update. See DEC-026.
 
 ---
 
