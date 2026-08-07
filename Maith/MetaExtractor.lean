@@ -148,16 +148,30 @@ private def bucketGenName (qualifiedName : String) : String :=
   tryParts (parts.take 3)
 
 -- Bucket from the current module string in ExtractionState.
+-- "Mathlib.Algebra.Group.Basic" → GEN_ALGEBRA (skip "Mathlib", match "Algebra")
+-- "Lean.Init.Prelude"           → GEN_LEAN
+-- "Init.Data.Nat.Basic"         → GEN_INIT
 -- Replaces name-parsing heuristic with module-based bucketing.
 private def bucketFromModule (st : ExtractionState) : String :=
-  let parts := st.declModule.splitOn "."
-  let rec tryParts : List String → String
-    | []      => "GEN_UNKNOWN"
-    | c :: cs =>
-      match bucketComponent c with
-      | some b => b
-      | none   => tryParts cs
-  tryParts parts
+  match st.declModule.splitOn "." with
+  | "Mathlib" :: second :: _ =>
+    match second.toUpper with
+    | "ALGEBRA"       => "GEN_ALGEBRA"
+    | "ORDER"         => "GEN_ORDER"
+    | "TOPOLOGY"      => "GEN_TOPOLOGY"
+    | "ANALYSIS"      => "GEN_ANALYSIS"
+    | "LOGIC"         => "GEN_LOGIC"
+    | "DATA"          => "GEN_DATA"
+    | "TACTIC"        => "GEN_LOGIC"
+    | "COMBINATORICS" => "GEN_DATA"
+    | _               => "GEN_MATHLIB"
+  | first :: _ =>
+    match first.toUpper with
+    | "LEAN" => "GEN_LEAN"
+    | "INIT" => "GEN_INIT"
+    | "STD"  => "GEN_STD"
+    | _      => "GEN_MATHLIB"
+  | [] => "GEN_MATHLIB"
 
 -- Push `id` as the innermost binder for the duration of `action`, then pop it.
 private def withBinder {α : Type} (id : EntityId) (action : ExtractM α) : ExtractM α := do
