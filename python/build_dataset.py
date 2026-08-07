@@ -53,6 +53,7 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
     vocab_counts = Counter(tok for ex in examples for tok in ex.get("tokens", []))
 
     # Structural tokens always get fixed low IDs for readability
+    # v2 IR tokens: typeclass_name (C2) and GEN_* bucket tokens (C4)
     structural = [
         "<PAD>", "<BOS>", "<EOS>", "<UNK>", "GEN_UNK",
         "GRAPH_BEGIN", "GRAPH_END",
@@ -60,6 +61,10 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
         "pos", "neg", "neut",
         "eq", "add", "sub", "mul", "div", "le", "ge", "lt", "gt", "pow",
         "typeclass", "sort", "literal",
+        # v2 IR tokens (C2: typeclass_name, C4: gen buckets)
+        "typeclass_name",
+        "GEN_MATHLIB", "GEN_ALGEBRA", "GEN_ORDER", "GEN_TOPOLOGY", "GEN_ANALYSIS",
+        "GEN_LOGIC", "GEN_DATA", "GEN_LEAN", "GEN_INIT", "GEN_STD", "GEN_UNKNOWN",
     ] + [f"FVAR_{i}" for i in range(64)] + ["FVAR_MANY"] \
       + [f"BVAR_{i}" for i in range(64)] + ["BVAR_MANY"] \
       + [f"TERM_{i}" for i in range(64)] + ["TERM_MANY"] \
@@ -73,8 +78,9 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
     for tok, count in sorted(vocab_counts.items(), key=lambda x: (-x[1], x[0])):
         if tok in vocab:
             continue
-        # Rare gen:* tokens collapse to GEN_UNK (already in vocab)
-        if tok.startswith("gen:") and count < freq_threshold:
+        # v1 gen:* tokens (gen:FullyQualifiedName) are replaced by stable bucket tokens
+        # in v2 (GEN_ALGEBRA, GEN_ORDER, etc.). Skip any residual gen:* entries.
+        if tok.startswith("gen:"):
             continue
         vocab[tok] = next_id
         next_id += 1
@@ -221,7 +227,7 @@ def filter_examples(examples: list[dict], threshold: int, drop_log_path: Optiona
     return kept
 
 
-def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v1_4_0") -> None:
+def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str = "semantic_graph_ir_v2_0_0") -> None:
     print(f"Loading corpus from {corpus_path} ...")
     with open(corpus_path) as f:
         examples = [json.loads(line) for line in f]
@@ -339,6 +345,6 @@ if __name__ == "__main__":
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
     parser.add_argument("--out", default="datasets/")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--representation-id", default="semantic_graph_ir_v1_4_0")
+    parser.add_argument("--representation-id", default="semantic_graph_ir_v2_0_0")
     args = parser.parse_args()
     run(args.corpus, args.out, args.seed, args.representation_id)
