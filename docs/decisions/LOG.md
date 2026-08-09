@@ -1489,3 +1489,85 @@ the B-small experiment scope.
   ~half-epoch) + numeric resume sort, so mid-epoch stalls are resumable; also
   nulls `bos_token_id`/`eos_token_id` for variant A (base Qwen ids 151643 are
   out of range for the 601-token vocab and crashed eval on load).
+
+---
+
+### DEC-027 — B-small control: size confound confirmed, representation not yet doing measurable work
+
+**Date:** 2026-08-09
+**Status:** ✅ Complete
+**Decision:** B-small ≥ 90% gate → model size explains the A-vs-B/C gap at this scale. The v2 IR representation is not yet doing measurable work beyond what a small-vocab BPE achieves.
+
+#### Purpose
+
+The v2 A/B/C comparison (DEC-026) was confounded by model size: A uses a 601-token
+embedding table (358M params) while B/C use 151k tokens (494M params). B-small
+controls for size by truncating BPE to the same 601 tokens and 358M params as A,
+isolating representation (semantic IR vs raw BPE) from size.
+
+#### Experiment
+
+- **B-small:** Qwen2.5-Coder-0.5B with embedding table truncated to 601 tokens
+  (top-601 BPE tokens, 99.92% coverage). Same 3,491 training examples, seed=42,
+  2 epochs. Output: `runs/variant_B_small/`.
+- **Vocab builder:** `python/build_b_small_vocab.py` (truncates BPE, remaps to
+  compact 0..600 IDs). Datasets: `datasets/{train,eval}_B_small.jsonl`.
+- **Eval:** `eval_completion.py --variants B_SMALL --checkpoint-B_SMALL
+  runs/variant_B_small --samples 200 --mask-last 10` (B_SMALL variant support
+  added to eval_completion.py to load the remapped eval split).
+
+#### Results
+
+| Variant | Representation | Vocab | Params | Perplexity | Top-1 Acc |
+|---|---|---|---|---|---|
+| A (v2 IR) | Semantic IR graph → tokens | 601 | 358M | 1.2361 | 90.0% |
+| **B-small (BPE control)** | Raw BPE truncated to 601 | 601 | 358M | **1.1294** | **90.5%** |
+| B (full BPE) | Raw BPE, full vocab | 151,643 | 494M | 1.107 | 91.7% |
+| C (AST BPE) | AST-split BPE, full vocab | 151,643 | 494M | 1.098 | 93.0% |
+
+#### Gate outcome
+
+- **B-small top-1 = 90.5% ≥ 90% gate → size explains the gap.**
+- B-small at matched params (358M, 601-vocab) achieves 90.5% — essentially tied
+  with A's 90.0%. The IR representation is **not doing measurable work** beyond
+  what a small-vocab BPE achieves at this scale.
+- On perplexity, B-small (1.1294) is better than A (1.2361) — BPE is more
+  predictable than the IR tokens even at matched vocab/params, likely because
+  BPE token distributions are more Zipfian/concentrated.
+- The full B/C advantage (91.7%/93.0%) is mostly a **size effect**: B-small → B
+  gains ~1.2pp from the 136M extra embedding params; B-small → A loses ~0.5pp
+  from switching BPE to IR.
+
+#### Interpretation
+
+This does **not** disprove the representation hypothesis — it means the v2 IR, at
+3.5k examples and 358M params, does not outperform a size-matched BPE baseline on
+next-token prediction. Combined with DEC-025 (A's representations DO encode
+semantic content, 62pp probe gap), the picture is:
+
+1. The IR representation encodes real semantic structure (DEC-025 probing).
+2. That structure does not translate to a next-token-prediction advantage over
+   BPE at matched scale (DEC-027 B-small control).
+3. The bottleneck is likely **training objective + data volume**, not the
+   representation itself. Next-token prediction may not be the objective that
+   rewards semantic structure; a downstream task (proof search, completion) might.
+
+#### Next steps for the IR-candidate search
+
+- **Corpus expansion** (>10k examples) — the most direct lever; v2's 601-vocab
+  is well-suited to scale.
+- **Objective redesign** — next-token prediction may not reward semantic
+  structure; consider a masked-reconstruction or proof-completion objective.
+- **IR pretraining** — pretrain the embedding table on the IR before fine-tuning.
+- **A candidate tweak** — if pursuing incremental v2.x: the perplexity gap
+  (A 1.24 vs B-small 1.13) suggests IR tokens are harder to predict; a candidate
+  that simplifies the token format further (e.g. C3 attribute sparsity) could
+  narrow it, but DEC-027 says the gain would be from easier prediction, not
+  richer semantics.
+
+#### References
+
+- `docs/experiments/V2_COMPARISON_MATRIX.md` — the 2×2 control grid (now complete
+  for the B-small cell).
+- `docs/experiments/V2_NEXT_STEPS.md` — merge-to-main checklist.
+- DEC-025 (A encodes semantics), DEC-026 (v2 IR implementation + A/B/C results).
