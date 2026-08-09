@@ -1,6 +1,13 @@
 # Maith: Semantic IR for Lean Mathematics
 
-> **Phase 7 active (DEC-022–024, 2026-08-04).** Variant A v1.4.0 perplexity: **1.2751** (new best, DEC-023). Fix 3 (IO marker simplification) reduced vocab from 8,221 to 1,236 tokens. Flat-IR ablation (DEC-024) shows structural shape alone achieves 0.077 bits/tok vs Variant A 0.351 bits/tok — semantic content adds prediction cost not currently recovered at 3.5k training examples. Whether this is a data-volume or objective-function problem is an open question. Fix 2 (polarity removal) deferred — `neut` functions as a positional anchor at this scale (DEC-022). See `docs/history/PHASE_7_ROADMAP.md` and `docs/decisions/LOG.md` for full experimental record.
+> **v2 era (2026-08-09).** Current IR: `semantic_graph_ir_v2_0_0` (C1 polarity removal,
+> C2 typeclass enrichment, C4 GEN module bucketing; vocab 601). Variant A v2 = perplexity
+> **1.2361** / top-1 **90.0%** — beats the C1+C2 partial (1.2458) but still trails B (91.7%)
+> and C (93.0%). DEC-025 closed: A's representations encode strong semantic content (62pp
+> probe gap vs Flat-IR). DEC-027 (B-small size control) in progress. See
+> `docs/experiments/V2_COMPARISON_MATRIX.md` for the 2×2 control grid,
+> `docs/experiments/V2_NEXT_STEPS.md` for the merge-to-main checklist, and
+> `docs/decisions/LOG.md` (DEC-026) for the full v2 result.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 

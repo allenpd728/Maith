@@ -1,5 +1,107 @@
 # A/B/C Experiment Design
 
+> **v2 era (2026-08-09).** The current IR is `semantic_graph_ir_v2_0_0`
+> (C1+C2+C4, vocab 601). Variant A v2 = perplexity 1.2361 / top-1 90.0%.
+> See `docs/experiments/V2_COMPARISON_MATRIX.md` for the live 2×2 control grid
+> and `docs/experiments/V2_NEXT_STEPS.md` for the merge-to-main checklist.
+> The v1.x content below (variants table, Phase 5/6 results) is **historical** —
+> retained as the record of how the protocol was developed, not the current
+> experiment state. The protocol sections (hyperparameters, eval, "what a valid
+> result looks like") remain authoritative and are **fixed across IR versions**
+> so that v3/v4 candidates are directly comparable to v2.
+
+---
+
+## Standard protocol — fixed across all IR versions
+
+These elements are **frozen** so that any future IR candidate (v3, v4, …) produces
+results directly comparable to v2. Do not change them between IR versions; if a
+protocol change is ever needed, version it separately and re-baseline.
+
+### Eval protocol (fixed)
+- **Metric:** top-1 next-token completion accuracy (teacher-forced, last N tokens masked).
+- **Sample count:** 200 eval examples.
+- **Mask-last:** 10 tokens.
+- **Checkpoint selection:** always pass an explicit `--checkpoint-<X> <authoritative run dir>`.
+  Never rely on the default `runs/variant_X/` path (stale-checkpoint bug — see
+  `docs/scratch/runs_audit.md`, `docs/scratch/variant_c_eval_bug.md`). The
+  `eval_completion.py` stale-checkpoint guard warns if `results.json` mtime is >1d off
+  from the checkpoint weights.
+- **Command template (identical for every variant/IR version):**
+  ```bash
+  python3 python/eval_completion.py \
+    --variants <X> --checkpoint-<X> runs/<authoritative_dir> \
+    --samples 200 --mask-last 10
+  ```
+- **Primary metric:** perplexity on the held-out eval split (lower = better).
+- **Secondary metric:** completion accuracy (top-1, last 10 masked).
+
+### Comparison structure — the 2×2 control matrix (standard template)
+
+Every IR candidate gets **its own comparison matrix** in the same format as
+`docs/experiments/V2_COMPARISON_MATRIX.md`. The 2×2 grid (representation × model
+size) is the standard template:
+
+| | Small model (matching IR-vocab params) | Large model (full BPE params) |
+|---|---|---|
+| **IR vocab (candidate)** | **IR-X** (the candidate) | **IR-X-large** (ceiling) |
+| **BPE vocab (control)** | **B-small** (size control) | **B** (full baseline) |
+
+- The **B-small** cell is the critical control for any IR candidate: it isolates
+  whether the IR's competitiveness comes from semantic structure or merely from a
+  small vocabulary / small embedding table.
+- **Gate (general):** IR-X vs B-small at matched params. If IR-X > B-small by a
+  meaningful margin, the representation is doing work beyond vocab compression.
+- When adding a v3 IR, create `docs/experiments/V3_COMPARISON_MATRIX.md` using the
+  same structure, and link it from `docs/decisions/INDEX.md`.
+
+### Hyperparameters (fixed across IR versions)
+| Parameter | Value | Rationale |
+|-----------|-------|----------|
+| Base model | Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA) | Small enough to train locally; code-aware |
+| Max sequence length | 1,536 (train cap 512 for stability) | Covers variant A p99 with headroom |
+| Batch size | 1 (effective 32 with grad accum 8 → grad_accum=8) | Fits in 16GB VRAM |
+| Learning rate | 2e-4 (A); B/C reduced to 5e-5 (stability) | Standard for small fine-tunes |
+| LR schedule | Cosine with warmup (5%) | |
+| Epochs | 2 (A/IR candidates); B/C historically 3 | Matched to A for fair comparison |
+| Optimizer | AdamW, weight decay 0.01 | |
+| Seed | 42 | Fixed across all variants and IR versions |
+| Eval metric | Perplexity on eval split (primary); top-1 completion (secondary) | |
+
+### What a valid result looks like (unchanged)
+- **IR < B and IR < C**: IR tokens improve sample efficiency — representation hypothesis has preliminary support.
+- **IR ≈ B**: IR tokens are no better than raw Lean source at this scale.
+- **IR > B**: IR tokens hurt. Investigate vocab/format.
+- **Always pair with B-small** to rule out the size confound before claiming the hypothesis.
+
+### What this experiment does NOT prove (unchanged)
+- That IR tokens improve theorem-proving performance (requires downstream prover eval).
+- That results generalise beyond the modules in the current corpus.
+- That the effect holds at scale (larger corpus, larger model).
+
+---
+
+## v2 result summary (DEC-026)
+
+| Variant | Representation | Vocab | Params | Perplexity | Top-1 Acc |
+|---|---|---|---|---|---|
+| A (v2, C1+C2+C4) | Maith IR tokens | 601 | 358M | 1.2361 | 90.0% |
+| B | Raw leanExpr → Qwen BPE | 151,643 | 494M | 1.107 | 91.7% |
+| C | AST-style → Qwen BPE | 151,643 | 494M | 1.098 | 93.0% |
+| B-small (DEC-027) | BPE truncated to 601 | 601 | 358M | *(in progress)* | *(in progress)* |
+
+A beats the C1+C2 partial (1.2458 → 1.2361, so C4 helped) but still trails B/C.
+DEC-027 (B-small) is the open control that isolates representation from size.
+See `docs/decisions/LOG.md` DEC-026 for the full record.
+
+---
+
+# Historical: v1.x experiment design (Phase 5/6)
+
+> The sections below are the original v1.x design record (variants table, Phase 5/6
+> results, confound investigations). They are retained as history. The current
+> experiment uses the v2 values above; do not read the v1 variants table as current.
+
 > **Phase 6 complete (DEC-020, 2026-08-02). DEC-006 closed (DEC-021, 2026-08-03).**
 > A trails B/C by ~0.17pp across Phase 5, Phase 6, and embedding projection experiment.
 > Gap is not due to cold-start initialisation (DEC-021), sequence length (IR is 2x shorter
@@ -9,7 +111,7 @@
 
 Controlled comparison of three input representations for next-token prediction on Mathlib IR.
 
-## Variants
+## Variants (v1.x — historical)
 
 | Variant | Representation | Tokenizer | Vocab size |
 |---------|---------------|-----------|------------|
@@ -18,10 +120,6 @@ Controlled comparison of three input representations for next-token prediction o
 | C | AST-style split `leanExpr` | Qwen2.5-Coder BPE | tokenizer: 151,643 / model embeddings: 151,936 |
 
 Datasets: `datasets/train_*.jsonl` / `datasets/eval_*.jsonl` (2,213 train / 246 eval, seed=42 — rebuilt for v1.3.0).
-
-Clarification: C is a representation baseline (AST-style split input), not "B with a different context cap."
-B and C intentionally share tokenizer/model family while changing representation; eval perplexity uses a
-shared fixed eval cap for A/B/C comparability.
 
 ## Known confound: embedding table size
 

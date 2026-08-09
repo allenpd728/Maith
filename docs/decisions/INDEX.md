@@ -116,6 +116,8 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 ## References
 
 - `docs/decisions/LOG.md` — full text of all entries
-- `docs/history/PHASE_7_ROADMAP.md` — current plan and decision tree
+- `docs/experiments/V2_NEXT_STEPS.md` — current plan (v2 merge-to-main checklist)
+- `docs/experiments/V2_COMPARISON_MATRIX.md` — live 2×2 control grid (standard template for any IR candidate)
+- `docs/history/PHASE_7_ROADMAP.md` — historical Phase 7 plan (v1 era)
 - `docs/reference/IR_V2_PROPOSAL.md` — v2 IR design
 - `docs/reference/IR_V2_FIX_SPEC.md` — Fix 1+2 implementation spec
