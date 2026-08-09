@@ -1,0 +1,75 @@
+# Hypothesis Grid
+
+> **Purpose.** Decomposes Maith's central hypothesis into testable sub-claims, tracks each
+> one's status (open / closed), and points to the evidence that closes it. This is the
+> authoritative answer to "is the hypothesis open or closed?" — the answer is *which part*.
+>
+> The central hypothesis — *a canonical semantic representation improves formal math
+> tooling* — is not a single claim. It is a family of claims, some closed (positive and
+> negative), most still open. Reading any single experiment's result as the status of the
+> whole hypothesis is the error this document exists to prevent.
+>
+> Decision IDs (DEC-0xx) refer to [`docs/decisions/LOG.md`](../decisions/LOG.md).
+
+## Status legend
+
+| Mark | Meaning |
+|---|---|
+| ✅ | Closed — positive (evidence supports the sub-claim) |
+| ❌ | Closed — negative (evidence refutes the sub-claim) |
+| ◐ | Partial — some evidence, not fully resolved |
+| ⬜ | Open — not yet tested |
+
+## The grid
+
+| # | Question | Status | Sub-claim | Evidence | What would close it |
+|---|---|---|---|---|---|
+| H1 | Does the IR encode semantic structure that source/AST don't? | ✅ | The IR encodes semantic structure not present in source/AST | DEC-025: linear probe 75.4% vs flat-IR 13.6% (62pp gap) | Closed. |
+| H2 | Does IR improve next-token prediction over BPE? | ❌ | The IR improves next-token prediction over BPE | DEC-021/024/027: A trails B-small at matched params (90.0% vs 90.5%, 1.2361 vs 1.1294 ppl) | Closed. |
+| H3 | Was cold-start embedding init masking a real benefit? | ❌ | Cold-start embedding init explains the perplexity null | DEC-021: embed-project did not improve A (1.2978, within noise) | Closed. |
+| H4 | Does model size explain the perplexity null? | ◐ | Model size explains the perplexity null | DEC-027: ruled out at 358M (B-small ties A). **Open at larger scale** — A-large cell unrun. | A-large run (IR at 494M+); not testable on current hardware (M4/16GB). |
+| H5 | Is the training objective the bottleneck — does next-token loss fail to reward semantics? | ⬜ | The training objective is the bottleneck (next-token doesn't reward semantics) | Supported by mechanism (DEC-024: +0.27 bits/token; DEC-025: encoded but unrewarded) but not directly tested with an alternative objective. | Masked-reconstruction or proof-completion objective experiment at current scale. |
+| H6 | Does the IR improve retrieval / similarity tasks (semantic, not predictive)? | ⬜ | The IR improves retrieval / similarity tasks (semantic, not predictive) | Not tested. Reuses DEC-025 `extract_representations.py` infrastructure. | Retrieval/similarity benchmark over the 4,029-example corpus; IR vs AST/BPE embeddings. |
+| H7 | Does the IR improve proof completion / ATP success? | ⬜ | The IR improves proof completion / ATP success | Not tested. This is the actual downstream research claim. | Theorem-proving evaluation (Phase 7 scaffold in [`PHASE_7_ROADMAP`](../history/PHASE_7_ROADMAP.md)). |
+| H8 | Does the IR's advantage appear only above a scale threshold? | ⬜ | The IR's advantage appears only above a scale threshold | Not testable on current hardware. Precedent: IRCoder gains at 1.1B–7.3B. | A-large / 10B run; blocked on compute. |
+| H9 | Would co-training (IR alongside source) recover gains where replacement didn't? | ⬜ | Co-training (IR alongside source) recovers gains where replacement didn't | PACT precedent (ICLR 2022, 32%→48%); design lesson in [`PRIOR_ART.md`](../reference/PRIOR_ART.md) §3, candidate in [`V2_NEXT_STEPS`](V2_NEXT_STEPS.md) §4. | Multi-objective training experiment (joint IR + source loss). |
+| H10 | Does the IR beat AST on semantic probing tasks beyond module classification? | ◐ | The IR beats AST specifically on semantic probing tasks | DEC-025 tested module classification only. Richer semantic probes untested. | Extended probing: typeclass arity, theorem-vs-definition, semantic category. |
+
+## How to read this grid
+
+**What is closed:**
+- H1 (positive): the IR *does* encode semantics. This is established and is the project's
+  strongest finding.
+- H2 (negative): the IR does *not* improve next-token prediction at this scale. This is
+  established and is the project's cleanest null.
+- H3 (negative): cold-start is *not* the cause of H2's null. Established by DEC-021.
+
+**What is open and tractable on current hardware (M4/16GB):**
+- H5 (objective redesign), H6 (retrieval/similarity), H9 (co-training), H10 (richer
+  probing). These are the live research front and should be prioritized over scale.
+
+**What is open and blocked on compute:**
+- H4 at scale (A-large), H7 (ATP eval — partially blocked; scaffold exists), H8 (scale
+  threshold). These require resources outside the current setup.
+
+**The key non-obvious point:** H2 being closed-negative does *not* close the central
+hypothesis. Perplexity measures predictability, not semantic utility (see H5's mechanism
+and [`PRIOR_ART.md`](../reference/PRIOR_ART.md) §4). The IR's value proposition lives in
+H6/H7/H10 — tasks where semantic structure, not token predictability, is what matters.
+Those are untested, not disproven.
+
+## Relationship to the decision log
+
+This grid is a *structured view* of the hypothesis; [`LOG.md`](../decisions/LOG.md) is the
+*chronological record* of experiments. They are complementary: the decision log proves
+the evidence is real and reproducible; this grid makes the hypothesis's decomposition
+legible. When a new DEC entry closes a sub-claim, update the corresponding row here.
+
+## Update protocol
+
+- When an experiment produces a result that resolves a sub-claim, change its status mark
+  and add the DEC ID to the evidence column.
+- Do not delete closed rows — the grid's value is showing the full decomposition,
+  including what has been ruled out.
+- If a new sub-claim emerges (e.g. a new task type or confound), add a row rather than
+  editing an existing one.
