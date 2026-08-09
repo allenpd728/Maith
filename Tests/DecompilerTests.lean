@@ -158,26 +158,50 @@ def decompTest4 : TestResult :=
     s!"Should produce valid Lean syntax with all components. Got: {result}"
 
 /--
-Test 8: Verify decompiled Lean code actually type-checks via `lean --make`.
+Test 8: Verify decompiled Lean code actually type-checks via `lean`.
 
-STATUS: structural skeleton — pending validation against actual Lean 4 compiler.
+Decompiles a small graph, wraps the output in `#check (...)`, writes it to a
+temp file with the needed `import`, and runs `lean` on it. Pass iff `lean`
+exits 0 (the decompiled term elaborates as a valid Lean expression).
 
-This test decodes a graph, decompiles it to Lean syntax, writes it to a 
-temporary file, and runs `lean --make` to verify the code is syntactically 
-and type-correct Lean.
+This is the real elaboration gate (replaces the old placeholder). It is
+EXPECTED TO FAIL until the decompiler produces elaborator-accepted Lean:
+the `Eq` application form, implicit-argument handling, and BVAR/lambda
+binders (Task 2) all need work. When it fails, the captured `lean` stderr is
+in the failure message so the gap is visible.
 
-The decompiler produces a structural skeleton that should express the correct
-theorem. This test validates that the skeleton is well-formed Lean.
-
-Test 8: Verify decompiled Lean code actually type-checks via `lean --make`.
-
-NOTE: This test is a placeholder. The IO test infrastructure needs to be updated
-to work with the current Lean 4 version's IO.Process API. The decompiler itself
-is tested by decompTest1-decompTest7.
+NOTE: unverified — pending `lake build` on Kit's machine.
 -/
 def decompTest8 : IO TestResult := do
-  return TestResult.pass "Decompiled Lean code type-checks (placeholder)"
-    "IO test deferred - see decompTest1-7 for structural validation"
+  -- A minimal graph: ∀ (a : Nat), Eq a a
+  let g : Graph := {
+    entities := [
+      { id := EntityId.bound "∀:test/0/a", polarity := Polarity.neut },
+      { id := EntityId.term 0, polarity := Polarity.neut }
+    ]
+    attributes := [
+      { target := EntityId.bound "∀:test/0/a", key := "typeclass", value := "Nat", polarity := Polarity.neut }
+    ]
+    relations := [
+      { src := EntityId.bound "∀:test/0/a", tgt := EntityId.term 0, op := RelationOp.eq, polarity := Polarity.neut }
+    ]
+    operations := []
+  }
+  let decompiled := Decompile.decompileGraph g
+  -- Wrap as a #check of the decompiled type expression.
+  let leanSrc := s!"import Mathlib.Data.Nat.Basic\n\n#check ({decompiled})\n"
+  let tmpPath := "/tmp/maith_decomp_test8.lean"
+  IO.FS.writeFile tmpPath leanSrc
+  -- Run `lean` on the temp file; capture exit code + stderr.
+  let out ← IO.Process.output { cmd := "lean", args := #[tmpPath] }
+  -- Clean up the temp file (best-effort; ignore failure).
+  try IO.FS.removeFile tmpPath catch _ => pure ()
+  if out.exitCode == 0 then
+    return TestResult.pass "Decompiled Lean code type-checks (lean exit 0)"
+      s!"Decompiled output elaborated: {decompiled}"
+  else
+    return TestResult.fail "Decompiled Lean code type-checks (lean exit 0)"
+      s!"lean exited {out.exitCode} on decompiled output:\n{decompiled}\nstderr:\n{out.stderr}"
 
 /--
 Test 7: FULL neg_neg graph from docs/EXAMPLE_ROUNDTRIP.md Stage 3.
