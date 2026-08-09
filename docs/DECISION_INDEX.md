@@ -93,6 +93,7 @@ IR pretraining), see `docs/PHASE_7_ROADMAP.md` and `docs/IR_V2_PROPOSAL.md`.
 | **DEC-024** | Flat-IR ablation: semantic content adds 0.27 bits/token unrecoverable cost at this scale. Raw PPL comparison invalid across vocab sizes; bits/token is the correct metric. Probing experiment (DEC-025) needed to distinguish data-volume vs format problem |
 | **DEC-025** | ✅ Complete — A encodes semantics. Linear probe: Variant A 75.4% vs Flat-IR 13.6% (62pp gap) on 11-class module prediction. Semantic content is linearly decodable; higher perplexity is task-difficulty, not failure to learn. Triggers v2 IR + corpus expansion. |
 | **DEC-026** | IR v2 compression gate PARTIAL → implementation. C1+C2 partial run = 1.2458 (beats DEC-021 baseline 1.2978). C4 (GEN module bucketing) was missing from the dataset (encode_ir mapped all gen:* → GEN_UNK); fixed (commit `f194027`), datasets rebuilt (GEN_UNK → 0). Full C1+C2+C4 re-run in progress; gate = improvement over 1.2458 and ultimately over B/C baselines. See `docs/v2_token_analysis.md`. |
+| **DEC-027** | ❌ OPEN — B-small control experiment. The v2 A/B/C comparison is confounded by model size (A=358M, B/C=494M). B-small (BPE, 358M params, same training data as A) is required to isolate representation from size. Gate: if B-small < 88% accuracy, IR structure is doing real work; if B-small ≥ 90%, size explains the gap. See `docs/V2_COMPARISON_MATRIX.md`. |
 
 ---
 
@@ -106,7 +107,7 @@ IR pretraining), see `docs/PHASE_7_ROADMAP.md` and `docs/IR_V2_PROPOSAL.md`.
 | Is it due to Qwen pretraining prior? | **Unlikely** — 25.8% vocab overlap, Lean BPE worse than English |
 | Is the normaliser broken? | **Partially** — 93% rate is expected and correct; no fix needed |
 | Will v1.3.0 (polarity removal) narrow the gap? | **Closed** — DEC-022: regression confirmed, Fix 2 deferred |
-| Can the IR beat the AST (Variant C)? | **Open** — v2 IR (C1+C2+C4) re-run in progress (DEC-026); C1+C2 partial = 1.2458, still trails B (1.11) / C (1.10) |
+| Can the IR beat the AST (Variant C)? | **Open** — v2 full run (C1+C2+C4) complete: A=90.0% acc / 1.2361 ppl vs B=91.7% / C=93.0%. Comparison confounded by model size (DEC-027). B-small needed. |
 | Does Variant A encode semantic content in its representations? | **Closed** — DEC-025: yes, 62pp probe gap vs Flat-IR. Bottleneck is data/objective, not representation. |
 | Is Phase 8 validation complete? | **Yes** — 8a, 8a-ii, 8b, 8c, 8d all complete as of 2026-08-05 |
 
