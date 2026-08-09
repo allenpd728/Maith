@@ -69,6 +69,32 @@ For the structured experiment layout underlying the evidence — the 2×2 contro
 IR/BPE × narrow-vocab/full-vocab — see [`V2_COMPARISON_MATRIX.md`](V2_COMPARISON_MATRIX.md)
 (current v2 era) and [`V1_COMPARISON_MATRIX.md`](V1_COMPARISON_MATRIX.md) (historical).
 
+## Experiment-scope matrix
+
+The H1–H10 rows above track *sub-claims* (does X help?). This matrix tracks the *dimensions
+of variation* — what values have been tested vs. what hasn't. It makes visible that what's
+been tested is one corner of a multi-dimensional space, not the whole hypothesis.
+
+| Dimension | Tested | Untested |
+|---|---|---|
+| **Model size** | Toy (0.5B base, 358–494M params) | Small (1B–8B), Medium (8B–30B), Large+ (30B+) — see [taxonomy](EXPERIMENT_DESIGN.md#model-size-taxonomy) |
+| **Training objective** | Next-token prediction (causal LM) | Masked reconstruction, proof-completion, contrastive |
+| **Evaluation metric** | Perplexity, completion accuracy (prediction family); linear probe (representation) | Retrieval/similarity, ATP success rate, proof-search efficiency |
+| **Corpus size** | ~3.5K examples (14 modules) | 10K+, 100K+, full Mathlib (~190K declarations) |
+| **IR version** | v1.2.0 → v1.4.0 → v2.0.0 (C1/C2/C4) | C3 (attribute sparsity, deferred), v3 candidates — see [v1→v2 assessment](EXPERIMENT_DESIGN.md#v1--v2-ir-optimization-assessment) |
+| **Mathematical domain** | Algebra, order, topology (declaration-heavy) | Tactics, analysis, number theory, category theory |
+
+**How to read this matrix:** each "Tested" cell is a single point; each "Untested" cell is
+an open dimension. The hypothesis has been evaluated at one model size, one objective, two
+metric families, one corpus scale, four IR versions, and three domain families. The closest
+positive precedent (IRCoder) saw gains at 1B+ parameters and 4M examples — roughly 1,000x
+larger on data and 3x larger on model capacity than what's been tested here.
+
+**Priority for closing dimensions:** the most tractable untested cells are retrieval/similarity
+(metric dimension, H6) and objective redesign (objective dimension, H5) — both testable at
+current scale on current hardware. Model size and corpus scale are blocked on compute. IR
+version and domain are blocked on design work (C3 cross-check, corpus expansion).
+
 ## Update protocol
 
 - When an experiment produces a result that resolves a sub-claim, change its status mark
