@@ -4,6 +4,9 @@
 > Update this document whenever a new cell is filled in. Each row is a single
 > training run; the grid below is the target structure for a fair comparison.
 
+> See also: [V1_COMPARISON_MATRIX.md](V1_COMPARISON_MATRIX.md) — the historical v1 grid
+> that motivated the v2 redesign (no size control, epoch confound, 1,236-vocab IR).
+
 ## Why this document exists
 
 The v2 IR (C1+C2+C4) experiment produced a result — A at 90.0% completion accuracy
