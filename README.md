@@ -6,8 +6,9 @@
 > BPE control, DEC-027) = **1.1294** / **90.5%** — essentially tied with A at matched
 > params. The IR encodes real semantics (DEC-025: 62pp probe gap) but doesn't improve
 > prediction over BPE at toy scale (358M, 3.5K examples). Prediction metrics are
-> structurally biased against the IR's canonicalization goal (H11) — the correct evaluation
-> is semantic-task metrics (retrieval, ATP), which are untested.
+> structurally biased against the IR's canonicalization goal (H11 ◐ — partly fundamental,
+> partly contingent on IR design quality) — the primary evaluation should be semantic-task
+> metrics (retrieval, ATP), which are untested.
 >
 > Key docs: [`HYPOTHESIS_GRID`](docs/experiments/HYPOTHESIS_GRID.md) (sub-claim status) ·
 > [`V2_COMPARISON_MATRIX`](docs/experiments/V2_COMPARISON_MATRIX.md) (control grid) ·
