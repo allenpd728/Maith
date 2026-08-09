@@ -164,7 +164,7 @@ The DSL is intentionally minimal. It avoids:
 
 Instead, it uses:
 
-*   explicit polarity
+*   ~~explicit polarity~~ (removed in v2 C1; was 99.8% `neut`, no signal)
     
 *   explicit operators
     
@@ -178,12 +178,12 @@ IR Vocabulary
 
 The IR vocabulary is small, canonical, and stable. Encoder v2.0.0 produces:
 
-- **Structural tokens**: `GRAPH_BEGIN`, `GRAPH_END`, `E`, `A`, `R`, `O`, polarity markers
+- **Structural tokens**: `GRAPH_BEGIN`, `GRAPH_END`, `E`, `A`, `R`, `O` (polarity markers removed in v2 C1)
 - **Forall binder IDs**: `FVAR_0`–`FVAR_63`, `FVAR_MANY` (forall/∀ binders, counter resets per graph)
 - **Lambda binder IDs**: `BVAR_0`–`BVAR_63`, `BVAR_MANY` (lambda/fun binders, counter resets per graph)
 - **Positional term IDs**: `TERM_0`–`TERM_63`, `TERM_MANY` (replaces `t<n>` strings)
 - **Semantic constants**: `HMul.hMul`, `Eq`, etc. (stable across corpus)
-- **Generic operations**: `gen:<FullName>` (rare ones map to `GEN_UNK` at dataset-build time)
+- **Generic operations**: `GEN_<area>` buckets (GEN_ALGEBRA, GEN_ORDER, etc.) — v2 C4 replaced v1's `gen:<FullName>` + `GEN_UNK` collapse with module-based buckets at `build_dataset.py` encode time
 
 Known tradeoff: when a declaration exceeds 64 distinct forall/lambda binders in a graph, additional binders
 collapse into `FVAR_MANY`/`BVAR_MANY`, which preserves bounded vocab size but loses positional distinctness
@@ -191,8 +191,7 @@ beyond index 63.
 
 Full specification: `docs/reference/ENCODER_FORMAT.md`.
 
-Current corpus vocabulary: **7,867 unique tokens** across 2,554 declarations (4 modules).
-Training vocab (after pathological filter): **4,495 tokens**.
+Current corpus: ~4,029 declarations across 14 Mathlib modules. v2 training vocab (after C1/C2/C4 + pathological filter): **601 tokens** (v1.4.0 was 1,236; v1.2.0 was 8,102). See [`ENCODER_FORMAT.md`](ENCODER_FORMAT.md) for the v2.0.0 token specification.
 
 Encoding Strategy
 -----------------
@@ -215,7 +214,7 @@ Decoding Strategy
 The decoder (`Decoder.lean`) reconstructs IR graphs from token lists. It is total: unknown
 tokens are skipped, missing `GRAPH_BEGIN` returns an empty graph rather than a panic.
 
-Supports v1.2.0 (`FVAR_N`/`BVAR_N`/`TERM_N`), v1.0.0 (`BVAR_N`/`TERM_N`), and v0.1.0 legacy (`b(...)`/`t<n>`) formats. Round-trip verified 2,554/2,554.
+Supports v2.0.0 (`FVAR_N`/`BVAR_N`/`TERM_N` + `GEN_<area>` buckets + `typeclass` attributes), v1.2.0 (legacy `gen:FullName`), and v0.1.0 (`b(...)`/`t<n>`) formats. Round-trip verified 2,554/2,554.
 
 In v1.0.0, forall and lambda binders were not split into separate token families; both used `BVAR_*`.
 v1.2.0 introduced the explicit `FVAR_*` vs `BVAR_*` distinction. Current corpus/training artifacts use v2.0.0;
