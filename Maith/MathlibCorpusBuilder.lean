@@ -42,7 +42,8 @@ def buildMathlibIRCorpus
     (enumerationConfig : EnumerationConfig := defaultEnumerationConfig)
     (serializationConfig : SerializationConfig := defaultSerializationConfig)
     (encoder : Encoder := Lean.DSL.defaultEncoder)
-    (traceDecl : Option String := none) :
+    (traceDecl : Option String := none)
+    (bucketMode : BucketMode := .module) :
     IO Unit := do
   IO.println "=== Mathlib IR Training Corpus Builder ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
@@ -156,7 +157,8 @@ Build corpus with custom modules and default settings.
 def buildMathlibIRCorpusCustomModules
     (modules : List String)
     (encoder : Encoder := Lean.DSL.defaultEncoder)
-    (traceDecl : Option String := none) :
+    (traceDecl : Option String := none)
+    (bucketMode : BucketMode := .module) :
     IO Unit :=
   buildMathlibIRCorpus
     modules
@@ -164,6 +166,7 @@ def buildMathlibIRCorpusCustomModules
     defaultSerializationConfig
     encoder
     traceDecl
+    bucketMode
 
 /--
 Detailed execution trace for debugging and metrics.

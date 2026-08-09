@@ -82,6 +82,11 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
         # in v2 (GEN_ALGEBRA, GEN_ORDER, etc.). Skip any residual gen:* entries.
         if tok.startswith("gen:"):
             continue
+        # per_operator mode: rare op:* tokens below frequency threshold are excluded
+        # (they'll be mapped to GEN_UNK in encode_ir). proj:* tokens are always kept
+        # (deterministic, low-count by nature — they encode field identity).
+        if tok.startswith("op:") and count < freq_threshold:
+            continue
         vocab[tok] = next_id
         next_id += 1
 
@@ -133,6 +138,9 @@ def encode_ir(tokens: list[str], vocab: dict[str, int], module: str = "") -> lis
     for tok in tokens:
         if tok in vocab:
             result.append(vocab[tok])
+        elif tok.startswith("op:"):
+            # per_operator token that fell below freq threshold → GEN_UNK
+            result.append(gen_unk_id)
         elif tok.startswith("gen:"):
             result.append(bucket_id)
         else:
@@ -390,6 +398,17 @@ if __name__ == "__main__":
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
     parser.add_argument("--out", default="datasets/")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--representation-id", default="semantic_graph_ir_v2_0_0")
+    parser.add_argument("--representation-id", default=None,
+                        help="IR version string. Auto-set from bucket-mode if not specified.")
+    parser.add_argument("--bucket-mode", choices=["module", "per_operator"],
+                        default="module",
+                        help="module = v2 GEN_* buckets (default); "
+                             "per_operator = op:<shortName> per distinct operator")
     args = parser.parse_args()
+    # Auto-set representation_id from bucket mode if not explicitly specified
+    if args.representation_id is None:
+        args.representation_id = (
+            "semantic_graph_ir_v2_0_0" if args.bucket_mode == "module"
+            else "semantic_graph_ir_v2_1_1"
+        )
     run(args.corpus, args.out, args.seed, args.representation_id)

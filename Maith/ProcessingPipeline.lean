@@ -17,8 +17,8 @@ import Maith.MetaExtractor
 
 namespace Lean.DSL
 
-def transpileLeanToGraph (decl : ExtractedDeclaration) : ProcessingResult Graph :=
-  extractGraphFromDeclaration decl
+def transpileLeanToGraph (decl : ExtractedDeclaration) (bucketMode : BucketMode := .module) : ProcessingResult Graph :=
+  extractGraphFromDeclaration decl bucketMode
 
 def canonicalizeEntities (entities : List Entity) : List Entity :=
   normalizeEntities entities
@@ -53,9 +53,9 @@ def encodeGraphToTokens (graph : Graph) (encoder : Encoder) :
   let tokens := encoder.encodeGraph graph
   ProcessingResult.ok tokens
 
-def processDeclaration (decl : ExtractedDeclaration) (encoder : Encoder) :
+def processDeclaration (decl : ExtractedDeclaration) (encoder : Encoder) (bucketMode : BucketMode := .module) :
     ProcessingResult TrainingExample :=
-  match transpileLeanToGraph decl with
+  match transpileLeanToGraph decl bucketMode with
   | ProcessingResult.fail msg => ProcessingResult.fail msg
   | ProcessingResult.ok g =>
     let normalizedGraph := pipelineNormalizeGraph g
