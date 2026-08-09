@@ -51,7 +51,7 @@ Qwen2.5-Coder-0.5B transformer base; the parameter difference between columns is
 
 | | Narrow-vocab (601 tokens, 358M) | Full-vocab (151K tokens, 494M) |
 |---|---|---|
-| **IR vocab** | **A** ✅ | **A-large** ❌ untested |
+| **IR vocab** | **A** ✅ | **A-large** ❌ N/A (601-token IR can't meaningfully fill 151K embedding rows) |
 | **BPE vocab** | **B-small** ✅ | **B** ✅ |
 | **AST BPE vocab** | **C-small** ❌ untested | **C** ✅ |
 
@@ -181,13 +181,21 @@ python3 python/test_pipeline_integration.py
 
 ## Pitfalls to avoid
 
-- Don't state the hypothesis is disproven — only the prediction-metric null at toy scale
-  is closed (H2). The semantic-utility claims (H6/H7/H10) are open.
+- Don't state the hypothesis is disproven based on toy-scale results — it hasn't been
+  tested at meaningful scale yet, and that's a real gap, not an excuse. But don't use
+  "still open" to imply the current evidence is neutral or encouraging either: three of
+  four tested angles are null, and the pattern so far does not favor the hypothesis.
+  State both facts together, every time. If "test at scale" is invoked, it must actually
+  be run, not held as a permanent escape hatch.
 - Don't use "small model" / "large model" for grid axes — both are toy-scale; use
   narrow-vocab / full-vocab.
 - Don't cite B/C numbers (91.7% / 93.0%) without the epoch-confound caveat (3-epoch v1
-  vs 2-epoch v2). The clean comparison is A vs B-small (epoch-matched).
-- Don't claim representation "doesn't help" without the metric qualifier — it helps
-  under probing (DEC-025) but not under prediction metrics (DEC-027).
+  vs 2-epoch v2). The clean comparison is A vs B-small (epoch-matched) — and that
+  comparison is also a loss for A (90.0% vs 90.5% top-1, 1.2361 vs 1.1294 perplexity).
+- Don't inflate the probing result into task-level evidence. DEC-025 shows the IR's
+  semantics are encoded in model representations — a necessary condition for the
+  hypothesis, not evidence of task benefit. Encoding has not translated to any measured
+  task advantage. Don't use "it helps under probing" to imply the representation is
+  working; encoding ≠ helping.
 - Don't conflate embedding-table size with transformer capacity — the 136M parameter gap
   is embedding rows, not attention/FFN layers.
