@@ -20,7 +20,14 @@ confirming the A-vs-B/C gap is a parameter-count effect, not a representation de
 
 ## The 2×2 control grid
 
-| | Small model (358M params) | Large model (494M params) |
+> **Scale note.** All variants share the same Qwen2.5-Coder-0.5B transformer base
+> (toy-scale by field standards; see the [model-size taxonomy](EXPERIMENT_DESIGN.md#model-size-taxonomy)
+> in EXPERIMENT_DESIGN). The parameter difference between the two columns is
+> **embedding-table size** (601 vs 151K tokens), not transformer capacity (attention
+> heads, FFN layers, hidden dims are identical). "Narrow-vocab" and "Full-vocab" name
+> the actual variable; neither column is "large" in absolute terms.
+
+| | Narrow-vocab (601 tokens, 358M) | Full-vocab (151K tokens, 494M) |
 |---|---|---|
 | **IR vocab (601 tokens)** | **A** ✅ 90.0% acc / 1.2361 ppl | **A-large** ❌ untested |
 | **BPE vocab (151k tokens)** | **B-small** ✅ 90.5% acc / 1.1294 ppl | **B** ✅ 91.7% acc / 1.107 ppl |
@@ -37,7 +44,7 @@ for the full interpretation and next steps.
 
 ## Completed runs
 
-### Variant A — IR v2 (C1+C2+C4), small model
+### Variant A — IR v2 (C1+C2+C4), narrow-vocab
 - **Run dir:** `runs/variant_A_v2_full/checkpoint-final`
 - **IR version:** `semantic_graph_ir_v2_0_0` — Variant A serializes Maith's **semantic IR graph** (entity/relation/operation rows from elaborated Lean) into token sequences. v2 simplifies the v1 graph: C1 strips polarity noise, C4 collapses granular `gen:FullName` into `GEN_<area>` buckets (vocab 1,236→601), C2 adds typeclass names.
 - **Base model:** Qwen2.5-Coder-0.5B
@@ -50,7 +57,7 @@ for the full interpretation and next steps.
 - **Date:** 2026-08-08
 - **Notes:** First full C1+C2+C4 run. C4 improved over C1+C2 partial (1.2458 → 1.2361).
 
-### Variant B — BPE, large model
+### Variant B — BPE, full-vocab
 - **Run dir:** `runs/variant_B2/checkpoint-final`
 - **IR version:** raw `leanExpr` string, Qwen BPE tokenizer
 - **Base model:** Qwen2.5-Coder-0.5B (full embedding table = 494M)
@@ -63,7 +70,7 @@ for the full interpretation and next steps.
 - **Date:** 2026-08-01
 - **Notes:** Authoritative B run. Avoid stale `runs/variant_B/` (checkpoint/results mismatch).
 
-### Variant C — BPE variant, large model
+### Variant C — BPE variant, full-vocab
 - **Run dir:** `runs/variant_C_v2/checkpoint-final`
 - **IR version:** AST-style split `leanExpr`, Qwen BPE tokenizer
 - **Base model:** Qwen2.5-Coder-0.5B (full embedding table = 494M)
@@ -79,7 +86,7 @@ for the full interpretation and next steps.
 
 ## Planned runs
 
-### B-small — BPE, small model ❌ (PRIORITY)
+### B-small — BPE, narrow-vocab ❌ (PRIORITY)
 - **Purpose:** Control for model size. If B-small ≈ A (90%), size explains the gap.
   If B-small << A, the IR representation is doing real work.
 - **Run dir:** `runs/variant_B_small/` (to be created)
@@ -95,7 +102,7 @@ for the full interpretation and next steps.
 - **Decision:** If B-small < 88%, IR structure is carrying A. If B-small ≥ 90%, size is the confound.
 - **Status:** Not started. Requires vocab truncation script and model resize.
 
-### B-small — BPE, small model ✅ (DEC-027)
+### B-small — BPE, narrow-vocab ✅ (DEC-027)
 - **Run dir:** `runs/variant_B_small/checkpoint-final`
 - **IR version:** raw `leanExpr` string, Qwen BPE tokenizer truncated to 601 tokens
 - **Base model:** Qwen2.5-Coder-0.5B (embedding table truncated to 601)
@@ -109,7 +116,7 @@ for the full interpretation and next steps.
 - **Notes:** Size control for DEC-027. B-small ≈ A (90.5% vs 90.0%) at matched params →
   size explains the gap, not the representation. Vocab builder: `python/build_b_small_vocab.py`.
 
-### A-large — IR v2, large model ❌ (lower priority)
+### A-large — IR v2, full-vocab ❌ (lower priority)
 - **Purpose:** Shows the ceiling of the IR approach at B/C's parameter count.
 - **Run dir:** `runs/variant_A_large/` (to be created)
 - **IR version:** `semantic_graph_ir_v2_0_0`
@@ -120,7 +127,7 @@ for the full interpretation and next steps.
 - **Epochs:** 2
 - **Status:** Not started. Lower priority than B-small.
 
-### C-small — BPE variant, small model ❌ (optional, closes the grid)
+### C-small — BPE variant, narrow-vocab ❌ (optional, closes the grid)
 - **Purpose:** Completes the 2×2. Paired with C to isolate size effect on the BPE variant.
 - **Status:** Not started. Lower priority than B-small.
 
