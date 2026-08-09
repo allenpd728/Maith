@@ -46,10 +46,9 @@ progress; gate = improvement over 1.2458 and ultimately over B (1.11) / C (1.10)
   and the `eval_completion.py` stale-checkpoint guard (commit `c8d0e4e`). Authoritative C is
   `runs/variant_C_v2`; always pass `--checkpoint-C runs/variant_C_v2` until the run-dir mess
   is fully cleaned up (`docs/scratch/runs_audit.md`).
-- **DEC-009 warm-start (still open).** The warm-start attempt achieved only 0.51% token
-  overlap and did not isolate the cold-start confound. DEC-006 was closed by DEC-021
-  (embedding projection), but DEC-009's warm-start path itself remains unresolved as a
-  separate technique. Revisit if a warm-start approach is needed for the v2 custom vocab.
+- **DEC-009 warm-start (closed, v1-era).** Resolved by DEC-021 (embedding projection). Not
+  relevant for v2 — the 601-token embedding table is small enough that cold-start is not
+  a meaningful confound. Superseded by DEC-027 (model size confound / B-small).
 - **C3 (attribute sparsity) deferred** — needs a Lean cross-check; not part of the current
   v2 run.
 - **Model size confound (2026-08-09).** The v2 A/B/C comparison is confounded: A runs at
