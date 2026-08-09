@@ -1,6 +1,6 @@
 # Maith: Semantic IR for Lean Mathematics
 
-> **Phase 7 active (DEC-022–024, 2026-08-04).** Variant A v1.4.0 perplexity: **1.2751** (new best, DEC-023). Fix 3 (IO marker simplification) reduced vocab from 8,221 to 1,236 tokens. Flat-IR ablation (DEC-024) shows structural shape alone achieves 0.077 bits/tok vs Variant A 0.351 bits/tok — semantic content adds prediction cost not currently recovered at 3.5k training examples. Whether this is a data-volume or objective-function problem is an open question. Fix 2 (polarity removal) deferred — `neut` functions as a positional anchor at this scale (DEC-022). See `docs/PHASE_7_ROADMAP.md` and `docs/DECISION_LOG.md` for full experimental record.
+> **Phase 7 active (DEC-022–024, 2026-08-04).** Variant A v1.4.0 perplexity: **1.2751** (new best, DEC-023). Fix 3 (IO marker simplification) reduced vocab from 8,221 to 1,236 tokens. Flat-IR ablation (DEC-024) shows structural shape alone achieves 0.077 bits/tok vs Variant A 0.351 bits/tok — semantic content adds prediction cost not currently recovered at 3.5k training examples. Whether this is a data-volume or objective-function problem is an open question. Fix 2 (polarity removal) deferred — `neut` functions as a positional anchor at this scale (DEC-022). See `docs/history/PHASE_7_ROADMAP.md` and `docs/decisions/LOG.md` for full experimental record.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
@@ -33,7 +33,7 @@ High-level flow:
 - Decode tokens back to graph (`Decoder.lean`)
 - Decompile graph to Lean syntax (`Transpiler.lean` — `Decompile.decompileGraph`)
 
-The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
+The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/reference/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
 
 ## 5) Why Not Train Directly on Lean Source?
 
@@ -73,7 +73,7 @@ Concrete pipeline in this repo:
 `Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
 
 For a fuller, stage-by-stage architecture and artifact map, see:
-[`docs/Design.md#detailed-pipeline-diagram`](docs/Design.md#detailed-pipeline-diagram).
+[`docs/reference/Design.md#detailed-pipeline-diagram`](docs/reference/Design.md#detailed-pipeline-diagram).
 
 The full pipeline is implemented and validated. See section 7 for corpus results and section 8 for known limitations.
 
@@ -141,7 +141,7 @@ python3 python/run_postrun_pipeline.py --runs-dir runs/
 Phase 5 artifact field contracts and Phase 6 scaffold designs are documented in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
 
 Canonical experiment assumptions/interpretation decisions are tracked in
-[`docs/DECISION_LOG.md`](docs/DECISION_LOG.md).
+[`docs/decisions/LOG.md`](docs/decisions/LOG.md).
 
 ### Corpus extraction result (real run)
 
@@ -195,11 +195,11 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
   DEC-006 (cold-start embedding confound) remains open: we cannot separate "IR representation
   is worse" from "random initialization is worse." Phase 6 design may proceed.
 - For the current authoritative experiment state, use:
-  - `docs/DECISION_LOG.md` (DEC-016, DEC-017, DEC-018)
-  - `docs/EXPERIMENT_DESIGN.md`
+  - `docs/decisions/LOG.md` (DEC-016, DEC-017, DEC-018)
+  - `docs/experiments/EXPERIMENT_DESIGN.md`
   - `python3 python/compare_results.py --runs-dir runs/`
 - `Transpiler.lean` provides both debug formatting and Lean syntax decompilation via
-  `Decompile.decompileGraph`. See `docs/DECOMPILER_HANDOVER.md`.
+  `Decompile.decompileGraph`. See `docs/reference/DECOMPILER_HANDOVER.md`.
 
 ## 9) Research Roadmap
 
@@ -311,7 +311,7 @@ docs/
   REPO_AUDIT.md           # file classification audit
   TEST.md                  # test run commands
 README.md
-CORPUS_SCHEMA.md           # JSONL schema contract
+docs/reference/docs/reference/CORPUS_SCHEMA.md           # JSONL schema contract
 ```
 
 ## 13) License
