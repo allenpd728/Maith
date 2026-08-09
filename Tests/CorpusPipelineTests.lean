@@ -233,11 +233,21 @@ def testProjectionExtracts : Bool :=
   let projExpr  := Lean.Expr.proj `Semigroup 0 (Lean.Expr.bvar 0)
   let forallS   := Lean.Expr.forallE `s semigroupApp projExpr .default
 
-  match graphFromExpr "projTestDecl" forallS with
-  | .fail msg => dbg_trace "testProjectionExtracts FAIL: {msg}"; false
-  | .ok g =>
-    -- Must have at least one operation tagged "proj:Semigroup/0"
-    g.operations.any (fun o => o.op = OperationOp.generic "proj:Semigroup/0")
+  -- Test module mode: projection bucketed to proj:GEN_MATHLIB/0
+  let moduleOk :=
+    match graphFromExpr "projTestDecl" forallS .module with
+    | .fail msg => dbg_trace "testProjectionExtracts FAIL (module): {msg}"; false
+    | .ok g =>
+      g.operations.any (fun o => o.op = OperationOp.generic "proj:GEN_MATHLIB/0")
+
+  -- Test per_operator mode: projection uses TypeName (restores documented intent)
+  let perOpOk :=
+    match graphFromExpr "projTestDecl" forallS .per_operator with
+    | .fail msg => dbg_trace "testProjectionExtracts FAIL (per_op): {msg}"; false
+    | .ok g =>
+      g.operations.any (fun o => o.op = OperationOp.generic "proj:Semigroup/0")
+
+  moduleOk && perOpOk
 
 /--
 Test that `.letE` (let expression) extracts successfully and
