@@ -190,7 +190,7 @@ scale without accounting for the gap.
 
 | Tier | Parameter range | Examples | Maith's position |
 |---|---|---|---|
-| Toy / micro | <1B | Qwen2.5-Coder-0.5B, Pythia-160M | **All Maith variants** (358M–494M; same 0.5B base) |
+| Toy / micro | <1B | Qwen2.5-Coder-0.5B, Pythia-160M | **All Maith variants** (358M–494M; same 0.5B base) ¹ |
 | Small | 1B–8B | Qwen2.5-1.5B, Llama-3-8B, Phi-3-mini | Not tested — IRCoder's positive results start here (1.1B) |
 | Medium | 8B–30B | CodeLlama-13B, Qwen2.5-14B | Not tested |
 | Large | 30B–100B | Llama-3-70B, Qwen2.5-72B | Not tested |
@@ -209,6 +209,11 @@ is `(151,643 − 601) × 896 ≈ 135.5M` embedding rows.
 capacity), not just a bigger embedding table on the same 0.5B base. Varying embedding-table
 size within a single 0.5B base — which is what Maith's grid does — tests vocabulary
 representation, not model-capacity scaling.
+
+> ¹ "0.5B base" refers to the model name (Qwen2.5-Coder-**0.5B**), not the parameter count
+> after vocab resize. The base model ships with ~494M params (including its 151K-token
+> embedding table); after resizing the embedding table to Maith's 601-token IR vocab,
+> Variant A drops to ~358M. The transformer layers (attention, FFN, norms) are unchanged.
 
 ## Hyperparameters (fixed across all variants)
 
