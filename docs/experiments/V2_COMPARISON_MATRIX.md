@@ -17,12 +17,14 @@ use a 151k-token table (494M params). Two variables changed at once: representat
 | | Small model (358M params) | Large model (494M params) |
 |---|---|---|
 | **IR vocab (601 tokens)** | **A** ✅ 90.0% acc / 1.2361 ppl | **A-large** ❌ untested |
-| **BPE vocab (151k tokens)** | **B-small** ❌ untested | **B** ✅ 91.7% acc / 1.107 ppl |
+| **BPE vocab (151k tokens)** | **B-small** ✅ 90.5% acc / 1.1294 ppl | **B** ✅ 91.7% acc / 1.107 ppl |
 | **BPE variant vocab (151k tokens)** | **C-small** ❌ untested | **C** ✅ 93.0% acc / 1.098 ppl |
 
-**Priority:** B-small is the most important missing cell. It directly answers whether
-A's competitiveness comes from the IR representation or simply from both A and B-small
-being small models on a narrow task.
+**Priority:** ~~B-small is the most important missing cell.~~ **B-small complete (DEC-027).**
+B-small = 90.5% acc / 1.1294 ppl — essentially tied with A (90.0% / 1.2361) at matched
+params. The size confound is confirmed: A's deficit vs B/C is a parameter-count effect,
+not a representation deficit. The v2 IR is not yet doing measurable work beyond
+small-vocab BPE at this scale. See DEC-027 for the full interpretation and next steps.
 
 ## Completed runs
 
@@ -83,6 +85,20 @@ being small models on a narrow task.
 - **Gate:** B-small completion accuracy relative to A's 90.0%
 - **Decision:** If B-small < 88%, IR structure is carrying A. If B-small ≥ 90%, size is the confound.
 - **Status:** Not started. Requires vocab truncation script and model resize.
+
+### B-small — BPE, small model ✅ (DEC-027)
+- **Run dir:** `runs/variant_B_small/checkpoint-final`
+- **IR version:** raw `leanExpr` string, Qwen BPE tokenizer truncated to 601 tokens
+- **Base model:** Qwen2.5-Coder-0.5B (embedding table truncated to 601)
+- **Vocab size:** 601 tokens (`datasets/vocab_B_small.json`, top-601 BPE, 99.92% coverage)
+- **Params:** 358.4M (matching A exactly)
+- **Training data:** 3,491 examples (remapped to compact 0..600 IDs), seed=42
+- **Epochs:** 2
+- **Eval perplexity:** 1.1294
+- **Completion accuracy (top-1, last 10 tokens, 200 samples):** 90.5% (1,792/1,980)
+- **Date:** 2026-08-09
+- **Notes:** Size control for DEC-027. B-small ≈ A (90.5% vs 90.0%) at matched params →
+  size explains the gap, not the representation. Vocab builder: `python/build_b_small_vocab.py`.
 
 ### A-large — IR v2, large model ❌ (lower priority)
 - **Purpose:** Shows the ceiling of the IR approach at B/C's parameter count.
