@@ -1,21 +1,17 @@
 #!/usr/bin/env bash
-# run_abc.sh — run A, B, C training serially from the maith-repo sandbox.
+# run_abc.sh — run A, B, C training serially.
 # Each variant is verified (epochs==3, no smoke_test) before the next starts.
-# Run from: ~/Library/Caches/com.spotify.studio/.studio/artifacts/maith-repo/
+# Run from the repo root (or any Scripts/ subdir — the script resolves its own path).
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-EXPECTED_DIR="/Users/philipallen/Library/Caches/com.spotify.studio/.studio/artifacts/maith-repo"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "=== Maith A/B/C serial training run ==="
-echo "Working directory: $SCRIPT_DIR"
+echo "Working directory: $REPO_ROOT"
 
-if [ "$SCRIPT_DIR" != "$EXPECTED_DIR" ]; then
-  echo "ERROR: This script must be run from $EXPECTED_DIR"
-  echo "       Currently in: $SCRIPT_DIR"
-  exit 1
-fi
+cd "$REPO_ROOT" || { echo "ERROR: Cannot cd to $REPO_ROOT"; exit 1; }
 
 run_variant() {
   VARIANT=$1

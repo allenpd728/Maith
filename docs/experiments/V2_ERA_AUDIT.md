@@ -73,8 +73,8 @@ v2 (C1+C2+C4) rather than the superseded v1.x state.
 ### Root
 - `README.md` — ⚠️ **stale header.** Says "Phase 7 active (DEC-022–024, 2026-08-04),
   v1.4.0 perplexity 1.2751". Should reflect v2: DEC-025 complete, v2 (C1+C2+C4) =
-  1.2361, DEC-027 B-small in progress. (Note: README is philipallen-owned — needs
-  the delete+rewrite trick or a Kit edit.)
+  1.2361, DEC-027 B-small in progress. (Note: README was file-owner-locked at time
+  of audit — needed a delete+rewrite or Kit edit.)
 
 ### Code
 - `python/build_dataset.py` — ✅ v2 (C4 `bucket_from_module` + `encode_ir` gen-bucketing).
@@ -112,7 +112,7 @@ v2 (C1+C2+C4) rather than the superseded v1.x state.
 
 ### P1 — v2 consistency (should fix before merge; not strictly blocking)
 3. **`README.md` header** — update from v1.4.0/Phase-7 to v2 (1.2361, DEC-025/027
-   status). Needs the delete+rewrite trick (philipallen-owned) or a Kit edit.
+   status). Was file-owner-locked at time of audit — needed a delete+rewrite or Kit edit.
 4. **`experiments/EXPERIMENT_DESIGN.md`** — add a v2 addendum (or a "Superseded by
    V2_COMPARISON_MATRIX" header) noting v2.0.0: vocab 601, 3,491 train, C4 buckets,
    A=1.2361. The v1 tables are fine as historical record but must be marked historical.
