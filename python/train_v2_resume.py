@@ -284,6 +284,12 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str,
         model.resize_token_embeddings(vocab_size)
         print(f"  Resized embedding table: {tokenizer.vocab_size} → {vocab_size}")
 
+        # Variant A uses a custom vocab (e.g. 601/633 tokens), so the base Qwen
+        # bos/eos token ids (151643) are out of range and crash eval on load.
+        # Null them out so the saved config is eval-safe.
+        model.config.bos_token_id = None
+        model.config.eos_token_id = None
+
         # DEC-006: Load embedding projection matrix if provided
         if embed_project_path and os.path.exists(embed_project_path):
             print(f"  Loading embedding projection from {embed_project_path} ...")
