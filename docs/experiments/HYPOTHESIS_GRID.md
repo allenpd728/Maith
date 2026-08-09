@@ -34,6 +34,7 @@
 | H8 | Does the IR's advantage appear only above a scale threshold? | ⬜ | The IR's advantage appears only above a scale threshold | Not testable on current hardware. Precedent: IRCoder gains at 1.1B–7.3B (small tier, per [taxonomy](EXPERIMENT_DESIGN.md#model-size-taxonomy)) — but that is cross-domain (code, not math); the scale threshold may differ for formal mathematics. | A larger *transformer-capacity* base model (1B+); blocked on IR design and compute. |
 | H9 | Would co-training (IR alongside source) recover gains where replacement didn't? | ⬜ | Co-training (IR alongside source) recovers gains where replacement didn't | PACT precedent (ICLR 2022, 32%→48%); design lesson in [`PRIOR_ART.md`](../reference/PRIOR_ART.md) §3, candidate in [`V2_NEXT_STEPS`](V2_NEXT_STEPS.md) §4. | Multi-objective training experiment (joint IR + source loss). |
 | H10 | Does the IR beat AST on semantic probing tasks beyond module classification? | ◐ | The IR beats AST specifically on semantic probing tasks | DEC-025 tested module classification only. Richer semantic probes untested. | Extended probing: typeclass arity, theorem-vs-definition, semantic category. |
+| H11 | Is perplexity a valid primary metric for evaluating semantic representations? | ❌ | Perplexity is a valid primary metric for evaluating semantic representations | No — it is structurally biased toward redundancy/predictability, which the IR deliberately sacrifices for canonicalization. DEC-024 (semantic content adds prediction difficulty) + DEC-025 (semantics encoded but not rewarded) + theoretical argument (prediction metrics favor natural language properties; see [EXPERIMENT_DESIGN evaluation framework](EXPERIMENT_DESIGN.md#why-prediction-metrics-are-structurally-biased-toward-natural-language)). | Closed. Use semantic-task metrics (retrieval, probing, ATP) as primary evaluation. |
 
 ## How to read this grid
 
@@ -43,6 +44,10 @@
 - H2 (negative): the IR does *not* improve next-token prediction at this scale. This is
   established and is the project's cleanest null.
 - H3 (negative): cold-start is *not* the cause of H2's null. Established by DEC-021.
+- H11 (negative): perplexity is *not* a valid primary metric for this hypothesis — it is
+  structurally biased toward redundancy, which the IR deliberately sacrifices. The correct
+  evaluation is semantic-task metrics (retrieval, probing, ATP). See
+  [EXPERIMENT_DESIGN evaluation framework](EXPERIMENT_DESIGN.md#evaluation-framework-the-correct-metrics-for-this-hypothesis).
 
 **What is open and tractable on current hardware (M4/16GB):**
 - H5 (objective redesign), H6 (retrieval/similarity), H9 (co-training), H10 (richer
