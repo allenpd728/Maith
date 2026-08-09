@@ -131,7 +131,10 @@ See `docs/decisions/LOG.md` DEC-026 for the full record.
 
 ---
 
-# Historical: v1.x experiment design (Phase 5/6)
+# Historical: v1.x experiment design
+
+> The v1 comparison grid is preserved at [V1_COMPARISON_MATRIX.md](V1_COMPARISON_MATRIX.md) —
+> it illustrates the confounds (no size control, epoch mismatch) that motivated v2. (Phase 5/6)
 
 > The sections below are the original v1.x design record (variants table, Phase 5/6
 > results, confound investigations). They are retained as history. The current
