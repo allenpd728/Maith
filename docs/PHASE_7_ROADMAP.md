@@ -200,6 +200,15 @@ v1.3.0 results
 
 ---
 
+## Merge-to-main gate
+
+**Do not merge `kit/dev` → `main` until the v2 experiment set is complete.**
+The B-small control experiment (DEC-027) is required before the A/B/C results
+are defensible. See `docs/V2_NEXT_STEPS.md` for the full checklist and
+OpenHands prompt.
+
+---
+
 ## What Is Already Documented
 
 | Topic | Location |
