@@ -4,12 +4,15 @@
 > C2 typeclass enrichment, C4 GEN module bucketing; vocab 601). The v2 control grid is
 > complete: Variant A v2 = perplexity **1.2361** / top-1 **90.0%**; B-small (size-matched
 > BPE control, DEC-027) = **1.1294** / **90.5%** — essentially tied with A at matched
-> params, confirming the A-vs-B/C gap is a size effect, not a representation deficit.
+> params, confirming the A-vs-B/C gap is a size effect, not a representation deficit
+> *under prediction-family metrics (perplexity, completion accuracy) at this scale*.
 > DEC-025 closed: A's representations encode strong semantic content (62pp probe gap vs
 > Flat-IR). The IR encodes real semantics, but that structure is not rewarded by the
-> next-token objective at this scale; next levers are corpus expansion and objective
-> redesign. See [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md) for related
-> work, `docs/experiments/V2_COMPARISON_MATRIX.md` for the 2×2 control grid, and
+> next-token objective at this scale; whether it helps under non-prediction metrics
+> (retrieval, ATP) is open. Next levers: corpus expansion, objective redesign, and
+> retrieval/similarity evaluation (H6). See [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md) for related
+> work, `docs/experiments/V2_COMPARISON_MATRIX.md` for the 2×2 control grid,
+> `docs/experiments/HYPOTHESIS_GRID.md` for the decomposed sub-claims, and
 > `docs/decisions/LOG.md` (DEC-026/027) for the full v2 result.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
@@ -213,9 +216,11 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
   | C (AST BPE) | AST-split BPE, full vocab | 151,643 | 494M | 1.098 | 93.0% |
 
   The A-vs-B/C gap is a **size effect** (B-small at matched params ties A), not a
-  representation deficit. The IR encodes real semantic content (DEC-025: 62pp probe gap
-  vs. flat-IR), but that structure is not rewarded by the next-token objective at this
-  scale. Cold-start (DEC-021) and model-size (DEC-027) confounds are both ruled out.
+  representation deficit *under prediction-family metrics at this scale*. The IR encodes
+  real semantic content (DEC-025: 62pp probe gap vs. flat-IR), but that structure is not
+  rewarded by the next-token objective at this scale. Whether it helps under non-prediction
+  metrics (retrieval, ATP) is open (H6/H7). Cold-start (DEC-021) and model-size (DEC-027)
+  confounds are both ruled out *for the prediction-metric null*.
   *(Epoch note: B and C are 3-epoch v1-era runs; A and B-small are 2-epoch v2 runs. The
   A-vs-B-small comparison is epoch-matched and is the clean representation test; A-vs-B/C
   is not. See `docs/experiments/V2_COMPARISON_MATRIX.md` for per-run epoch counts.)*

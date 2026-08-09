@@ -93,7 +93,7 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | **DEC-024** | Flat-IR ablation: semantic content adds 0.27 bits/token unrecoverable cost at this scale. Raw PPL comparison invalid across vocab sizes; bits/token is the correct metric. Probing experiment (DEC-025) needed to distinguish data-volume vs format problem |
 | **DEC-025** | ✅ Complete — A encodes semantics. Linear probe: Variant A 75.4% vs Flat-IR 13.6% (62pp gap) on 11-class module prediction. Semantic content is linearly decodable; higher perplexity is task-difficulty, not failure to learn. Triggers v2 IR + corpus expansion. |
 | **DEC-026** | IR v2 compression gate PARTIAL → implementation. C1+C2 partial run = 1.2458 (beats DEC-021 baseline 1.2978). C4 (GEN module bucketing) was missing from the dataset (encode_ir mapped all gen:* → GEN_UNK); fixed (commit `f194027`), datasets rebuilt (GEN_UNK → 0). Full C1+C2+C4 re-run in progress; gate = improvement over 1.2458 and ultimately over B/C baselines. See `docs/scratch/v2_token_analysis.md`. |
-| **DEC-027** | ✅ Complete — B-small control. B-small (BPE, 358M, 601-vocab) = 90.5% top-1 / 1.1294 ppl, essentially tied with A (90.0% / 1.2361). Size explains the A-vs-B/C gap; the v2 IR is not yet doing measurable work beyond small-vocab BPE at this scale. Next levers: corpus expansion, objective redesign, IR pretraining. See `docs/experiments/V2_COMPARISON_MATRIX.md`. |
+| **DEC-027** | ✅ Complete — B-small control. B-small (BPE, 358M, 601-vocab) = 90.5% top-1 / 1.1294 ppl, essentially tied with A (90.0% / 1.2361). Size explains the A-vs-B/C gap; the v2 IR is not yet doing measurable work *under prediction metrics* beyond small-vocab BPE at this scale. Non-prediction metrics (retrieval, ATP) open (H6/H7). Next levers: corpus expansion, objective redesign, IR pretraining, retrieval eval. See `docs/experiments/V2_COMPARISON_MATRIX.md`. |
 
 ---
 
@@ -107,8 +107,8 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | Is it due to Qwen pretraining prior? | **Unlikely** — 25.8% vocab overlap, Lean BPE worse than English |
 | Is the normaliser broken? | **Partially** — 93% rate is expected and correct; no fix needed |
 | Will v1.3.0 (polarity removal) narrow the gap? | **Closed** — DEC-022: regression confirmed, Fix 2 deferred |
-| Can the IR beat the AST (Variant C)? | **Open (size-confounded)** — v2 A=90.0% vs B=91.7% / C=93.0%, but DEC-027 B-small (90.5% at matched params) shows the gap is a size effect, not a representation deficit. IR not yet doing measurable work over small-vocab BPE. Next: corpus expansion, objective redesign. |
-| Does Variant A encode semantic content in its representations? | **Closed** — DEC-025: yes, 62pp probe gap vs Flat-IR. Bottleneck is data/objective, not representation. |
+| Can the IR beat the AST (Variant C)? | **Open (size-confounded)** — v2 A=90.0% vs B=91.7% / C=93.0%, but DEC-027 B-small (90.5% at matched params) shows the gap is a size effect, not a representation deficit *under prediction-family metrics at this scale*. IR not yet doing measurable work *under prediction metrics* over small-vocab BPE; non-prediction metrics (retrieval, ATP) untested (H6/H7). Next: corpus expansion, objective redesign, retrieval eval. |
+| Does Variant A encode semantic content in its representations? | **Closed** — DEC-025: yes, 62pp probe gap vs Flat-IR. Under prediction metrics, bottleneck appears to be data/objective; under non-prediction metrics, untested (H6/H7). |
 | Is Phase 8 validation complete? | **Yes** — 8a, 8a-ii, 8b, 8c, 8d all complete as of 2026-08-05 |
 
 ---

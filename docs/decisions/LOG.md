@@ -1462,9 +1462,10 @@ quarantined to `runs/_stale_variant_*`; see `docs/scratch/runs_audit.md`,
 - C1+C2+C4 (1.2361) < C1+C2 partial (1.2458) → **C4 helped** (~0.01 ppl, ~0.3pp accuracy).
 - A still trails B (1.107 / 91.7%) and C (1.098 / 93.0%) on both metrics.
 - The representation hypothesis is **not yet supported** by perplexity/accuracy.
-  Consistent with DEC-025: the bottleneck is data/objective, not the
-  representation (A's representations encode strong semantic content, 62pp probe
-  gap vs Flat-IR). Next levers: corpus expansion, IR pretraining, objective redesign.
+  Consistent with DEC-025: under prediction metrics, the bottleneck appears to be
+  data/objective, not the representation (A's representations encode strong semantic
+  content, 62pp probe gap vs Flat-IR); non-prediction metrics (retrieval, ATP) are
+  open (H6/H7). Next levers: corpus expansion, IR pretraining, objective redesign.
 
 **Comparison gap identified (2026-08-09):**
 The A/B/C comparison is confounded by model size — A uses a 601-token embedding
@@ -1492,11 +1493,11 @@ the B-small experiment scope.
 
 ---
 
-### DEC-027 — B-small control: size confound confirmed, representation not yet doing measurable work
+### DEC-027 — B-small control: size confound confirmed, representation not yet doing measurable work under prediction metrics
 
 **Date:** 2026-08-09
 **Status:** ✅ Complete
-**Decision:** B-small ≥ 90% gate → model size explains the A-vs-B/C gap at this scale. The v2 IR representation is not yet doing measurable work beyond what a small-vocab BPE achieves.
+**Decision:** B-small ≥ 90% gate → model size explains the A-vs-B/C gap at this scale. The v2 IR representation is not yet doing measurable work *under prediction-family metrics (perplexity, completion accuracy)* beyond what a small-vocab BPE achieves; whether it helps under non-prediction metrics (retrieval, ATP) is open (H6/H7).
 
 #### Purpose
 
@@ -1529,8 +1530,9 @@ isolating representation (semantic IR vs raw BPE) from size.
 
 - **B-small top-1 = 90.5% ≥ 90% gate → size explains the gap.**
 - B-small at matched params (358M, 601-vocab) achieves 90.5% — essentially tied
-  with A's 90.0%. The IR representation is **not doing measurable work** beyond
-  what a small-vocab BPE achieves at this scale.
+  with A's 90.0%. The IR representation is **not doing measurable work under prediction
+  metrics (perplexity, completion accuracy)** beyond what a small-vocab BPE achieves at
+  this scale; non-prediction metrics (retrieval, ATP) are open (H6/H7).
 - On perplexity, B-small (1.1294) is better than A (1.2361) — BPE is more
   predictable than the IR tokens even at matched vocab/params, likely because
   BPE token distributions are more Zipfian/concentrated.
@@ -1548,9 +1550,15 @@ semantic content, 62pp probe gap), the picture is:
 1. The IR representation encodes real semantic structure (DEC-025 probing).
 2. That structure does not translate to a next-token-prediction advantage over
    BPE at matched scale (DEC-027 B-small control).
-3. The bottleneck is likely **training objective + data volume**, not the
-   representation itself. Next-token prediction may not be the objective that
-   rewards semantic structure; a downstream task (proof search, completion) might.
+3. Under prediction metrics, the bottleneck appears to be **training objective +
+   data volume**, not the representation itself — next-token prediction may not be
+   the objective that rewards semantic structure. **This is a scoped hypothesis about
+   prediction, not a closed claim about representation overall.** Whether
+   representation is the bottleneck *under semantic-task metrics* is exactly what H6
+   (retrieval/similarity evaluation) would distinguish: if the IR wins on retrieval,
+   then representation *is* doing work that prediction metrics couldn't measure, and
+   this "objective is the bottleneck" interpretation is incomplete. See
+   [`HYPOTHESIS_GRID`](../experiments/HYPOTHESIS_GRID.md) H5/H6.
 
 #### Next steps for the IR-candidate search
 
