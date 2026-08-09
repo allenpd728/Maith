@@ -113,6 +113,20 @@ for potential future use, but is not emitted as tokens during encoding.
 
 ## v2.0.0 — C1 / C2 / C4 (current)
 
+**v2 in one sentence:** v2 simplifies the v1 graph representation for training —
+C1/C4 strip structural noise and collapse granular semantic tokens into coarse
+high-frequency buckets (polarity removed; ~2,000 per-constant `gen:FullName` tokens
+bucketed into ~10 `GEN_<area>` tokens), reducing vocab 1,236 → 601 — while C2 adds
+one targeted semantic signal (typeclass short names). The graph structure (E/R/O
+rows) is preserved; what changes is which graph attributes become tokens and how
+granularly.
+
+**Naming note:** The v2 changes use C1–C4 labels. These map to the v1-era
+"Fix N" naming in the decision log: C1 (polarity removal) = "Fix 2" (DEC-022);
+C4 (GEN bucketing) is new in v2. "Fix 3" (IO marker simplification, DEC-023) was
+a v1.4.0 change, not a v2 C-change. When reading DEC-022/023 for context on a
+future IR candidate, use this mapping.
+
 v2.0.0 is the IR version trained in the DEC-026 experiment. It is produced by
 three changes applied on top of v1.4.0 — **C1** (polarity removal, formalised),
 **C2** (typeclass enrichment), and **C4** (GEN module bucketing). C3 (attribute
@@ -124,9 +138,9 @@ Polarity tokens (`pos`/`neg`/`neut`) were already dropped from emission in
 v1.3.0. v2.0.0 formalises this as **C1**: the `Polarity` field is retained in
 the IR data structures (for potential future use) but is never emitted as a
 token. No `neut`/`pos`/`neg` tokens appear in a v2.0.0 token stream. This is a
-schema cleanup with **no token-stream effect** beyond v1.3.0 (the encoder
-already omitted polarity); it is listed for completeness so v3 implementers do
-not re-introduce polarity tokens.
+the formalisation of the v1.3.0 polarity removal (DEC-022, where it was called
+"Fix 2"). Polarity (`neut`/`pos`/`neg`) was ~24% of v1 tokens and carried no
+discriminative signal (99.8% were `neut`). It is listed as a v2 change for completeness so future IR candidates do not re-introduce polarity tokens.
 
 ### C2 — typeclass enrichment
 

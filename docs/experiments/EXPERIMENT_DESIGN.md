@@ -98,7 +98,7 @@ size) is the standard template:
 
 | Variant | Representation | Vocab | Params | Perplexity | Top-1 Acc |
 |---|---|---|---|---|---|
-| A (v2, C1+C2+C4) | Maith IR tokens | 601 | 358M | 1.2361 | 90.0% |
+| A (v2, C1+C2+C4) | Semantic IR graph → tokens | 601 | 358M | 1.2361 | 90.0% |
 | B | Raw leanExpr → Qwen BPE | 151,643 | 494M | 1.107 | 91.7% |
 | C | AST-style → Qwen BPE | 151,643 | 494M | 1.098 | 93.0% |
 | B-small (DEC-027) | BPE truncated to 601 | 601 | 358M | *(in progress)* | *(in progress)* |

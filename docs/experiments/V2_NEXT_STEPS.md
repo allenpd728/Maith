@@ -68,13 +68,13 @@ conclusion.
 
 ---
 
-### 2. C3 — attribute sparsity (optional, lower priority)
+### 2. C3 — attribute sparsity (candidate iteration, lower priority)
 
 **What:** Prune empty/noise attributes from the IR to reduce token count further.
 Currently deferred — needs a Lean cross-check to ensure Python/Lean consistency.
 
 **Gate:** Only worth running if B-small shows IR is doing real work. If B-small ≥ 90%,
-C3 won't change the conclusion and can stay deferred indefinitely.
+C3 won't change the conclusion and can stay deferred indefinitely. If run, it is a new IR candidate — evaluate it against the control grid with the fixed eval protocol, not a v2 patch.
 
 **Steps (when ready):**
 1. Implement attribute sparsity in `MetaExtractor.lean`

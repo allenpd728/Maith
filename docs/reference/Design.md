@@ -27,7 +27,7 @@ The high-level flow is:
 
 ```
 Lean Environment → MetaExtractor.lean → IR Graph → Normalizer.lean → canonical graph
-  → Encoder.lean (v1.2.0) → token sequence → CorpusSerializer.lean → corpus.jsonl
+  → Encoder.lean (v2.0.0) → token sequence → CorpusSerializer.lean → corpus.jsonl
   → python/ → A/B/C dataset variants → fine-tuning
 ```
 
@@ -57,7 +57,7 @@ flowchart TD
     A4 --> A5[IR Graph]
     A5 --> A6[Normalizer.lean]
     A6 --> A7[Canonical graph]
-    A7 --> A8[Encoder.lean v1.2.0]
+    A7 --> A8[Encoder.lean v2.0.0]
     A8 --> A9[Token sequence]
     A9 --> A10[CorpusSerializer.lean]
     A10 --> A11[Corpus/corpus.jsonl]
@@ -176,7 +176,7 @@ This makes the DSL predictable for both humans and models.
 IR Vocabulary
 -------------
 
-The IR vocabulary is small, canonical, and stable. Encoder v1.2.0 produces:
+The IR vocabulary is small, canonical, and stable. Encoder v2.0.0 produces:
 
 - **Structural tokens**: `GRAPH_BEGIN`, `GRAPH_END`, `E`, `A`, `R`, `O`, polarity markers
 - **Forall binder IDs**: `FVAR_0`–`FVAR_63`, `FVAR_MANY` (forall/∀ binders, counter resets per graph)
@@ -218,7 +218,7 @@ tokens are skipped, missing `GRAPH_BEGIN` returns an empty graph rather than a p
 Supports v1.2.0 (`FVAR_N`/`BVAR_N`/`TERM_N`), v1.0.0 (`BVAR_N`/`TERM_N`), and v0.1.0 legacy (`b(...)`/`t<n>`) formats. Round-trip verified 2,554/2,554.
 
 In v1.0.0, forall and lambda binders were not split into separate token families; both used `BVAR_*`.
-v1.2.0 introduced the explicit `FVAR_*` vs `BVAR_*` distinction. Current corpus/training artifacts use v1.2.0;
+v1.2.0 introduced the explicit `FVAR_*` vs `BVAR_*` distinction. Current corpus/training artifacts use v2.0.0;
 older decode support remains for backward compatibility and regression testing.
 
 
