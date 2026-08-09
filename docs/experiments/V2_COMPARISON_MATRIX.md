@@ -7,10 +7,12 @@
 ## Why this document exists
 
 The v2 IR (C1+C2+C4) experiment produced a result — A at 90.0% completion accuracy
-vs B at 91.7% and C at 93.0% — but the comparison is confounded by model size.
-Variant A uses a 601-token embedding table (358M params total); Variants B and C
-use a 151k-token table (494M params). Two variables changed at once: representation
-*and* model size. This matrix tracks the experiments needed to isolate each variable.
+vs B at 91.7% and C at 93.0% — that was initially confounded by model size: Variant A
+uses a 601-token embedding table (358M params total) while Variants B and C use a
+151k-token table (494M params). This matrix tracks the controlled experiments needed to
+isolate representation from size. **The size confound is now resolved (DEC-027):** the
+B-small cell (BPE truncated to 601 tokens / 358M params) ties A at 90.5% vs. 90.0%,
+confirming the A-vs-B/C gap is a parameter-count effect, not a representation deficit.
 
 ## The 2×2 control grid
 
