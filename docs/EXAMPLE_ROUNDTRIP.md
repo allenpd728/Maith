@@ -337,33 +337,38 @@ Round-trip testing verifies that:
 Stage 6 covers only the token↔graph direction. That direction is verified
 (2,554/2,554 declarations pass `validate_roundtrip.py`).
 
-### Graph → Lean Syntax: Not Yet Implemented
+### Graph → Lean Syntax: Partially Implemented (Phase 8d), Not Elaboration-Verified
 
-**STATUS: the graph→Lean direction is not complete.** `Decompile.decompileGraph`
-exists as a structural scaffold but does not produce valid Lean. The current
-output for the `neg_neg` graph is:
+**STATUS (updated 2026-08-08):** Phase 8d (commit `2ab10a5`, 2026-08-05) fixed
+the three issues originally listed here:
+- `∀` keyword + explicit binder syntax: `∀ ({name} : {type}), {body}` (`exprToString`)
+- Universe levels normalized: `u_1 + 1` → `succ u_1`
+- `Eq` emission improved
 
-```
-(G : Type.u_1 + 1), 
-(inst : InvolutiveNeg), 
-(a : G), 
-Eq.G (Neg.neg (Neg.neg a)) a
-```
+`Decompile.decompileGraph` now produces structurally well-formed output, and
+`Tests/DecompilerTests.lean` tests 1–7 pass (incl. a full `neg_neg` round-trip,
+Test 7). **However, the output has never been validated against the actual Lean
+compiler.** Specifically:
 
-This is not parseable by Lean's elaborator. Known issues:
+- **`Tests/DecompilerTests.lean` Test 8 is a placeholder** — it returns
+  `TestResult.pass "... (placeholder)"` without running `lean --make`. The IO
+  test infrastructure was never updated for the current Lean 4 `IO.Process` API.
+- The doc-comment on `decompileGraph` in `Maith/Transpiler.lean` still says
+  "STATUS: produces a human-readable skeleton, NOT valid Lean syntax" — this is
+  now stale relative to the Phase 8d fixes and should be reconciled.
+- Lambda/fun binders (`BVAR`) are still not supported by the decompiler.
 
-- `Eq.G` is malformed — valid Lean uses `@Eq G` or infix `=`
-- `Type.u_1 + 1` is not valid universe level syntax
-- `(G : Type.u_1 + 1),` is a tuple expression, not a `∀` binder
-- No `∀` or `theorem` keyword wrapping the binder chain
+**What remains to truly close Stage 6:**
+1. Implement Test 8 with the current `IO.Process` API: write decompiled output
+   to a temp file, run `lean --make` (or `lean --stdin`), assert zero errors.
+2. Fix any elaboration failures that surfaces (likely `Eq` application form,
+   implicit-argument handling, and `BVAR`/lambda binders).
+3. Update the `Transpiler.lean` doc-comment to match the post-8d reality.
 
-The test suite (7/7 passing) checks token presence and non-emptiness, not
-Lean elaboration. A real validity check requires running the output through
-`lean --stdin` and verifying zero errors.
-
-Completing this stage requires fixing the `exprToString` emitter to produce
-syntactically correct Lean for `Eq`, universe levels, and `∀` binders.
-Until then, "verifiable SLM outputs" and "safe rewriting" are not available.
+Until a real `lean --make` pass exists, "verifiable SLM outputs" and "safe
+rewriting" remain unavailable — the decompiler is structurally improved but not
+proven to produce elaborator-accepted Lean. This is the natural next scoping
+item if a downstream consumer (proof search / rewriting) is needed.
 
 ---
 
