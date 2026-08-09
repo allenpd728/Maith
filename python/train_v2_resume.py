@@ -107,9 +107,9 @@ def log_dataset_samples(
     For variant A, decodes token IDs using vocab_A.json (id → token string).
     For B/C, decodes using the Qwen BPE tokenizer.
     """
-    # Build id→token map for variant A
+    # Build id→token map for variant A / B_small (custom-vocab variants)
     id_to_token = {}
-    if variant == "A" and vocab_path and os.path.exists(vocab_path):
+    if variant in ("A", "B_small") and vocab_path and os.path.exists(vocab_path):
         with open(vocab_path) as f:
             vocab = json.load(f)
         # vocab is token→id; invert it
@@ -122,7 +122,7 @@ def log_dataset_samples(
                 break
             row = json.loads(line)
             ids = row["input_ids"]
-            if variant == "A":
+            if variant in ("A", "B_small"):
                 decoded = " ".join(id_to_token.get(tid, f"<UNK:{tid}>") for tid in ids)
             else:
                 decoded = tokenizer.decode(ids, skip_special_tokens=False)
@@ -268,7 +268,7 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str,
     """
     print(f"Loading base model: {BASE_MODEL}")
 
-    if variant in ("A", "flat"):
+    if variant in ("A", "flat", "B_small"):
         assert vocab_path and os.path.exists(vocab_path), f"vocab not found at {vocab_path}"
         with open(vocab_path) as f:
             vocab = json.load(f)
@@ -395,7 +395,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
     else:
         train_path = os.path.join(datasets_dir, f"train_{variant}.jsonl")
         eval_path  = os.path.join(datasets_dir, f"eval_{variant}.jsonl")
-        vocab_path = os.path.join(datasets_dir, "vocab_A.json") if variant == "A" else None
+        # A and B_small both use a custom (truncated) vocab + resized embedding table.
+        vocab_path = os.path.join(datasets_dir, f"vocab_{variant}.json") if variant in ("A", "B_small") else None
         expected_source = variant
 
     assert os.path.exists(train_path), f"Missing: {train_path} — run build_dataset.py first"
@@ -661,7 +662,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--variant",    required=True, choices=["A", "B", "C", "flat"])
+    parser.add_argument("--variant",    required=True, choices=["A", "B", "C", "flat", "B_small"])
     parser.add_argument("--datasets",   default="datasets/")
     parser.add_argument("--out",        default=None)
     parser.add_argument("--smoke-test", action="store_true",
