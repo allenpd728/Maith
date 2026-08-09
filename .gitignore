@@ -49,3 +49,24 @@ authorized_keys
 
 # Runtime PID files from training launchers
 *.pid
+
+# Reorganization 2026-08-09: stale root/doc leftovers, cannot delete on disk
+/CORPUS_SCHEMA.md
+/doc/
+/Modelfile.tmp
+nohup.out
+
+# Stale dataset dirs (archived content; canonical datasets live in datasets/)
+datasets_flat/
+datasets_phase5_backup/
+datasets_phase5_v1/
+
+# Logs and runtime artifacts
+logs/*.log
+logs/*.pid
+*.pid
+*.tmp
+
+# Intentionally-kept local dirs, not part of the repo
+local-models/
+ir-research/
