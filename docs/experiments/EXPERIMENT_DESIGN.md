@@ -68,6 +68,28 @@ size) is the standard template:
   link it from `docs/decisions/INDEX.md`. The candidate's IR version is recorded in
   `datasets/representation_manifest.json` (`representation_id`).
 
+**When baseline cells must be re-run vs carried over:**
+
+Each IR candidate needs its own grid because the baseline cells are only valid
+if the underlying data and size-match haven't changed. The rules:
+
+| What changed in the new candidate? | A (IR) | B-small | B, C (large baselines) |
+|---|---|---|---|
+| Tokenization only (same corpus, same vocab size) | Re-run | **Carry over** — same BPE, same size match | **Carry over** — same declarations, same BPE |
+| Vocab size changed (e.g. 601 → 800) | Re-run | **Re-run** — re-truncate BPE to the new vocab size via `build_b_small_vocab.py` | **Carry over** — B/C use full 151k BPE, unaffected by IR vocab size |
+| Corpus changed (new modules, different filtering, different split) | Re-run | **Re-run** — new train/eval data | **Re-run** — new train/eval data; the declarations changed |
+| Corpus expanded (more examples, same modules + split) | Re-run | **Re-run** — new train data | **Re-run** — new train data |
+
+**Why this matters:** without these rules, a future contributor might reuse v2's
+B/C/B-small numbers for a v3 candidate that changed the corpus, producing an
+invalid comparison (v3 IR tokens vs v2-era BPE on different declarations). The
+grid is the template; the cells are re-evaluated per candidate per the table above.
+
+**Provenance check:** before carrying over any baseline, verify the candidate's
+`datasets/representation_manifest.json` (train_examples, eval_examples, seed)
+matches the baseline's `results.json`. If train_examples or eval_examples differ,
+the corpus changed — re-run everything.
+
 ### Hyperparameters (fixed across IR candidates)
 | Parameter | Value | Rationale |
 |-----------|-------|----------|
