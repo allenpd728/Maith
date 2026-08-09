@@ -70,7 +70,9 @@ SEED         = 42
 # ---------------------------------------------------------------------------
 
 def load_eval_split(variant: str, datasets_dir: str, limit: Optional[int]) -> list[dict]:
-    path = Path(datasets_dir) / f"eval_{variant}.jsonl"
+    # B_small uses its own remapped eval split (compact 0..600 IDs), not eval_B.jsonl
+    split_name = "B_small" if variant == "B_SMALL" else variant
+    path = Path(datasets_dir) / f"eval_{split_name}.jsonl"
     if not path.exists():
         raise FileNotFoundError(f"Eval split not found: {path} — run build_dataset.py first")
     examples = []
@@ -186,8 +188,10 @@ def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device:
     model_dir = find_checkpoint_dir(model_dir)
     warn_if_checkpoint_stale(run_dir, model_dir, variant)
 
-    if variant == "A":
-        vocab_path = Path(datasets_dir) / "vocab_A.json"
+    if variant in ("A", "B_SMALL"):
+        # A and B_small both use a custom (truncated) vocab + resized embedding table.
+        vocab_name = "vocab_A" if variant == "A" else "vocab_B_small"
+        vocab_path = Path(datasets_dir) / f"{vocab_name}.json"
         with open(vocab_path) as f:
             vocab = json.load(f)
         vocab_size = len(vocab)
@@ -383,6 +387,8 @@ def main():
                         help="Override checkpoint directory for variant B (e.g. runs/variant_B2)")
     parser.add_argument("--checkpoint-C", default=None,
                         help="Override checkpoint directory for variant C (e.g. runs/variant_C_v2)")
+    parser.add_argument("--checkpoint-B_SMALL", default=None,
+                        help="Override checkpoint for B-small control (e.g. runs/variant_B_small)")
     args = parser.parse_args()
 
     if not Path("lakefile.lean").exists():
