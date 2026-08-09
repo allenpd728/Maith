@@ -1,7 +1,7 @@
 # Phase 7 Roadmap: Path to Outperforming the AST Baseline
 
 **Written:** 2026-08-03  
-**Status:** Active â€” Phase 8 validation complete; probing experiment (DEC-025) in progress  
+**Status:** Active Ñ v2 control grid complete (DEC-026/027); IR-candidate search in progress  
 **Baseline to beat:** Variant C (AST-split BPE), perplexity 1.1102, completion accuracy 91.4%
 
 ---
