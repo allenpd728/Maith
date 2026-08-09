@@ -1439,6 +1439,27 @@ Gate (full v2): improvement over 1.2458 (C1+C2) and, ultimately, over the B/C
 baselines (B=1.11, C=1.10). A v2 result below 1.2458 means C4 helps; below B/C
 would give the representation hypothesis direct support.
 
+**Full A/B/C results (200 examples, mask_last=10, authoritative checkpoints):**
+
+| Variant | Representation | Vocab | Perplexity | Top-1 Acc | Correct/Total |
+|---|---|---|---|---|---|
+| A (v2, C1+C2+C4) | Maith IR tokens | 601 | 1.2361 | 90.0% | 1799/2000 |
+| B | Raw leanExpr → Qwen BPE | 151,643 | 1.107 | 91.7% | 1816/1980 |
+| C | AST-style → Qwen BPE | 151,643 | 1.098 | 93.0% | 1850/1990 |
+
+Checkpoints: A=`runs/variant_A_v2_full`, B=`runs/variant_B2` (checkpoint-277),
+C=`runs/variant_C_v2`. (The old stale `runs/variant_{A,B,C}` dirs were
+quarantined to `runs/_stale_variant_*`; see `docs/runs_audit.md`,
+`docs/variant_c_eval_bug.md`.)
+
+**Gate outcome:**
+- C1+C2+C4 (1.2361) < C1+C2 partial (1.2458) → **C4 helped** (~0.01 ppl, ~0.3pp accuracy).
+- A still trails B (1.107 / 91.7%) and C (1.098 / 93.0%) on both metrics.
+- The representation hypothesis is **not yet supported** by perplexity/accuracy.
+  Consistent with DEC-025: the bottleneck is data/objective, not the
+  representation (A's representations encode strong semantic content, 62pp probe
+  gap vs Flat-IR). Next levers: corpus expansion, IR pretraining, objective redesign.
+
 **Related fixes this session:**
 - `eval_completion.py` stale-checkpoint guard (commit `c8d0e4e`) — warns when
   `results.json` mtime is >1d off from the checkpoint weights. This caught the
