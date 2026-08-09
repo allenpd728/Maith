@@ -22,10 +22,10 @@ Six phases of A/B/C experiments plus DEC-021–024 have established:
 | Fix 3 (IO marker simplification) improves perplexity to 1.2751 (new best) | Confirmed — DEC-023 |
 | Flat-IR (shape only, 11 tokens) achieves PPL 1.0551 / 0.077 bits/tok | Confirmed — DEC-024 |
 | Semantic content adds 0.27 bits/tok cost not recovered at current scale | Confirmed — DEC-024 |
-| Variant A representations encode strong semantic content (62pp probe gap vs Flat-IR) | Confirmed — DEC-025; bottleneck is data/objective, not representation |
+| Variant A representations encode strong semantic content (62pp probe gap vs Flat-IR) | Confirmed — DEC-025; under prediction metrics, bottleneck appears to be data/objective (non-prediction metrics untested, H6/H7) |
 | v2 IR (C1+C2) improves A to 1.2458 (beats DEC-021 baseline 1.2978) | Confirmed — DEC-026 |
 | C4 (GEN module bucketing) was missing from the v2 dataset; now fixed | Confirmed — DEC-026 / `docs/scratch/v2_token_analysis.md` |
-| Whether the full v2 (C1+C2+C4) closes the gap to B/C | **Closed — DEC-026/027.** Full v2 A = 1.2361 / 90.0%. B-small control (90.5% at matched params) shows the gap is a size effect, not a representation deficit. |
+| Whether the full v2 (C1+C2+C4) closes the gap to B/C | **Closed — DEC-026/027.** Full v2 A = 1.2361 / 90.0%. B-small control (90.5% at matched params) shows the gap is a size effect, not a representation deficit *under prediction-family metrics at this scale*. |
 
 **Current state (2026-08-09):** The v2 IR experiment set is complete.
 - **DEC-025:** A's representations encode strong semantic content (62pp probe gap vs Flat-IR).
@@ -33,12 +33,14 @@ Six phases of A/B/C experiments plus DEC-021–024 have established:
   C4 helped (1.2458 → 1.2361) but A still trails B (1.107 / 91.7%) and C (1.098 / 93.0%).
 - **DEC-027:** B-small control (BPE, 358M, 601-vocab) = 90.5% / 1.1294 — essentially tied
   with A at matched params. **Size explains the gap.** The v2 IR is not yet doing measurable
-  work beyond small-vocab BPE at this scale (3.5k examples, 358M params, next-token objective).
+  work *under prediction metrics* beyond small-vocab BPE at this scale (3.5k examples, 358M
+  params, next-token objective); non-prediction metrics (retrieval, ATP) are open (H6/H7).
 
 **Conclusion:** The representation hypothesis is **not yet supported** by perplexity /
 completion-accuracy. The IR encodes real semantics (DEC-025) but that structure does not
 translate to a next-token-prediction advantage over a size-matched BPE baseline (DEC-027).
-The bottleneck is likely **training objective + data volume**, not the representation.
+Under prediction metrics, the bottleneck appears to be **training objective + data volume**;
+whether representation is the bottleneck *under semantic-task metrics* is open (H6/H7).
 
 **Next levers for the IR-candidate search:**
 1. **Corpus expansion** (>10k examples) — the most direct lever; v2's 601-vocab scales well.
@@ -67,9 +69,11 @@ The bottleneck is likely **training objective + data volume**, not the represent
 - **C3 (attribute sparsity) deferred** — needs a Lean cross-check; not part of the current
   v2 run.
 - **Model size confound — RESOLVED (DEC-027, 2026-08-09).** B-small (BPE, 358M, 601-vocab)
-  = 90.5% / 1.1294, essentially tied with A (90.0% / 1.2361). Size explains the gap; the
-  IR is not yet doing measurable work over small-vocab BPE at this scale. See DEC-027 for
-  full results and `docs/experiments/V2_COMPARISON_MATRIX.md` for the completed 2×2 grid.
+  = 90.5% / 1.1294, essentially tied with A (90.0% / 1.2361). Size explains the gap *under
+  prediction metrics*; the IR is not yet doing measurable work *under prediction metrics*
+  over small-vocab BPE at this scale. Non-prediction metrics (retrieval, ATP) are open
+  (H6/H7). See DEC-027 for full results and
+  `docs/experiments/V2_COMPARISON_MATRIX.md` for the completed 2×2 grid.
 
 ---
 
