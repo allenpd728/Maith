@@ -22,10 +22,36 @@ Six phases of A/B/C experiments plus DEC-021–024 have established:
 | Fix 3 (IO marker simplification) improves perplexity to 1.2751 (new best) | Confirmed — DEC-023 |
 | Flat-IR (shape only, 11 tokens) achieves PPL 1.0551 / 0.077 bits/tok | Confirmed — DEC-024 |
 | Semantic content adds 0.27 bits/tok cost not recovered at current scale | Confirmed — DEC-024 |
-| Whether more data or different objective would close this gap | Open question |
+| Variant A representations encode strong semantic content (62pp probe gap vs Flat-IR) | Confirmed — DEC-025; bottleneck is data/objective, not representation |
+| v2 IR (C1+C2) improves A to 1.2458 (beats DEC-021 baseline 1.2978) | Confirmed — DEC-026 |
+| C4 (GEN module bucketing) was missing from the v2 dataset; now fixed | Confirmed — DEC-026 / `docs/v2_token_analysis.md` |
+| Whether the full v2 (C1+C2+C4) closes the gap to B/C | Open — re-run in progress |
 
-**Current state (2026-08-04):** Variant A v1.4.0 perplexity 1.2751 (best to date).
-Flat-IR ablation complete (DEC-024). Probing experiment (DEC-025) underway — scripts on openhands/probing-scripts, execution by Kit. Next decision gates on DEC-025 outcome: corpus expansion / IR pretraining (if A encodes semantics) or format/objective redesign (if A ≈ Flat-IR).
+**Current state (2026-08-08):** DEC-025 complete (A encodes semantics → pursue v2 IR + corpus
+expansion). DEC-026 v2 IR implemented: C1 (polarity removal) + C2 (typeclass enrichment) + C4
+(GEN module bucketing). C1+C2 partial run = 1.2458; C4 was missing from the dataset (encode_ir
+mapped all `gen:*` → `GEN_UNK`) and is now fixed (commit `f194027`), datasets rebuilt
+(`GEN_UNK → 0`, redistributed to GEN_ALGEBRA/ORDER/TOPOLOGY/DATA). Full C1+C2+C4 re-run in
+progress; gate = improvement over 1.2458 and ultimately over B (1.11) / C (1.10).
+
+### Open items carried forward (2026-08-08)
+
+- **C4 Python/Lean consistency.** `bucket_from_module` in `build_dataset.py` replicates
+  `bucketFromModule` in `MetaExtractor.lean` by hand. These must stay in sync — if the Lean
+  mapping changes, the Python side must too (or the Lean encoder should emit `GEN_<bucket>`
+  directly so there's a single source of truth). `python/test_c4_bucketing.py` guards the
+  Python side; consider a test that parses the Lean match arms and asserts parity.
+- **Variant C completion-eval fix.** The 1.5% top-1 was a stale-checkpoint dir, not a model
+  problem (see `docs/variant_c_eval_bug.md`). Fixed by quarantining `runs/_stale_variant_*`
+  and the `eval_completion.py` stale-checkpoint guard (commit `c8d0e4e`). Authoritative C is
+  `runs/variant_C_v2`; always pass `--checkpoint-C runs/variant_C_v2` until the run-dir mess
+  is fully cleaned up (`docs/runs_audit.md`).
+- **DEC-009 warm-start (still open).** The warm-start attempt achieved only 0.51% token
+  overlap and did not isolate the cold-start confound. DEC-006 was closed by DEC-021
+  (embedding projection), but DEC-009's warm-start path itself remains unresolved as a
+  separate technique. Revisit if a warm-start approach is needed for the v2 custom vocab.
+- **C3 (attribute sparsity) deferred** — needs a Lean cross-check; not part of the current
+  v2 run.
 
 ---
 

@@ -90,8 +90,9 @@ IR pretraining), see `docs/PHASE_7_ROADMAP.md` and `docs/IR_V2_PROPOSAL.md`.
 | DEC-009 | Appears after DEC-012 in the log file — written out of order as the warm-start investigation branched mid-phase |
 | **DEC-022** | Polarity tokens (neut) functioned as positional anchors — removal caused 0.074pp regression. Fix 2 deferred until corpus > 10k examples. New baseline: 1.3717 |
 | **DEC-023** | Fix 3 (IO markers) applied: vocab 8221 → 1236, Variant A perplexity 1.2751 — new best |
-| **DEC-024** | Flat-IR ablation: semantic content adds 0.27 bits/token unrecoverable cost at this scale. Raw PPL comparison invalid across vocab sizes; bits/token is correct metric. Probing experiment (DEC-025) needed to distinguish data-volume vs format problem |
-| **DEC-025** | 🟡 Pending — probing experiment in progress (scripts on openhands/probing-scripts) |
+| **DEC-024** | Flat-IR ablation: semantic content adds 0.27 bits/token unrecoverable cost at this scale. Raw PPL comparison invalid across vocab sizes; bits/token is the correct metric. Probing experiment (DEC-025) needed to distinguish data-volume vs format problem |
+| **DEC-025** | ✅ Complete — A encodes semantics. Linear probe: Variant A 75.4% vs Flat-IR 13.6% (62pp gap) on 11-class module prediction. Semantic content is linearly decodable; higher perplexity is task-difficulty, not failure to learn. Triggers v2 IR + corpus expansion. |
+| **DEC-026** | IR v2 compression gate PARTIAL → implementation. C1+C2 partial run = 1.2458 (beats DEC-021 baseline 1.2978). C4 (GEN module bucketing) was missing from the dataset (encode_ir mapped all gen:* → GEN_UNK); fixed (commit `f194027`), datasets rebuilt (GEN_UNK → 0). Full C1+C2+C4 re-run in progress; gate = improvement over 1.2458 and ultimately over B/C baselines. See `docs/v2_token_analysis.md`. |
 
 ---
 
@@ -105,8 +106,8 @@ IR pretraining), see `docs/PHASE_7_ROADMAP.md` and `docs/IR_V2_PROPOSAL.md`.
 | Is it due to Qwen pretraining prior? | **Unlikely** — 25.8% vocab overlap, Lean BPE worse than English |
 | Is the normaliser broken? | **Partially** — 93% rate is expected and correct; no fix needed |
 | Will v1.3.0 (polarity removal) narrow the gap? | **Closed** — DEC-022: regression confirmed, Fix 2 deferred |
-| Can the IR beat the AST (Variant C)? | **Open** — see `docs/PHASE_7_ROADMAP.md` |
-| Does Variant A encode semantic content in its representations? | **Pending** — DEC-025 probing experiment in progress |
+| Can the IR beat the AST (Variant C)? | **Open** — v2 IR (C1+C2+C4) re-run in progress (DEC-026); C1+C2 partial = 1.2458, still trails B (1.11) / C (1.10) |
+| Does Variant A encode semantic content in its representations? | **Closed** — DEC-025: yes, 62pp probe gap vs Flat-IR. Bottleneck is data/objective, not representation. |
 | Is Phase 8 validation complete? | **Yes** — 8a, 8a-ii, 8b, 8c, 8d all complete as of 2026-08-05 |
 
 ---
