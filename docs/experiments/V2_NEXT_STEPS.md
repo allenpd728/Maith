@@ -1,160 +1,94 @@
-# V2 Experiment — Next Steps Before Merging to Main
+# V2 Experiment — Phase Tracker
 
-> **Decision (2026-08-09):** Do not merge `kit/dev` → `main` until the v2
-> experiment set is complete. The current A/B/C results are promising but
-> confounded by model size. Main should reflect a defensible conclusion,
-> not a work-in-progress.
-
----
-
-## What's done ✅
-
-| Item | Status | Detail |
-|---|---|---|
-| v2 IR implemented (C1+C2+C4) | ✅ | `docs/scratch/v2_token_analysis.md`, commit `f194027` |
-| Full v2 A training (C1+C2+C4) | ✅ | ppl 1.2361, `runs/variant_A_v2_full` |
-| Authoritative B eval | ✅ | 91.7% acc, `runs/variant_B2` |
-| Authoritative C eval | ✅ | 93.0% acc, `runs/variant_C_v2` |
-| Authoritative A eval | ✅ | 90.0% acc, `runs/variant_A_v2_full` |
-| Stale checkpoint guard | ✅ | `eval_completion.py`, commit `c8d0e4e` |
-| Stale run dirs quarantined | ✅ | `runs/_stale_variant_{A,B,C}` |
-| DEC-026 written | ✅ | Full v2 gate result recorded |
-| `lake build tests` passes | ✅ | 72 jobs, warnings only |
-| Lean decompiler tasks (3) | ✅ | Committed, unverified — OK for merge |
-| V2_COMPARISON_MATRIX | ✅ | 2×2 grid, eval protocol, B-small spec |
-
----
-
-## What's needed before merging ❌
-
-### 1. B-small experiment (DEC-027) — PRIORITY
-
-**What:** Train a BPE model at the same parameter count as Variant A (358M).
-This is the control that isolates whether A's 90% accuracy comes from the IR
-representation or simply from both models being smaller.
-
-**Why it blocks merge:** Without it, the main branch would record A as "within
-1.7% of B" without noting that the comparison is confounded. That's a misleading
-conclusion.
-
-**Gate condition:**
-- If B-small < 88%: IR structure is doing real work → representation hypothesis supported
-- If B-small ≥ 90%: size explains the gap → hypothesis needs more work
-
-**Steps to run:**
-
-1. **Build `python/build_b_small_vocab.py`** — identify the 601 most frequent BPE
-   tokens in `datasets/train_B.jsonl` and produce a truncated vocab + resized
-   embedding table config.
-
-2. **Rebuild B-small dataset** using `build_dataset.py` with the truncated vocab.
-
-3. **Train B-small** using `train_v2_resume.py` with:
-   - Same 3,491 training examples, seed=42
-   - Same 2 epochs as A
-   - Output dir: `runs/variant_B_small/`
-
-4. **Eval B-small** using `eval_completion.py`:
-   ```bash
-   python3 python/eval_completion.py \
-     --variants B \
-     --checkpoint-B runs/variant_B_small \
-     --samples 200 --mask-last 10
-   ```
-
-5. **Update `docs/experiments/V2_COMPARISON_MATRIX.md`** with the B-small result.
-
-6. **Write DEC-027** in `docs/decisions/LOG.md` with the gate outcome.
-
----
-
-### 2. C3 — attribute sparsity (candidate iteration, lower priority)
-
-**What:** Prune empty/noise attributes from the IR to reduce token count further.
-Currently deferred — needs a Lean cross-check to ensure Python/Lean consistency.
-
-**Gate:** Only worth running if B-small shows IR is doing real work. If B-small ≥ 90%,
-C3 won't change the conclusion and can stay deferred indefinitely. If run, it is a new IR candidate — evaluate it against the control grid with the fixed eval protocol, not a v2 patch.
-
-**Steps (when ready):**
-1. Implement attribute sparsity in `MetaExtractor.lean`
-2. Cross-check with `build_dataset.py` encoder
-3. Rebuild datasets with new IR version
-4. Re-run A training, compare to 1.2361 baseline
-
----
-
-### 3. Minor cleanup (non-blocking but tidy)
-
-- Add `*.pid` to tracked `.gitignore` (currently only in `.git/info/exclude`)
-- Verify `run_full_experiment.py` works with B-small variant flag
-- Extend `summarize_abc_results.py` to handle the 2×2 grid
-
----
-
-### 4. Co-training vs. replacement — candidate direction from prior art (deferred)
-
-**Origin:** [`docs/reference/PRIOR_ART.md`](../reference/PRIOR_ART.md) §3, §7.
-
-PACT (Han et al., ICLR 2022) — Maith's closest methodological kin — extracts self-supervised
-signal from kernel-level proof terms and *co-trains* it alongside the tactic-prediction
-objective, gaining 32%→48% proving success. Maith, by contrast, *replaces* source with the
-IR and does not gain (DEC-027). The contrast suggests a candidate direction Maith has not
-tested: **co-train the IR objective alongside a source/BPE objective** rather than
-replacing source entirely. This would test whether the IR's encoded semantics
-(DEC-025: 62pp probe gap) can contribute as an auxiliary signal even when it does not
-suffice as a standalone training substrate.
-
-**Why deferred:** This is a new experimental design, not a v2 patch. It requires a
-multi-objective training setup (joint loss over IR and source sequences) that
-`python/train.py` does not currently support. It should be evaluated as a distinct IR
-candidate against the control grid, not folded into the v2 line. Prioritize after corpus
-expansion and objective-redesign experiments, both of which are more direct levers per
-DEC-027.
-
-**Reference:** PACT — Han, Rute, Wu, Ayers, Polu, ICLR 2022 (arXiv:2102.06203). See
-[`PRIOR_ART.md`](../reference/PRIOR_ART.md) §3 for the full comparison.
-
----
-
-## Merge-to-main checklist
-
-Run through this before merging `kit/dev` → `main`:
-
-- [ ] B-small training complete
-- [ ] B-small eval complete (top-1 accuracy recorded)
-- [ ] DEC-027 written with gate outcome
-- [ ] `docs/experiments/V2_COMPARISON_MATRIX.md` updated with B-small result
-- [ ] `lake build tests` passes (already passing — re-verify if Lean files changed)
-- [ ] `git log --oneline kit/dev ^main` reviewed — no WIP commits
-- [ ] `docs/history/PHASE_7_ROADMAP.md` "Where We Stand" updated with final conclusion
-
----
-
-## OpenHands prompt (copy-paste ready)
-
-> The v2 experiment is not yet complete — we need the B-small control run before
-> merging to main. Here's what to do next:
+> **Last updated:** 2026-08-09
+> **Purpose:** Single source of truth for what's done, what's in progress, and
+> what's next in the v2 IR experiment phase. Updated as work completes.
 >
-> **Step 1 — build `python/build_b_small_vocab.py`**
-> This script should:
-> - Load `datasets/train_B.jsonl` and count token frequency across all examples
-> - Identify the 601 most frequent BPE token IDs
-> - Write a config to `datasets/vocab_B_small.json` mapping those 601 token IDs
->   to a compact 0-indexed range (so the embedding table is 601×hidden_dim)
-> - Print the top-10 tokens and total coverage % for verification
->
-> **Step 2 — train B-small**
-> Using `train_v2_resume.py` with the B-small vocab config:
-> - Same 3,491 training examples, seed=42, 2 epochs
-> - Output: `runs/variant_B_small/`
-> - This should take ~40 min on MPS
->
-> **Step 3 — eval and record**
-> ```bash
-> python3 python/eval_completion.py \
->   --variants B --checkpoint-B runs/variant_B_small \
->   --samples 200 --mask-last 10 2>&1 | tee eval_b_small.log
-> ```
-> Then update `docs/experiments/V2_COMPARISON_MATRIX.md` and write DEC-027 in
-> `docs/decisions/LOG.md`. That's the merge-to-main signal.
+> **Related docs:**
+> - [`V2_COMPARISON_MATRIX.md`](V2_COMPARISON_MATRIX.md) — the 2x3 control grid
+> - [`V1_COMPARISON_MATRIX.md`](V1_COMPARISON_MATRIX.md) — historical v1 grid
+> - [`HYPOTHESIS_GRID.md`](HYPOTHESIS_GRID.md) — 10 testable sub-claims with status
+> - [`../decisions/LOG.md`](../decisions/LOG.md) — DEC-026 (v2 results), DEC-027 (B-small)
+
+---
+
+## Done
+
+| Item | Detail |
+|---|---|
+| v2 IR implemented (C1+C2+C4) | commit f194027; vocab 601 |
+| Full v2 A training | ppl 1.2361 / acc 90.0%, runs/variant_A_v2_full |
+| B-small control (DEC-027) | ppl 1.1294 / acc 90.5%, runs/variant_B_small |
+| DEC-026 + DEC-027 written | Full v2 result table + B-small gate (size confound confirmed) |
+| lake build tests passes | Verified on Kit's machine |
+| Lean decompiler (BVAR/Test 8/doc) | Tasks 1-3 committed and compile-verified |
+| Stale checkpoint guard | eval_completion.py, commit c8d0e4e |
+| Stale run dirs quarantined | runs/_stale_variant_{A,B,C} |
+| V2_COMPARISON_MATRIX | 2x3 grid, eval protocol, baseline-reuse rules |
+| V1_COMPARISON_MATRIX | Historical grid showing why v2 was needed |
+| HYPOTHESIS_GRID | 10 sub-claims, 3 closed (H1 yes / H2 no / H3 no), 7 open |
+| PRIOR_ART.md | Related-work survey (IRCoder, PACT, JEPA, AMR) |
+| Repo reorganized | docs/ into 5 subdirs, scripts/logs moved, .gitignore |
+| Language/framing audit | 7 edits: v2 narrative, C1 fix, Fix-N to CN mapping, search framing |
+| EXPERIMENT_DESIGN protocol | Fixed eval protocol, 2x2 template, baseline-reuse rules |
+| ENCODER_FORMAT v2 section | C1/C2/C4 spec, Python/Lean parity warning |
+| Variant-specific LR | B/C use 5e-5 (151k embedding stability), commit 83f18a8 |
+| B_SMALL eval support | eval_completion.py loads eval_B_small.jsonl + vocab_B_small |
+
+---
+
+## In progress
+
+### B/C re-run at 2 epochs (fresh v2 grid)
+
+**Why:** Old B (variant_B2) and C (variant_C_v2) used 3 epochs / train cap 384,
+inconsistent with A/B-small's 2 epochs / train cap 512. Re-runs use uniform
+protocol (2 epochs, seed 42, train cap 512) so only representation and size vary.
+
+| Variant | Status | Run dir | Notes |
+|---|---|---|---|
+| B (BPE 151k, 494M, 2ep, lr=5e-5) | Training (step ~139/874) | runs/variant_B_v2_2ep | ~134s/step, slow — MPS memory pressure from 151k embeddings at 512 cap |
+| C (AST BPE 151k, 494M, 2ep, lr=5e-5) | Queued (after B) | runs/variant_C_v2_2ep | Same expected speed |
+
+**Known issue:** B at 494M + 151k embeddings + 512 train cap is very slow on MPS
+(~134s/step vs old B's ~12s/step at 384 cap). Options being considered:
+- Reduce train cap to 384 for B/C (matches old profile, reduces memory)
+- Accept the slow run (resumable via step-checkpoints at step 218)
+- Run on CUDA if available
+
+**After B/C complete:**
+1. Eval both (200 samples, mask-10, authoritative checkpoint override)
+2. Update V2_COMPARISON_MATRIX with fresh 2-epoch numbers
+3. Mark old B (variant_B2, 3ep) and C (variant_C_v2, 3ep) as superseded
+4. Update HYPOTHESIS_GRID H2 evidence if numbers change
+
+---
+
+## Next — the open research front (from HYPOTHESIS_GRID)
+
+The hypothesis grid identifies 7 open sub-claims. The tractable on current
+hardware (M4/16GB) ones are the priority:
+
+| # | Sub-claim | Status | What would close it |
+|---|---|---|---|
+| H5 | Training objective is the bottleneck | Open | Masked-reconstruction or proof-completion objective experiment |
+| H6 | IR improves retrieval/similarity tasks | Open | Retrieval/similarity benchmark; IR vs AST/BPE embeddings |
+| H9 | Co-training (IR alongside source) recovers gains | Open | Multi-objective training experiment (PACT precedent) |
+| H10 | IR beats AST on richer probing tasks | Partial | Extended probing: typeclass arity, theorem-vs-definition, semantic category |
+
+**Blocked on compute:**
+| # | Sub-claim | Status | Blocker |
+|---|---|---|---|
+| H4 | Model size at scale | Partial | A-large requires a larger-vocab IR candidate |
+| H7 | IR improves proof completion / ATP | Open | Theorem-proving evaluation infrastructure |
+| H8 | IR advantage above scale threshold | Open | A-large / 10B+ run; blocked on compute |
+
+---
+
+## Deferred (post-merge cleanup)
+
+- **train.py vs train_v2_resume.py dedup** — fold v2 fixes back into train.py,
+  or delete train.py and rename train_v2_resume.py. Wait until B/C re-runs complete.
+- **C-small (optional)** — AST BPE truncated to 601, 358M. Completes the 2x3 grid
+  but doesn't change the A-vs-representation conclusion.
+- **A-large** — requires a larger-vocab IR candidate (future grid, not a v2 gap).
