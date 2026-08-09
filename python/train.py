@@ -370,8 +370,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         print("  or --embed-pretrain for embedding-only pretraining, not both.")
         sys.exit(1)
 
-    device = "mps" if torch.backends.mps.is_available() else \
-             "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else \
+             "mps" if torch.backends.mps.is_available() else "cpu"
     print(f"Device: {device}")
     print(f"Variant: {variant}")
     if embed_project:

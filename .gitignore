@@ -74,3 +74,10 @@ ir-research/
 /run_abc.sh
 /elan-init.sh
 docs/scratch/resume_notes_v2.md
+
+# Local-only environment reference (never commit)
+AGENTS_LOCAL.md
+remote_check.py
+apply_fixes.py
+fix_polarity.py
+fix_docstring.py

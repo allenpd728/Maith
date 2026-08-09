@@ -185,6 +185,13 @@ def build_variant_A(examples: list[dict], vocab: dict[str, int], representation_
 
 
 def build_variant_B(examples: list[dict], tokenizer, representation_id: str) -> list[dict]:
+    """Variant B: raw leanExpr via Qwen BPE.
+
+    Note: tokenizer.encode(text) adds BOS/EOS by default (HuggingFace convention).
+    Variant C uses add_special_tokens=False per AST piece, so B and C differ in
+    special-token framing. This is intentional (B = "raw source as a model sees it",
+    C = "AST boundaries only") but is a known minor confound (DEC-029 #6).
+    """
     rows = []
     for ex in examples:
         text = ex.get("leanExpr", "")
