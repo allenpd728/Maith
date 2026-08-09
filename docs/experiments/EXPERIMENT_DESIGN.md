@@ -53,7 +53,7 @@ Every IR candidate gets **its own comparison matrix** (e.g.
 `docs/experiments/V2_COMPARISON_MATRIX.md`. The 2×2 grid (representation × model
 size) is the standard template:
 
-| | Small model (matching IR-vocab params) | Large model (full BPE params) |
+| | Narrow-vocab (matching IR-vocab params) | Full-vocab (full BPE params) |
 |---|---|---|
 | **IR vocab (candidate)** | **IR-X** (the candidate) | **IR-X-large** (ceiling) |
 | **BPE vocab (control)** | **B-small** (size control) | **B** (full baseline) |
@@ -180,6 +180,35 @@ or more layers. More complex to implement and harder to interpret.
 **Recommended: Option 1.** The research question is whether the representation improves
 learning, not whether a smaller embedding table is faster. Holding architecture fixed and
 letting the embedding table reflect the actual vocab is the cleanest test.
+
+## Model-size taxonomy
+
+The field uses rough parameter-count bands to classify models. Maith's variants all fall
+in the **toy** tier — this is a deliberate constraint (consumer M4/16GB hardware), not an
+oversight, but it means results are not directly comparable to work at small/frontier
+scale without accounting for the gap.
+
+| Tier | Parameter range | Examples | Maith's position |
+|---|---|---|---|
+| Toy / micro | <1B | Qwen2.5-Coder-0.5B, Pythia-160M | **All Maith variants** (358M–494M; same 0.5B base) |
+| Small | 1B–8B | Qwen2.5-1.5B, Llama-3-8B, Phi-3-mini | Not tested — IRCoder's positive results start here (1.1B) |
+| Medium | 8B–30B | CodeLlama-13B, Qwen2.5-14B | Not tested |
+| Large | 30B–100B | Llama-3-70B, Qwen2.5-72B | Not tested |
+| Frontier | 100B+ (often 500B+ with MoE) | GPT-4-class, Claude-class, Gemini-class | Not tested |
+
+**Key distinction for interpreting Maith's results:** the 2×2 comparison matrices
+([V1](V1_COMPARISON_MATRIX.md), [V2](V2_COMPARISON_MATRIX.md)) label their axes
+"Narrow-vocab" and "Full-vocab" — not "Small model" and "Large model" — because the
+parameter difference between columns is **embedding-table size** (601 vs 151K tokens),
+not transformer capacity. The attention heads, FFN layers, and hidden dimensions are
+identical across all variants (same Qwen2.5-Coder-0.5B base). The ~136M parameter gap
+is `(151,643 − 601) × 896 ≈ 135.5M` embedding rows.
+
+**What this means for scale claims (H4/H8):** "Open at larger scale" means open at larger
+*transformer capacity* (a 1B+ base model with correspondingly more attention/FFN
+capacity), not just a bigger embedding table on the same 0.5B base. Varying embedding-table
+size within a single 0.5B base — which is what Maith's grid does — tests vocabulary
+representation, not model-capacity scaling.
 
 ## Hyperparameters (fixed across all variants)
 

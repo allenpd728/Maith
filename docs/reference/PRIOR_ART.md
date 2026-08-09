@@ -55,14 +55,16 @@ The contrast is the contribution-relevant fact:
 |---|---|---|
 | Domain | Programming languages | Formal mathematics (Lean/Mathlib) |
 | IR type | Existing compiler IR (LLVM) | Designed semantic graph from elaborated `Expr` |
-| Scale | ~4M files, 1.1B–7.3B models | ~3.5K examples, 365M model |
+| Scale | ~4M files, 1.1B–7.3B models (small tier) | ~3.5K examples, 358M model (toy tier) |
 | Outcome | Positive (gains across tasks) | Null-to-negative on perplexity; positive on probing |
 
 Two non-exclusive readings of the contrast, both open in Maith's decision log:
 
-1. **Scale.** IRCoder's gains appear at 1.1B+ parameters on millions of examples. Maith's
-   365M / 3.5K may be below the regime where IR grounding pays off. This is DEC-024's
-   open question (a): would semantic content help with 10K+ examples?
+1. **Scale.** IRCoder's gains appear at 1.1B+ parameters (small tier) on millions of
+   examples. Maith's 358M / 3.5K (toy tier) may be below the regime where IR grounding
+   pays off — and the gap is in *transformer capacity*, not just embedding-table size
+   (see [`EXPERIMENT_DESIGN`](../experiments/EXPERIMENT_DESIGN.md#model-size-taxonomy)).
+   This is DEC-024's open question (a): would semantic content help with 10K+ examples?
 2. **IR type.** LLVM IR is a lossy, operational lowering designed to be compact and
    regular. Maith's IR is a semantic graph that preserves more structure but is harder to
    predict token-by-token. DEC-024's flat-IR ablation supports this: the semantic tokens
