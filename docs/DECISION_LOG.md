@@ -1409,3 +1409,47 @@ C1 contributes zero to the simulation because the encoder already omits polarity
 #### Next step
 
 Implement C1, C2, C4 in MetaExtractor.lean and rebuild datasets. Run variant A training on v2 corpus. Gate: perplexity improvement over DEC-021 baseline (1.2978).
+
+#### Implementation results (2026-08-08)
+
+**C1/C2 partial run (variant_A_v2_full, first attempt):** perplexity **1.2458**
+(vocab 601, 2 epochs, 44.5 min). Beats the DEC-021 baseline (1.2978) and the
+prior best A (v1.4.0 = 1.2751). **But this run was C1+C2 only — C4 was missing.**
+
+**C4 was not actually present in the dataset.** Audit (`docs/v2_token_analysis.md`)
+found that `build_dataset.py`'s `encode_ir` mapped every `gen:*` token to a single
+`GEN_UNK` (49,893 positions = 8.27% of all tokens); the `GEN_ALGEBRA`/`GEN_ORDER`/
+… vocab entries were defined but never used. The corpus still emitted v1-style
+`gen:<FullName>` and nothing bucketed them. So the 1.2458 result reflects
+polarity removal + typeclass enrichment only, not the full v2 IR.
+
+**C4 fix** (commit `f194027`): added `bucket_from_module` (replicates
+`bucketFromModule` in `MetaExtractor.lean`) and modified `encode_ir` to map
+`gen:* → GEN_<bucket>` by the declaration's module. Verified end-to-end after
+dataset rebuild (`b72db9c`): `GEN_UNK → 0`; gen tokens redistributed to
+`GEN_ALGEBRA` (5.36%), `GEN_ORDER` (2.77%), `GEN_TOPOLOGY` (0.10%),
+`GEN_DATA` (0.04%). Regression tests in `python/test_c4_bucketing.py`.
+
+**Full v2 (C1+C2+C4) re-run:** launched 2026-08-08 (commit `b72db9c` dataset +
+`train_v2_resume.py` bos/eos null-out fix). Result:
+
+> **[PLACEHOLDER]** eval_perplexity = ___ (full C1+C2+C4, vocab 601, 2 epochs)
+
+Gate (full v2): improvement over 1.2458 (C1+C2) and, ultimately, over the B/C
+baselines (B=1.11, C=1.10). A v2 result below 1.2458 means C4 helps; below B/C
+would give the representation hypothesis direct support.
+
+**Related fixes this session:**
+- `eval_completion.py` stale-checkpoint guard (commit `c8d0e4e`) — warns when
+  `results.json` mtime is >1d off from the checkpoint weights. This caught the
+  Variant C 1.5%-top-1 bug: the default `runs/variant_C/` held a stale Jul-31
+  checkpoint while its `results.json` described an Aug-1 run
+  (`docs/variant_c_eval_bug.md`, `docs/runs_audit.md`).
+- Quarantined the three stale/inconsistent dirs (`runs/_stale_variant_{A,B,C}`)
+  so the default eval path can no longer load mismatched checkpoints.
+  Authoritative runs: A→`variant_A_v1_4_0`/`variant_A_v2_full`, B→`variant_B2`/
+  `variant_B_phase6`, C→`variant_C_v2`/`variant_C_phase6`.
+- `train_v2_resume.py`: step-based checkpointing (`save_strategy="steps"`,
+  ~half-epoch) + numeric resume sort, so mid-epoch stalls are resumable; also
+  nulls `bos_token_id`/`eos_token_id` for variant A (base Qwen ids 151643 are
+  out of range for the 601-token vocab and crashed eval on load).
