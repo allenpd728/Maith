@@ -81,3 +81,10 @@ remote_check.py
 apply_fixes.py
 fix_polarity.py
 fix_docstring.py
+apply_corpus_builder.py
+apply_per_operator.py
+apply_python_per_operator.py
+fix_decoder.py
+fix_polarity_test.py
+fix_proj_test.py
+fix_projection_test.py
