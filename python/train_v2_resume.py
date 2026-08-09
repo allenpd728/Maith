@@ -87,6 +87,12 @@ WEIGHT_DECAY    = 0.01
 WARMUP_RATIO    = 0.05  # converted to warmup_steps at runtime
 SEED            = 42
 
+# B/C use the full 151k embedding table and are unstable at 2e-4; use a reduced LR.
+# This is a legitimate consequence of vocab size, not a confound (documented in
+# docs/experiments/EXPERIMENT_DESIGN.md hyperparameters table).
+def lr_for_variant(variant: str) -> float:
+    return 5e-5 if variant in ("B", "C") else LEARNING_RATE
+
 
 # ---------------------------------------------------------------------------
 # Dataset sample logger
@@ -463,7 +469,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
             per_device_train_batch_size=BATCH_SIZE,
             per_device_eval_batch_size=BATCH_SIZE,
             gradient_accumulation_steps=GRAD_ACCUM,
-            learning_rate=LEARNING_RATE,
+            learning_rate=lr_for_variant(variant),
             weight_decay=WEIGHT_DECAY,
             warmup_steps=1,
             lr_scheduler_type="linear",
@@ -535,7 +541,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
         gradient_accumulation_steps=GRAD_ACCUM,
-        learning_rate=LEARNING_RATE,
+        learning_rate=lr_for_variant(variant),
         weight_decay=WEIGHT_DECAY,
         warmup_steps=warmup_steps,
         lr_scheduler_type="cosine",

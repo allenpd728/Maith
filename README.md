@@ -1,13 +1,16 @@
 # Maith: Semantic IR for Lean Mathematics
 
 > **v2 era (2026-08-09).** Current IR: `semantic_graph_ir_v2_0_0` (C1 polarity removal,
-> C2 typeclass enrichment, C4 GEN module bucketing; vocab 601). Variant A v2 = perplexity
-> **1.2361** / top-1 **90.0%** — beats the C1+C2 partial (1.2458) but still trails B (91.7%)
-> and C (93.0%). DEC-025 closed: A's representations encode strong semantic content (62pp
-> probe gap vs Flat-IR). DEC-027 (B-small size control) in progress. See
-> `docs/experiments/V2_COMPARISON_MATRIX.md` for the 2×2 control grid,
-> `docs/experiments/V2_NEXT_STEPS.md` for the merge-to-main checklist, and
-> `docs/decisions/LOG.md` (DEC-026) for the full v2 result.
+> C2 typeclass enrichment, C4 GEN module bucketing; vocab 601). The v2 control grid is
+> complete: Variant A v2 = perplexity **1.2361** / top-1 **90.0%**; B-small (size-matched
+> BPE control, DEC-027) = **1.1294** / **90.5%** — essentially tied with A at matched
+> params, confirming the A-vs-B/C gap is a size effect, not a representation deficit.
+> DEC-025 closed: A's representations encode strong semantic content (62pp probe gap vs
+> Flat-IR). The IR encodes real semantics, but that structure is not rewarded by the
+> next-token objective at this scale; next levers are corpus expansion and objective
+> redesign. See [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md) for related
+> work, `docs/experiments/V2_COMPARISON_MATRIX.md` for the 2×2 control grid, and
+> `docs/decisions/LOG.md` (DEC-026/027) for the full v2 result.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
@@ -34,13 +37,13 @@ High-level flow:
 - Extract declaration semantics from elaborated `Expr` trees (`MetaExtractor.lean`)
 - Build IR Graph (`Entity`, `Attribute`, `Relation`, `Operation`)
 - Canonicalize graph ordering (`Normalizer.lean`)
-- Encode canonical graph to tokens (`Encoder.lean`) — v1.2.0, `FVAR_N`/`BVAR_N`/`TERM_N` positional tokens
+- Encode canonical graph to tokens (`Encoder.lean`) — v2.0.0, 601-token vocabulary
 - Serialize examples to JSONL (`CorpusSerializer.lean`)
 - Consume JSONL in `python/` for vocab/tokenizer, splits, and dataset objects
 - Decode tokens back to graph (`Decoder.lean`)
 - Decompile graph to Lean syntax (`Transpiler.lean` — `Decompile.decompileGraph`)
 
-The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/reference/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. Encoder v1.2.0 distinguishes forall binders (`FVAR_N`) from lambda binders (`BVAR_N`).
+The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/reference/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. The current v2 corpus covers 14 Mathlib modules (4,029 extracted examples; 3,491 train / 388 eval after filtering).
 
 ## 5) Why Not Train Directly on Lean Source?
 
@@ -53,7 +56,7 @@ We hypothesize that source-token training may be less sample-efficient because:
 - Macros and coercions can map many textual forms to related elaborated structures.
 - Multiple syntactic encodings of the same idea may collapse into a smaller set of semantic patterns after elaboration.
 
-We expect a canonical semantic representation to be easier for sequence models to learn from than raw source in at least some theorem-prediction/proof-search settings, but this remains to be tested.
+We expect a canonical semantic representation to be easier for sequence models to learn from than raw source in at least some theorem-prediction/proof-search settings. **This is not yet supported by the experimental record:** the v2 control grid (DEC-026/027) finds the IR encodes semantics (DEC-025) but does not outperform a size-matched BPE baseline on next-token prediction or completion accuracy. See [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md) for the related work that motivates this hypothesis and the closest positive-result counterpart (IRCoder).
 
 ## 6) Architecture
 
@@ -65,7 +68,7 @@ flowchart LR
     D --> E[IR Graph]
     E --> F[Normalizer.lean]
     F --> G[Canonical graph]
-    G --> H[Encoder.lean v1.2.0]
+    G --> H[Encoder.lean v2.0.0]
     H --> I[Token sequence]
     I --> J[CorpusSerializer.lean]
     J --> K[Corpus/corpus.jsonl]
@@ -145,15 +148,19 @@ Run the full post-run publication pipeline:
 python3 python/run_postrun_pipeline.py --runs-dir runs/
 ```
 
-Phase 5 artifact field contracts and Phase 6 scaffold designs are documented in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
+Phase 5/6 artifact field contracts and the Phase 7 IR-candidate roadmap are documented in [`docs/history/PHASE_7_ROADMAP.md`](docs/history/PHASE_7_ROADMAP.md). Related work is surveyed in [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md).
 
 Canonical experiment assumptions/interpretation decisions are tracked in
 [`docs/decisions/LOG.md`](docs/decisions/LOG.md).
 
-### Corpus extraction result (real run)
+### Corpus extraction result
 
-4 modules: `Mathlib.Algebra.Group.Defs`, `Mathlib.Algebra.Group.Basic`, `Mathlib.Algebra.Ring.Defs`, `Mathlib.Order.Basic`  
-Total declarations: **2,554**
+The v2 corpus spans 14 Mathlib modules across algebra, order, and topology
+(`Mathlib.Algebra.*`, `Mathlib.Order.*`, `Mathlib.Topology.Basic`). Total declarations:
+**4,029** extracted; after filtering, **3,491 train / 388 eval** examples.
+
+The original 4-module extraction (2,554 declarations, 100% coverage) is preserved below
+for reference:
 
 | Module | Declarations | Success |
 |---|---|---|
@@ -163,12 +170,10 @@ Total declarations: **2,554**
 | Order.Basic | 431 | 431 (100%) |
 | **Total** | **2,554** | **2,554 (100%)** |
 
-All previously identified failure categories have been resolved — zero failures across all four modules.
+All previously identified failure categories have been resolved — zero failures across all modules.
 
-Token distribution (encoder v1.2.0): min 13, max 13,253, avg 324, total ~39M tokens.  
-After pathological filter (>50 TERM_MANY): 2,459 training examples, max sequence 1,264 tokens.  
-Graph stats: avg 35.8 entities, 13.5 relations, 22.3 operations per graph, max 3,142 nodes.  
-Unique vocab (IR): 7,867 tokens (4,495 after filtering to training split).
+Token distribution (v2.0.0 encoder, 601-token vocab): see `Corpus/stats.json` for current
+counts. The v1.2.0 distribution (7,867 raw tokens / 4,495 after filtering) is superseded.
 
 Non-trivial extracted examples:
 
@@ -181,7 +186,7 @@ Non-trivial extracted examples:
 
 Evidence artifact committed intentionally: [`Corpus/corpus.jsonl`](Corpus/corpus.jsonl) (current 7.2MB extraction output for the module above).
 
-### Binder encoding (encoder v1.2.0)
+### Binder encoding
 
 Lean uses De Bruijn indices for bound variables. Maith uses positional tokens assigned in
 first-appearance order within each graph:
@@ -195,15 +200,33 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 
 ## 8) Limitations
 
-- Validated across 4 Mathlib modules so far. Broader coverage (more modules, tactic-heavy declarations) may surface new `Expr` patterns.
-- Phase 5 final (2026-08-02): At a shared 512-token eval cap, A=1.489, B=1.180, C=1.207.
-  Completion accuracy: A=86.2%, B=92.8%, C=91.4%. B/C lead A in every perplexity bucket and
-  on completion accuracy. The B/C advantage is confirmed as real (not a truncation artifact).
-  DEC-006 (cold-start embedding confound) remains open: we cannot separate "IR representation
-  is worse" from "random initialization is worse." Phase 6 design may proceed.
+- **Corpus scale.** All training results are on 14 Mathlib algebra/topology/order modules
+  (~3.5K examples). IRCoder's positive IR-grounding results appear at millions of files
+  and 1.1B+ parameters; whether Maith's null holds at larger corpus/model scale is open.
+- **Current v2 result (DEC-026/027, 2026-08-09).** Full control grid:
+
+  | Variant | Representation | Vocab | Params | Perplexity | Top-1 Acc |
+  |---|---|---|---|---|---|
+  | A (v2 IR) | Semantic IR graph → tokens | 601 | 358M | 1.2361 | 90.0% |
+  | B-small (BPE control) | Raw BPE truncated to 601 | 601 | 358M | 1.1294 | 90.5% |
+  | B (full BPE) | Raw BPE, full vocab | 151,643 | 494M | 1.107 | 91.7% |
+  | C (AST BPE) | AST-split BPE, full vocab | 151,643 | 494M | 1.098 | 93.0% |
+
+  The A-vs-B/C gap is a **size effect** (B-small at matched params ties A), not a
+  representation deficit. The IR encodes real semantic content (DEC-025: 62pp probe gap
+  vs. flat-IR), but that structure is not rewarded by the next-token objective at this
+  scale. Cold-start (DEC-021) and model-size (DEC-027) confounds are both ruled out.
+  *(Epoch note: B and C are 3-epoch v1-era runs; A and B-small are 2-epoch v2 runs. The
+  A-vs-B-small comparison is epoch-matched and is the clean representation test; A-vs-B/C
+  is not. See `docs/experiments/V2_COMPARISON_MATRIX.md` for per-run epoch counts.)*
+- **Objective mismatch is the leading hypothesis for the null.** Next-token prediction may
+  not be the objective that rewards semantic structure; a downstream task (proof search,
+  completion) or a masked-reconstruction objective might. This is untested.
+- **No downstream task evaluation yet.** Current evidence is perplexity, completion
+  accuracy, and probing — not theorem-proving success. See section 10.
 - For the current authoritative experiment state, use:
-  - `docs/decisions/LOG.md` (DEC-016, DEC-017, DEC-018)
-  - `docs/experiments/EXPERIMENT_DESIGN.md`
+  - `docs/decisions/LOG.md` (DEC-026, DEC-027)
+  - `docs/experiments/V2_COMPARISON_MATRIX.md`
   - `python3 python/compare_results.py --runs-dir runs/`
 - `Transpiler.lean` provides both debug formatting and Lean syntax decompilation via
   `Decompile.decompileGraph`. See `docs/reference/DECOMPILER_HANDOVER.md`.
@@ -211,14 +234,14 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 ## 9) Research Roadmap
 
 1. **Phase 1: Build semantic IR** — ✅ done
-2. **Phase 2: Extract Mathlib corpus** — ✅ done (2,554 declarations, 4 modules, 100% coverage)
-3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v1.2.0, 7,867 tokens, FVAR/BVAR split, decoder round-trip 2554/2554)
+2. **Phase 2: Extract Mathlib corpus** — ✅ done (2,554 declarations, 4 modules, 100% coverage; v2 corpus expanded to 14 modules / 4,029 examples)
+3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v2.0.0, 601 tokens; decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5: Run A/B/C training experiment** — ✅ complete (2026-08-02). Matched 512-token cap: A=1.489, B=1.180, C=1.207. B/C lead A on both perplexity and completion accuracy. DEC-006 remains open; Phase 6 design may proceed.
-7. **Phase 6: Measure theorem-proving performance** — design in progress (see `docs/FUTURE_WORK.md`)
+6. **Phase 5–6: Run A/B/C training + v2 control grid** — ✅ complete (2026-08-09). Full grid in section 8. Representation hypothesis not yet supported on perplexity/completion; cold-start (DEC-021) and size (DEC-027) confounds ruled out.
+7. **Phase 7: IR-candidate search** — active. Next levers per DEC-027: corpus expansion (>10k examples), objective redesign (masked-reconstruction / proof-completion), IR pretraining, and downstream theorem-proving evaluation. See [`docs/history/PHASE_7_ROADMAP.md`](docs/history/PHASE_7_ROADMAP.md).
 
-Representation contingency planning and Phase 6 design notes are in [`docs/FUTURE_WORK.md`](docs/FUTURE_WORK.md).
+Related work and prior art are surveyed in [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md).
 
 Remaining IR milestones with current size estimates:
 
@@ -230,21 +253,29 @@ All previously identified failure categories have been resolved:
 
 ## 10) Evaluation Plan
 
-The core hypothesis will be tested by training and comparing models on:
+The core hypothesis is tested by training and comparing models on:
 
 1. Lean source tokens
 2. Lean AST serialization
 3. Maith semantic IR tokens
 
-Candidate metrics (planned):
+Metrics:
 
-- Next-token prediction quality
-- Proof completion performance
-- Automated theorem-proving success rate
-- Proof-search efficiency (time/steps)
-- Embedding quality for mathematical similarity/retrieval
+- Next-token prediction quality — ✅ run (v2 control grid, DEC-026/027)
+- Linear-probe semantic content — ✅ run (DEC-025: IR encodes semantics, 62pp gap)
+- Completion accuracy (top-1) — ✅ run (DEC-026/027)
+- Proof completion performance — ❌ not started
+- Automated theorem-proving success rate — ❌ not started
+- Proof-search efficiency (time/steps) — ❌ not started
+- Embedding quality for mathematical similarity/retrieval — ❌ not started
 
-Next-token prediction (Phase 5) has a completed full run; see limitations section for documented confounds before interpreting results. Theorem-proving evaluation (Phase 6) is not started; current evidence is extraction feasibility/coverage and next-token perplexity, not downstream proving performance.
+**Current evidence state:** next-token prediction, completion accuracy, and probing are
+complete. The representation hypothesis is **not yet supported** on these metrics: the IR
+encodes semantics (DEC-025) but does not outperform a size-matched BPE baseline (DEC-027).
+The leading interpretation is objective mismatch — next-token prediction may not reward
+semantic structure. Downstream theorem-proving evaluation (the actual research claim) is
+not started; it is the decisive test that would distinguish "the IR helps proving but not
+perplexity" from "the IR does not help." See [`docs/history/PHASE_7_ROADMAP.md`](docs/history/PHASE_7_ROADMAP.md).
 
 ## 11) Building the Project
 
@@ -278,9 +309,9 @@ Maith/
   MetaExtractor.lean       # elaborated Lean Expr -> IR graph
   EntityId.lean            # includes EntityId.bound for scoped binders
   Normalizer.lean          # canonical ordering/normalization
-  Encoder.lean             # graph -> token sequence (v1.2.0, FVAR_N/BVAR_N/TERM_N positional)
-  Decoder.lean             # token -> graph parser (v0.1.0 + v1.0.0 + v1.2.0 backward compat)
-  Transpiler.lean          # debug-only: human-readable IR formatter, not in training path
+  Encoder.lean             # graph -> token sequence (v2.0.0, 601-token vocab)
+  Decoder.lean             # token -> graph parser (backward compat across versions)
+  Transpiler.lean          # debug + Lean syntax decompilation via Decompile.decompileGraph
   CorpusSerializer.lean    # JSONL/stat serialization
   ProcessingPipeline.lean  # extraction + normalize + encode flow
   MathlibCorpusBuilder.lean
@@ -290,35 +321,30 @@ Tests/
   InjectivityTests.lean
   DecoderTests.lean
   EncoderTests.lean
+  ExtractionFaithfulnessTests.lean
+  RoundTripTests.lean
   ...
 python/
   corpus_loader.py         # schema validation, loading, vocab build, split, dataset class
   build_dataset.py         # A/B/C dataset builder: IR vocab + BPE variants, train/eval splits
+  build_b_small_vocab.py   # DEC-027 B-small control: truncate BPE to 601 tokens
+  build_flat_ir_dataset.py # DEC-024 flat-IR ablation: shape-only (SLOT) dataset
+  embed_project.py         # DEC-021 embedding projection (warm-start IR vocab from Qwen BPE)
   train.py                 # fine-tuning script: one variant per run, reports eval perplexity
+  eval_completion.py       # top-1 completion accuracy evaluation (A/B/C/B_SMALL)
+  extract_representations.py  # DEC-025 probing: forward-pass to frozen hidden states
+  probing_task.py          # DEC-025 probing: linear probe module classification
   compare_results.py       # prints A/B/C comparison table from runs/variant_*/results.json
   validate_roundtrip.py    # decoder round-trip validator (confirms BVAR/TERM stability)
   tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
-  spot_check.py            # manual corpus spot-checking helper
 docs/
-  Design.md                # architecture and design decisions
-  ENCODER_FORMAT.md        # canonical token format spec (v1.3.0)
-  EXPERIMENT_DESIGN.md     # A/B/C experiment design and results
-  DECISION_LOG.md          # experiment decisions and confound documentation
-  DECISION_INDEX.md        # navigation index for DECISION_LOG
-  EXAMPLE_ROUNDTRIP.md     # full pipeline walkthrough for neg_neg
-  PHASE_5_RESULTS.md       # Phase 5 results
-  PHASE_6_RESULTS.md       # Phase 6 results
-  PHASE_7_ROADMAP.md       # current roadmap
-  PHASE_7_DESIGN.md        # Phase 7 design notes
-  PYTHON_PIPELINE.md       # python/ tooling reference
-  TESTING_SUMMARY.md       # test suite status
-  CHANGELOG.md             # older fix history
-  REPRESENTATION_EVOLUTION.md  # IR candidate evolution strategy
-  FUTURE_WORK.md           # superseded by PHASE_7_ROADMAP.md
-  REPO_AUDIT.md           # file classification audit
-  TEST.md                  # test run commands
-README.md
-docs/reference/docs/reference/CORPUS_SCHEMA.md           # JSONL schema contract
+  decisions/LOG.md         # experiment decisions and confound documentation (DEC-001..027)
+  decisions/INDEX.md       # navigation index for decision log
+  experiments/             # experiment designs, comparison matrix, probing task
+  reference/               # Design.md, ENCODER_FORMAT, PRIOR_ART, EXAMPLE_ROUNDTRIP, ...
+  history/                 # PHASE_5/6/7 results, roadmap, validation plan
+  scratch/                 # working notes (audits, analysis, resume notes)
+  README.md                # docs index
 ```
 
 ## 13) License
