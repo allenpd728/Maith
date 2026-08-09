@@ -88,15 +88,53 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
     return vocab
 
 
-def encode_ir(tokens: list[str], vocab: dict[str, int]) -> list[int]:
+def bucket_from_module(module: str) -> str:
+    """Map a declaration's module to a GEN_* bucket.
+
+    Replicates `bucketFromModule` in Maith/MetaExtractor.lean exactly so the
+    Python-side token encoding stays consistent with the Lean-side design (C4).
+    Bucketing is by the *declaration's* module (declModule), not the gen token's
+    own namespace — matching the Lean extractor's behaviour.
+    """
+    parts = module.split(".")
+    if len(parts) >= 2 and parts[0] == "Mathlib":
+        second = parts[1].upper()
+        if second in ("ALGEBRA",):
+            return "GEN_ALGEBRA"
+        if second in ("ORDER",):
+            return "GEN_ORDER"
+        if second in ("TOPOLOGY",):
+            return "GEN_TOPOLOGY"
+        if second in ("ANALYSIS",):
+            return "GEN_ANALYSIS"
+        if second in ("LOGIC", "TACTIC"):
+            return "GEN_LOGIC"
+        if second in ("DATA", "COMBINATORICS"):
+            return "GEN_DATA"
+        return "GEN_MATHLIB"
+    if parts:
+        first = parts[0].upper()
+        if first == "LEAN":
+            return "GEN_LEAN"
+        if first == "INIT":
+            return "GEN_INIT"
+        if first == "STD":
+            return "GEN_STD"
+    return "GEN_MATHLIB"
+
+
+def encode_ir(tokens: list[str], vocab: dict[str, int], module: str = "") -> list[int]:
     unk_id = vocab.get("<UNK>", 3)
     gen_unk_id = vocab.get("GEN_UNK", 4)
+    # C4: bucket gen:* tokens by the declaration's module instead of collapsing
+    # them all to GEN_UNK. Falls back to GEN_UNK if the bucket is not in vocab.
+    bucket_id = vocab.get(bucket_from_module(module), gen_unk_id) if module else gen_unk_id
     result = []
     for tok in tokens:
         if tok in vocab:
             result.append(vocab[tok])
         elif tok.startswith("gen:"):
-            result.append(gen_unk_id)
+            result.append(bucket_id)
         else:
             result.append(unk_id)
     return result
@@ -132,7 +170,7 @@ def example_id(ex: dict) -> str:
 def build_variant_A(examples: list[dict], vocab: dict[str, int], representation_id: str) -> list[dict]:
     rows = []
     for ex in examples:
-        ids = encode_ir(ex.get("tokens", []), vocab)
+        ids = encode_ir(ex.get("tokens", []), vocab, ex.get("module", ""))
         rows.append({
             "source": "A",
             "representation_id": representation_id,
