@@ -66,22 +66,47 @@ protocol (2 epochs, seed 42, train cap 512) so only representation and size vary
 
 ## Next — the open research front (from HYPOTHESIS_GRID)
 
-The hypothesis grid identifies 7 open sub-claims. The tractable on current
-hardware (M4/16GB) ones are the priority:
+The hypothesis grid identifies open sub-claims. Per H11 (closed: perplexity is not a valid
+primary metric for this hypothesis), the priority is **semantic-task metrics**, not
+perplexity iteration. Prediction metrics are structurally biased toward natural language's
+redundancy; the IR deliberately sacrifices redundancy for canonicalization. See
+[EXPERIMENT_DESIGN evaluation framework](EXPERIMENT_DESIGN.md#evaluation-framework-the-correct-metrics-for-this-hypothesis).
 
-| # | Sub-claim | Status | What would close it |
-|---|---|---|---|
-| H5 | Training objective is the bottleneck | Open | Masked-reconstruction or proof-completion objective experiment |
-| H6 | IR improves retrieval/similarity tasks | Open | Retrieval/similarity benchmark; IR vs AST/BPE embeddings |
-| H9 | Co-training (IR alongside source) recovers gains | Open | Multi-objective training experiment (PACT precedent) |
-| H10 | IR beats AST on richer probing tasks | Partial | Extended probing: typeclass arity, theorem-vs-definition, semantic category |
+### Primary next experiments (test the hypothesis on the right metric family)
 
-**Blocked on compute:**
+| # | Sub-claim | Status | What would close it | Tractability |
+|---|---|---|---|---|
+| H6 | IR improves retrieval/similarity tasks | Open | Retrieval/similarity benchmark; IR vs AST/BPE embeddings using frozen representations | ✅ Tractable — reuses DEC-025 `extract_representations.py` infra; no training needed |
+| H10 | IR beats AST on richer probing tasks | Partial | Extended probing: typeclass arity, theorem-vs-definition, semantic category | ✅ Tractable — extends DEC-025 probe; no training needed |
+
+### Secondary (test whether the bottleneck is the objective or the format)
+
+| # | Sub-claim | Status | What would close it | Tractability |
+|---|---|---|---|---|
+| H5 | Training objective is the bottleneck | Open | Masked-reconstruction or proof-completion objective experiment | ◐ Requires training-code changes (new loss function) |
+| H9 | Co-training (IR alongside source) recovers gains | Open | Multi-objective training experiment (PACT precedent) | ◐ Requires multi-objective training setup |
+| C3 | Attribute sparsity (v2.x IR candidate) | Deferred | Implement + evaluate against control grid | ◐ Requires Lean cross-check; **evaluate on retrieval, not perplexity** |
+
+### Explicitly deprioritized
+
+- **Perplexity iteration on IR candidates** — optimizing for a metric that is structurally
+  biased against the IR's design goal (H11). Improving perplexity means adding back
+  redundancy, which defeats the purpose of canonicalization. Future IR candidates should
+  *report* perplexity for completeness but should not be *judged* on it.
+
+### Blocked on compute
+
 | # | Sub-claim | Status | Blocker |
 |---|---|---|---|
-| H4 | Model size at scale | Partial | A-large requires a larger-vocab IR candidate |
-| H7 | IR improves proof completion / ATP | Open | Theorem-proving evaluation infrastructure |
-| H8 | IR advantage above scale threshold | Open | A-large / 10B+ run; blocked on compute |
+| H4 | Model size at scale | Partial | Requires a larger *transformer-capacity* base model (1B+), not just a bigger embedding table |
+| H7 | IR improves proof completion / ATP | Open | Theorem-proving evaluation infrastructure + compute |
+| H8 | IR advantage above scale threshold | Open | 1B+ base model; blocked on compute |
+
+**Note on scale:** the metric-bias argument (H11) means scale alone will not resolve the
+hypothesis if the metric is wrong. A larger model would predict the IR's tokens better, but
+it would also predict natural language better — and the bias toward redundancy remains.
+Scale testing is valuable but must be paired with semantic-task metrics, not perplexity
+alone.
 
 ---
 

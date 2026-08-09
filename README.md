@@ -5,11 +5,13 @@
 > complete: Variant A v2 = perplexity **1.2361** / top-1 **90.0%**; B-small (size-matched
 > BPE control, DEC-027) = **1.1294** / **90.5%** — essentially tied with A at matched
 > params. The IR encodes real semantics (DEC-025: 62pp probe gap) but doesn't improve
-> prediction over BPE at toy scale (358M, 3.5K examples). Whether it helps under
-> non-prediction metrics or at larger scale is open.
+> prediction over BPE at toy scale (358M, 3.5K examples). Prediction metrics are
+> structurally biased against the IR's canonicalization goal (H11) — the correct evaluation
+> is semantic-task metrics (retrieval, ATP), which are untested.
 >
 > Key docs: [`HYPOTHESIS_GRID`](docs/experiments/HYPOTHESIS_GRID.md) (sub-claim status) ·
 > [`V2_COMPARISON_MATRIX`](docs/experiments/V2_COMPARISON_MATRIX.md) (control grid) ·
+> [`EXPERIMENT_DESIGN`](docs/experiments/EXPERIMENT_DESIGN.md) (evaluation framework) ·
 > [`PRIOR_ART`](docs/reference/PRIOR_ART.md) (related work) ·
 > [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-026/027).
 
