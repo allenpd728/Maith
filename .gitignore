@@ -46,3 +46,6 @@ Modelfile
 *_key
 *_key.pub
 authorized_keys
+
+# Runtime PID files from training launchers
+*.pid
