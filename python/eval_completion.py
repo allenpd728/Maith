@@ -120,6 +120,51 @@ def find_checkpoint_dir(model_dir: Path) -> Path:
     return model_dir
 
 
+def _checkpoint_mtime(ckpt_dir: Path) -> Optional[float]:
+    """Most recent weight file mtime in a checkpoint dir, or None."""
+    for name in ("model.safetensors", "pytorch_model.bin"):
+        p = ckpt_dir / name
+        if p.exists():
+            return os.path.getmtime(p)
+    return None
+
+
+def _results_perplexity(run_dir: Path):
+    """Read eval_perplexity from run_dir/results.json, or (None, None) if absent."""
+    rp = run_dir / "results.json"
+    if not rp.exists():
+        return None, None
+    try:
+        r = json.load(open(rp))
+        return r.get("eval_perplexity"), os.path.getmtime(rp)
+    except Exception:
+        return None, None
+
+
+def warn_if_checkpoint_stale(run_dir: Path, ckpt_dir: Path, variant: str) -> None:
+    """Warn loudly if the on-disk checkpoint does not match results.json.
+
+    This guards against the stale-checkpoint bug (see docs/variant_c_eval_bug.md
+    and docs/runs_audit.md): several runs/variant_*/ dirs have a results.json
+    whose perplexity describes a *later* run than the checkpoint actually on
+    disk, so the reported number does not describe the model being evaluated.
+    """
+    ck_mtime = _checkpoint_mtime(ckpt_dir)
+    ppl, rs_mtime = _results_perplexity(run_dir)
+    if ck_mtime is None or rs_mtime is None or ppl is None:
+        return
+    gap_days = abs(rs_mtime - ck_mtime) / 86400.0
+    if gap_days > 1.0:
+        print(
+            f"  ⚠ STALE CHECKPOINT WARNING (variant {variant}): "
+            f"results.json (ppl={ppl}) is {gap_days:.1f}d "
+            f"{'newer' if rs_mtime > ck_mtime else 'older'} than the checkpoint "
+            f"weights at {ckpt_dir}. The reported perplexity may NOT describe "
+            f"the model being evaluated. Consider --checkpoint-{variant} "
+            f"<authoritative run dir> (see docs/runs_audit.md)."
+        )
+
+
 def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device: str,
                          checkpoint_override: str = None):
     """
@@ -137,7 +182,9 @@ def load_model_and_vocab(variant: str, runs_dir: str, datasets_dir: str, device:
         raise FileNotFoundError(
             f"No saved model at {model_dir} — run train.py --variant {variant} first"
         )
+    run_dir = model_dir  # results.json lives at the run-dir level, not inside the checkpoint
     model_dir = find_checkpoint_dir(model_dir)
+    warn_if_checkpoint_stale(run_dir, model_dir, variant)
 
     if variant == "A":
         vocab_path = Path(datasets_dir) / "vocab_A.json"
