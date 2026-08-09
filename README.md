@@ -244,7 +244,7 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 6. **Phase 5–6: Run A/B/C training + v2 control grid** — ✅ complete (2026-08-09). Full grid in section 8. Representation hypothesis not yet supported on perplexity/completion; cold-start (DEC-021) and size (DEC-027) confounds ruled out.
 7. **Phase 7: IR-candidate search** — active. Next levers per DEC-027: corpus expansion (>10k examples), objective redesign (masked-reconstruction / proof-completion), IR pretraining, and downstream theorem-proving evaluation. See [`docs/history/PHASE_7_ROADMAP.md`](docs/history/PHASE_7_ROADMAP.md).
 
-Related work and prior art are surveyed in [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md).
+Related work is surveyed in [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md); project terminology is defined in [`docs/reference/GLOSSARY.md`](docs/reference/GLOSSARY.md).
 
 Remaining IR milestones with current size estimates:
 

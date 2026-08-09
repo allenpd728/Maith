@@ -1,5 +1,7 @@
 # corpus.jsonl schema
 
+> **v2 note (2026-08-09):** The `graph` schema below shows v1 fields including `polarity` (removed in v2 C1) and `gen:FullName` operation tokens (bucketed to `GEN_<area>` in v2 C4 at `build_dataset.py` encode time). The corpus JSONL itself still contains v1-style tokens; the v2 token stream is produced by `build_dataset.py`'s `encode_ir`. See [`ENCODER_FORMAT.md`](ENCODER_FORMAT.md) v2.0.0.
+
 Each line is one JSON object with this structure:
 
 ```json
