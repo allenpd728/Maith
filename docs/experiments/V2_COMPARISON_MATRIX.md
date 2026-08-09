@@ -15,7 +15,8 @@ uses a 601-token embedding table (358M params total) while Variants B and C use 
 151k-token table (494M params). This matrix tracks the controlled experiments needed to
 isolate representation from size. **The size confound is now resolved (DEC-027):** the
 B-small cell (BPE truncated to 601 tokens / 358M params) ties A at 90.5% vs. 90.0%,
-confirming the A-vs-B/C gap is a parameter-count effect, not a representation deficit.
+confirming the A-vs-B/C gap is a parameter-count effect, not a representation deficit
+*under prediction-family metrics (perplexity, completion accuracy) at this scale*.
 
 ## The 2×2 control grid
 
@@ -28,8 +29,11 @@ confirming the A-vs-B/C gap is a parameter-count effect, not a representation de
 **Priority:** ~~B-small is the most important missing cell.~~ **B-small complete (DEC-027).**
 B-small = 90.5% acc / 1.1294 ppl — essentially tied with A (90.0% / 1.2361) at matched
 params. The size confound is confirmed: A's deficit vs B/C is a parameter-count effect,
-not a representation deficit. The v2 IR is not yet doing measurable work beyond
-small-vocab BPE at this scale. See DEC-027 for the full interpretation and next steps.
+not a representation deficit *under prediction-family metrics at this scale*. The v2 IR is
+not yet doing measurable work *under prediction metrics (perplexity, completion accuracy)*
+beyond small-vocab BPE at this scale; whether it helps under non-prediction metrics
+(retrieval, ATP) is open (H6/H7 in [`HYPOTHESIS_GRID`](HYPOTHESIS_GRID.md)). See DEC-027
+for the full interpretation and next steps.
 
 ## Completed runs
 
