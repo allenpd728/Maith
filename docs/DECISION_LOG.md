@@ -1433,7 +1433,7 @@ dataset rebuild (`b72db9c`): `GEN_UNK → 0`; gen tokens redistributed to
 **Full v2 (C1+C2+C4) re-run:** launched 2026-08-08 (commit `b72db9c` dataset +
 `train_v2_resume.py` bos/eos null-out fix). Result:
 
-> **[PLACEHOLDER]** eval_perplexity = ___ (full C1+C2+C4, vocab 601, 2 epochs)
+> **RESULT** eval_perplexity = 1.2361 (full C1+C2+C4, vocab 601, 2 epochs, 44.8 min)
 
 Gate (full v2): improvement over 1.2458 (C1+C2) and, ultimately, over the B/C
 baselines (B=1.11, C=1.10). A v2 result below 1.2458 means C4 helps; below B/C
