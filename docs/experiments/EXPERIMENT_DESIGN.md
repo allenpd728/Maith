@@ -7,16 +7,25 @@
 > The v1.x content below (variants table, Phase 5/6 results) is **historical** —
 > retained as the record of how the protocol was developed, not the current
 > experiment state. The protocol sections (hyperparameters, eval, "what a valid
-> result looks like") remain authoritative and are **fixed across IR versions**
-> so that v3/v4 candidates are directly comparable to v2.
+> result looks like") remain authoritative and are **fixed across IR candidates**
+> so that every candidate — a v2.x variant, a v3 redesign, or an experimental tweak — is
+> directly comparable. The goal is a search for a reasonably optimized IR that supports
+> the representation hypothesis, not a sequence of numbered versions.
 
 ---
 
-## Standard protocol — fixed across all IR versions
+## Standard protocol — fixed across all IR candidates
 
-These elements are **frozen** so that any future IR candidate (v3, v4, …) produces
-results directly comparable to v2. Do not change them between IR versions; if a
-protocol change is ever needed, version it separately and re-baseline.
+This is a **search** for an IR representation that supports the hypothesis (that models
+trained on semantic structure learn math more efficiently). The unit of work is an
+**IR candidate** — a concrete token configuration (e.g. v2.0.0, a v2.1 tweak like
+revised GEN buckets, or a v3 redesign). We don't know yet whether the answer is a
+refined v2 or a new design; the protocol below keeps every candidate comparable so
+the search can proceed without re-baselining.
+
+These elements are **frozen** so that any IR candidate produces results directly
+comparable to v2. Do not change them between candidates; if a protocol change is ever
+needed, version it separately and re-baseline.
 
 ### Eval protocol (fixed)
 - **Metric:** top-1 next-token completion accuracy (teacher-forced, last N tokens masked).
@@ -38,7 +47,9 @@ protocol change is ever needed, version it separately and re-baseline.
 
 ### Comparison structure — the 2×2 control matrix (standard template)
 
-Every IR candidate gets **its own comparison matrix** in the same format as
+Every IR candidate gets **its own comparison matrix** (e.g.
+`docs/experiments/V2_COMPARISON_MATRIX.md`, or a `V2_1_COMPARISON_MATRIX.md` /
+`V3_COMPARISON_MATRIX.md` for a later candidate) in the same format as
 `docs/experiments/V2_COMPARISON_MATRIX.md`. The 2×2 grid (representation × model
 size) is the standard template:
 
@@ -52,10 +63,12 @@ size) is the standard template:
   small vocabulary / small embedding table.
 - **Gate (general):** IR-X vs B-small at matched params. If IR-X > B-small by a
   meaningful margin, the representation is doing work beyond vocab compression.
-- When adding a v3 IR, create `docs/experiments/V3_COMPARISON_MATRIX.md` using the
-  same structure, and link it from `docs/decisions/INDEX.md`.
+- When adding a new candidate (whether a v2.x tweak or a v3 redesign), create a new
+  `docs/experiments/<CANDIDATE>_COMPARISON_MATRIX.md` using the same structure, and
+  link it from `docs/decisions/INDEX.md`. The candidate's IR version is recorded in
+  `datasets/representation_manifest.json` (`representation_id`).
 
-### Hyperparameters (fixed across IR versions)
+### Hyperparameters (fixed across IR candidates)
 | Parameter | Value | Rationale |
 |-----------|-------|----------|
 | Base model | Qwen2.5-Coder-0.5B (MPS) / 1.5B (CUDA) | Small enough to train locally; code-aware |
@@ -65,7 +78,7 @@ size) is the standard template:
 | LR schedule | Cosine with warmup (5%) | |
 | Epochs | 2 (A/IR candidates); B/C historically 3 | Matched to A for fair comparison |
 | Optimizer | AdamW, weight decay 0.01 | |
-| Seed | 42 | Fixed across all variants and IR versions |
+| Seed | 42 | Fixed across all variants and IR candidates |
 | Eval metric | Perplexity on eval split (primary); top-1 completion (secondary) | |
 
 ### What a valid result looks like (unchanged)
