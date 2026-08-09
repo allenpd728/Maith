@@ -155,13 +155,13 @@ unified memory via MPS. This constrains model size to the toy tier (<1B params).
 
 **Perplexity**
 The primary evaluation metric. Measures how surprised the model is by the next token:
-exp(average cross-entropy loss). Lower = better. A: 1.2361, B: 1.107, C: 1.098.
+exp(average cross-entropy loss). Lower = better. A: 1.2361 (v2, authoritative). B: 1.107, C: 1.098 (v1-era, 3-epoch; v2 2-epoch re-run in progress).
 See: EXPERIMENT_DESIGN.md eval protocol
 
 **Completion accuracy (top-1)**
 The secondary evaluation metric. Given a prefix, does the model's argmax prediction
 match the ground-truth next token? Measured with teacher forcing on the last 10
-tokens of 200 eval examples. A: 90.0%, B: 91.7%, C: 93.0%, B-small: 90.5%.
+tokens of 200 eval examples. A: 90.0%, B-small: 90.5% (v2, authoritative). B: 91.7%, C: 93.0% (v1-era, 3-epoch; v2 2-epoch re-run in progress).
 
 **Teacher forcing**
 The evaluation method: feed the ground-truth token (not the model's prediction) at
