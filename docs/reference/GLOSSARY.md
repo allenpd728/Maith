@@ -171,8 +171,9 @@ evaluation examples, using teacher forcing. A: 90.0%, B-small: 90.5% (v2, author
 
 **Teacher forcing**
 The evaluation method: feed the ground-truth token (not the model's prediction) at
-each step, so errors don't compound — so-called because the ground truth "forces" the
-model along the correct path. Measures per-position accuracy independently.
+each step, so errors don't compound — so-called because the "teacher" (ground truth)
+forces the "student" (the model) along the correct path at each step. Measures
+per-position accuracy independently.
 
 **Probing (linear probe)**
 The DEC-025 experiment: freeze the trained model, extract its final hidden-layer
