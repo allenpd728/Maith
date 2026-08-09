@@ -112,6 +112,7 @@ inductive Expr
   | sort (level : String)                  -- Type.{level} or Prop
   | app (fn : Expr) (arg : Expr)         -- function application
   | forallBinder (name : String) (type : Expr) (body : Expr)
+  | lambdaBinder (name : String) (type : Expr) (body : Expr)  -- fun binders (BVAR/λ:)
   | eq (type : Expr) (lhs : Expr) (rhs : Expr)
   | const (name : String)
   deriving Repr, BEq
@@ -131,6 +132,14 @@ private def parseScopeInfo (scope : String) : (Nat × String) :=
 -- Check if a scope is a forall binder (starts with ∀:)
 private def isForallBinder (scope : String) : Bool :=
   scope.startsWith "∀:"
+
+-- Check if a scope is a lambda/fun binder (starts with λ:)
+private def isLambdaBinder (scope : String) : Bool :=
+  scope.startsWith "λ:"
+
+-- Check if a scope is any binder (forall or lambda)
+private def isBinder (scope : String) : Bool :=
+  isForallBinder scope || isLambdaBinder scope
 
 -- Normalize a universe level string to Lean syntax.
 -- Handles expressions like "u_1 + 1" -> "succ u_1", "u" -> "u", etc.
@@ -156,6 +165,11 @@ private def exprToString (e : Expr) : String :=
     let bodyStr := exprToString body
     -- Use ∀ keyword with Lean 4 explicit binder syntax (name : Type)
     s!"∀ ({name} : {typeStr}), {bodyStr}"
+  | Expr.lambdaBinder name type body =>
+    let typeStr := exprToString type
+    let bodyStr := exprToString body
+    -- Use `fun` keyword with explicit binder syntax (fun binders / BVAR)
+    s!"fun ({name} : {typeStr}) => {bodyStr}"
   | Expr.app fn arg =>
     s!"({exprToString fn} {exprToString arg})"
   | Expr.eq type lhs rhs =>
@@ -258,22 +272,26 @@ private def sortByIndex (entities : List Entity) : List Entity :=
 /--
 Decompile an IR graph to a structural skeleton string.
 
-Returns a human-readable skeleton of the IR graph structure. The output
-is NOT valid Lean syntax — see the `Decompiler` docstring above for known
-issues. Returns an error string if the graph cannot be traversed.
+Returns a human-readable rendering of the IR graph as a Lean-like expression,
+with `∀`/`fun` binders (FVAR/BVAR), `Eq`, normalized universe levels, and
+operation applications. The output is structurally well-formed (Phase 8d +
+BVAR/lambda support) but is NOT yet elaborator-verified — see the
+`Decompiler` docstring above and `Tests/DecompilerTests.lean` Test 8.
+Returns an error string (`ERROR_*`) if the graph cannot be traversed.
 -/
 def decompileGraph (g : Graph) : String :=
-  -- Step 1: Get forall (FVAR) bound entities sorted by their index
-  let forallBounds := sortByIndex (
+  -- Step 1: Get ALL bound entities (forall/FVAR + lambda/BVAR) sorted by their index.
+  -- Both binder kinds are collected together so the binder chain preserves depth order.
+  let allBounds := sortByIndex (
     g.entities.filter (fun e =>
       match e.id with
-      | EntityId.bound scope => isForallBinder scope
+      | EntityId.bound scope => isBinder scope
       | _ => false
     )
   )
 
   -- Step 2: Initialize expr map with bound entities FIRST (so operations can reference them)
-  let initialExprMap := forallBounds.foldl (fun acc e =>
+  let initialExprMap := allBounds.foldl (fun acc e =>
     match e.id with
     | EntityId.bound scope => acc ++ [(e.id, Expr.var (getBinderName scope))]
     | _ => acc
@@ -323,8 +341,8 @@ def decompileGraph (g : Graph) : String :=
         lhsExpr
     | none => Expr.const "ERROR_no_eq"
 
-  -- Step 6: Build forall structure
-  let rec buildForall (bounds : List Entity) (body : Expr) (m : List (EntityId × Expr)) : Expr :=
+  -- Step 6: Build binder structure (forall and/or fun, in depth order)
+  let rec buildBinders (bounds : List Entity) (body : Expr) (m : List (EntityId × Expr)) : Expr :=
     match bounds with
     | [] => body
     | e :: rest =>
@@ -346,11 +364,17 @@ def decompileGraph (g : Graph) : String :=
             Expr.const tcName
           else
             typeExpr
-        let binderExpr := Expr.forallBinder name actualType (buildForall rest body m)
-        binderExpr
-      | _ => buildForall rest body m
+        -- Emit ∀ for forall binders (FVAR/∀:), `fun` for lambda binders (BVAR/λ:).
+        let inner := buildBinders rest body m
+        if isForallBinder scope then
+          Expr.forallBinder name actualType inner
+        else if isLambdaBinder scope then
+          Expr.lambdaBinder name actualType inner
+        else
+          inner
+      | _ => buildBinders rest body m
 
-  let finalExpr := buildForall forallBounds bodyExpr exprMapFinal
+  let finalExpr := buildBinders allBounds bodyExpr exprMapFinal
 
   exprToString finalExpr
 
