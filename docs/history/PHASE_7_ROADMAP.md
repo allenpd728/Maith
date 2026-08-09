@@ -25,16 +25,31 @@ Six phases of A/B/C experiments plus DEC-021–024 have established:
 | Variant A representations encode strong semantic content (62pp probe gap vs Flat-IR) | Confirmed — DEC-025; bottleneck is data/objective, not representation |
 | v2 IR (C1+C2) improves A to 1.2458 (beats DEC-021 baseline 1.2978) | Confirmed — DEC-026 |
 | C4 (GEN module bucketing) was missing from the v2 dataset; now fixed | Confirmed — DEC-026 / `docs/scratch/v2_token_analysis.md` |
-| Whether the full v2 (C1+C2+C4) closes the gap to B/C | Open — re-run in progress |
+| Whether the full v2 (C1+C2+C4) closes the gap to B/C | **Closed — DEC-026/027.** Full v2 A = 1.2361 / 90.0%. B-small control (90.5% at matched params) shows the gap is a size effect, not a representation deficit. |
 
-**Current state (2026-08-08):** DEC-025 complete (A encodes semantics → pursue v2 IR + corpus
-expansion). DEC-026 v2 IR implemented: C1 (polarity removal) + C2 (typeclass enrichment) + C4
-(GEN module bucketing). C1+C2 partial run = 1.2458; C4 was missing from the dataset (encode_ir
-mapped all `gen:*` → `GEN_UNK`) and is now fixed (commit `f194027`), datasets rebuilt
-(`GEN_UNK → 0`, redistributed to GEN_ALGEBRA/ORDER/TOPOLOGY/DATA). Full C1+C2+C4 re-run in
-progress; gate = improvement over 1.2458 and ultimately over B (1.11) / C (1.10).
+**Current state (2026-08-09):** The v2 IR experiment set is complete.
+- **DEC-025:** A's representations encode strong semantic content (62pp probe gap vs Flat-IR).
+- **DEC-026:** v2 IR (C1+C2+C4) implemented and trained — A = 1.2361 ppl / 90.0% top-1.
+  C4 helped (1.2458 → 1.2361) but A still trails B (1.107 / 91.7%) and C (1.098 / 93.0%).
+- **DEC-027:** B-small control (BPE, 358M, 601-vocab) = 90.5% / 1.1294 — essentially tied
+  with A at matched params. **Size explains the gap.** The v2 IR is not yet doing measurable
+  work beyond small-vocab BPE at this scale (3.5k examples, 358M params, next-token objective).
 
-### Open items carried forward (2026-08-08)
+**Conclusion:** The representation hypothesis is **not yet supported** by perplexity /
+completion-accuracy. The IR encodes real semantics (DEC-025) but that structure does not
+translate to a next-token-prediction advantage over a size-matched BPE baseline (DEC-027).
+The bottleneck is likely **training objective + data volume**, not the representation.
+
+**Next levers for the IR-candidate search:**
+1. **Corpus expansion** (>10k examples) — the most direct lever; v2's 601-vocab scales well.
+2. **Objective redesign** — next-token prediction may not reward semantic structure; consider
+   masked-reconstruction or proof-completion objectives.
+3. **IR pretraining** — pretrain the embedding table on the IR before fine-tuning.
+4. **Incremental v2.x candidate** — if pursuing tweaks: the perplexity gap (A 1.24 vs B-small
+   1.13) suggests IR tokens are harder to predict; C3 (attribute sparsity) could narrow it,
+   but DEC-027 says the gain would be from easier prediction, not richer semantics.
+
+### Open items carried forward (2026-08-09)
 
 - **C4 Python/Lean consistency.** `bucket_from_module` in `build_dataset.py` replicates
   `bucketFromModule` in `MetaExtractor.lean` by hand. These must stay in sync — if the Lean
@@ -51,12 +66,10 @@ progress; gate = improvement over 1.2458 and ultimately over B (1.11) / C (1.10)
   a meaningful confound. Superseded by DEC-027 (model size confound / B-small).
 - **C3 (attribute sparsity) deferred** — needs a Lean cross-check; not part of the current
   v2 run.
-- **Model size confound (2026-08-09).** The v2 A/B/C comparison is confounded: A runs at
-  358M params (601-token embedding table), B/C at 494M (151k-token table). The **B-small**
-  experiment (BPE, 358M params, same training data) is required to isolate the effect of
-  representation from model size. Until B-small runs, A's 90.0% vs B's 91.7% cannot be
-  cleanly attributed to the IR. See `docs/experiments/V2_COMPARISON_MATRIX.md` for the full 2×2 grid
-  and experiment protocol. Scoped as DEC-027.
+- **Model size confound — RESOLVED (DEC-027, 2026-08-09).** B-small (BPE, 358M, 601-vocab)
+  = 90.5% / 1.1294, essentially tied with A (90.0% / 1.2361). Size explains the gap; the
+  IR is not yet doing measurable work over small-vocab BPE at this scale. See DEC-027 for
+  full results and `docs/experiments/V2_COMPARISON_MATRIX.md` for the completed 2×2 grid.
 
 ---
 
