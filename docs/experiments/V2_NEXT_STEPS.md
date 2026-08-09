@@ -66,10 +66,13 @@ protocol (2 epochs, seed 42, train cap 512) so only representation and size vary
 
 ## Next — the open research front (from HYPOTHESIS_GRID)
 
-The hypothesis grid identifies open sub-claims. Per H11 (closed: perplexity is not a valid
-primary metric for this hypothesis), the priority is **semantic-task metrics**, not
-perplexity iteration. Prediction metrics are structurally biased toward natural language's
-redundancy; the IR deliberately sacrifices redundancy for canonicalization. See
+The hypothesis grid identifies open sub-claims. Per H11 (◐ partly closed: perplexity
+cannot be the sole arbiter — the bias is partly fundamental, partly contingent on IR
+design quality), the priority is **semantic-task metrics**, not perplexity iteration.
+Prediction metrics are structurally biased toward natural language's redundancy; the IR
+deliberately sacrifices redundancy for canonicalization. But v1's verbosity was the wrong
+kind (structural noise, not semantic redundancy), and v2 didn't add the right kind — so
+the design-quality component remains open. See
 [EXPERIMENT_DESIGN evaluation framework](EXPERIMENT_DESIGN.md#evaluation-framework-the-correct-metrics-for-this-hypothesis).
 
 ### Primary next experiments (test the hypothesis on the right metric family)
@@ -87,12 +90,15 @@ redundancy; the IR deliberately sacrifices redundancy for canonicalization. See
 | H9 | Co-training (IR alongside source) recovers gains | Open | Multi-objective training experiment (PACT precedent) | ◐ Requires multi-objective training setup |
 | C3 | Attribute sparsity (v2.x IR candidate) | Deferred | Implement + evaluate against control grid | ◐ Requires Lean cross-check; **evaluate on retrieval, not perplexity** |
 
-### Explicitly deprioritized
+### Explicitly deprioritized (but not fully closed — see H11 ◐)
 
-- **Perplexity iteration on IR candidates** — optimizing for a metric that is structurally
-  biased against the IR's design goal (H11). Improving perplexity means adding back
-  redundancy, which defeats the purpose of canonicalization. Future IR candidates should
-  *report* perplexity for completeness but should not be *judged* on it.
+- **Perplexity iteration on IR candidates** — the *fundamental* component of the bias
+  (canonicalization removes surface variation) means perplexity can't be the sole arbiter.
+  But the *contingent* component (v1 was structural noise, v2 didn't add semantic
+  redundancy) means a v3 IR with semantically meaningful + contextually predictable tokens
+  could partially narrow the gap. Future IR candidates should *report* perplexity for
+  completeness and *track* whether typed/semantic tokens narrow the gap — but retrieval
+  and probing remain the primary evaluation.
 
 ### Blocked on compute
 

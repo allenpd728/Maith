@@ -333,6 +333,53 @@ redundancy is circular: you'll always conclude that the most redundant represent
 text — is best. The IR being harder to predict is evidence it's doing its job (compressing
 away ambiguity), not evidence it's a worse representation.
 
+**But the bias has two components — and only one is fundamental.**
+
+The bias against the IR on perplexity is partly **fundamental** (canonicalization
+inherently removes surface variation, so a canonical form will always be less predictable
+than raw text) and partly **contingent** (the current IR designs haven't included the
+*right kind* of redundancy). These are different claims with different implications:
+
+- **Fundamental:** no canonical IR can match raw text on perplexity, because
+  canonicalization removes the multiple surface forms that make text predictable. This
+  is settled.
+- **Contingent:** v1's verbosity was structural noise (polarity tokens, IO markers —
+  predictable but meaningless, ~40-50% of tokens per DEC-024), not semantic redundancy.
+  v2 removed the noise but didn't add anything in its place. Neither v1 nor v2 tested
+  whether a well-designed canonical form could include redundancy that is *both*
+  semantically meaningful *and* contextually predictable.
+
+Natural language has **semantic redundancy**: multiple surface forms for the same meaning,
+each constrained by convention ("therefore" → conclusion; "by" → theorem name). This is
+redundancy *between meaningful tokens* — it helps prediction without adding ambiguity.
+
+v1 had **structural verbosity**: constant markers (neut, IN_, OUT_) and rare unique strings
+(gen:Mathlib.Algebra.Group.Basic.add) that were either trivially predictable or
+fundamentally unpredictable, but in neither case semantically useful. This is verbosity
+*scaffolding meaningful tokens* — it pads the sequence without helping the model predict
+the meaningful parts.
+
+**Implication for a v3 IR candidate:** the design goal would be tokens that are *both*
+semantically meaningful *and* contextually predictable — every token carries information
+about what the entity/relation/operation IS, AND constrains what comes next. Examples:
+
+- Instead of bare `TERM_3`, use a typed entity token like `TERM_RING_ELEM_3` — the type
+  constrains what operations follow (predictable) and carries semantic information (meaningful)
+- Instead of generic `GEN_ALGEBRA`, use operation-specific buckets like `GEN_ASSOC`,
+  `GEN_COMM`, `GEN_DIST` — more informative, and the preceding typeclass context constrains
+  which operation is likely
+- Instead of `eq`, use typed relations like `eq_on_Nat`, `eq_on_Ring` — the type is
+  predictable from context and carries semantic information
+
+The design principle: **every token should carry semantic information that also constrains
+what comes next.** That's what natural language does — "the" tells you a noun is coming
+(predictable) AND marks definiteness (meaningful). v1's "neut" was predictable but
+meaningless. A v3 typed token would be both.
+
+This doesn't guarantee perplexity parity — the fundamental component (canonicalization
+removes surface variation) still applies. But it could narrow the gap, making perplexity
+*partially informative* as a secondary metric. Primary evaluation remains retrieval/probing/ATP.
+
 ### Evaluation framework: the correct metrics for this hypothesis
 
 Given that prediction metrics are structurally biased (above), the hypothesis requires
