@@ -1,7 +1,7 @@
 #!/bin/bash
 # Quick Phase 5 status check
 
-cd /Users/philipallen/Projects/Maith
+cd "$(dirname "$0")/.." || exit 1
 
 echo "=== Phase 5 Training Status ==="
 echo ""

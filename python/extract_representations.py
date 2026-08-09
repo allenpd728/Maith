@@ -53,11 +53,10 @@ HIDDEN_SIZE = 896
 MAX_SEQ_LEN = 512
 EXTRACTION_SEED = 42
 
-# Checkpoint paths — absolute, pointing at the canonical sandbox runs directory.
-# Update RUNS_DIR if the runs directory moves.
+# Checkpoint paths — resolved relative to the repo root, or override with MAITH_RUNS_DIR.
 _RUNS_DIR = os.environ.get(
     "MAITH_RUNS_DIR",
-    "/Users/philipallen/Library/Caches/com.spotify.studio/.studio/artifacts/maith-runs/runs",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "runs"),
 )
 CHECKPOINTS = {
     "A":    os.path.join(_RUNS_DIR, "variant_A_v1_4_0", "checkpoint-final"),
