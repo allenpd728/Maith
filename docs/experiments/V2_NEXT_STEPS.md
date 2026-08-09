@@ -93,9 +93,30 @@ the design-quality component remains open. See
 
 ### Code fixes (trivial — DEC-029)
 
-- [ ] **Device priority** — reorder `train.py` device selection to `cuda → mps → cpu` (currently `mps` first)
-- [ ] **Polarity no-ops** — delete `normalizePolarityEntity/Attr/Rel/Op` from `Normalizer.lean` (dead code from C1)
-- [ ] **B/C special-token note** — document that B adds BOS/EOS by default, C does not
+- [x] **Device priority** — reorder `train.py` device selection to `cuda → mps → cpu` (was `mps` first)
+- [x] **Polarity no-ops** — deleted `normalizePolarityEntity/Attr/Rel/Op` from `Normalizer.lean` (dead code from C1)
+- [x] **B/C special-token note** — documented that B adds BOS/EOS by default, C does not
+
+### Pre-existing test failures (resolve after Concern #1 and #2 land)
+
+The following test failures are pre-existing (not caused by the per_operator or proof-term
+changes) and should be resolved after both specs are implemented and the corpus is rebuilt:
+
+1. **Decoder round-trip format mismatch (2 tests + 9 Phase 8b tests)** — decoder expects
+   `inputs:FVAR_0` format but encoder emits `IN_1`. This is a v1.3.0/v2.0.0 encoder format
+   change that the decoder's input-format handling hasn't caught up with. All 11 failures
+   show the same pattern: "expected inputs:FVAR_0, got IN_1".
+
+2. **Injectivity: non-commutative operations collapse (1 test)** — `sub(a,b)` and `sub(b,a)`
+   produce identical tokens. The normalizer may be treating subtraction as commutative, or
+   the operation input ordering isn't preserved through encode → normalize → decode.
+
+3. **Lean validity check (1 test)** — decompiled output doesn't type-check. Pre-existing
+   decompiler issue; not related to bucketing or proof-term work.
+
+These are tracked here so they aren't lost. They should be investigated after the corpus
+is rebuilt under per_operator mode (which changes the token stream and may surface or
+resolve some of these issues naturally).
 
 ### Explicitly deprioritized (but not fully closed — see H11 ◐)
 
