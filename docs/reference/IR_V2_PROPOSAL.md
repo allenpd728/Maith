@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-03  
 **Reference:** DEC-021 (post-Phase 6 analysis)  
-**Status:** Proposal — not implemented  
+**Status:** Implemented (DEC-026, commit `f194027`). See `docs/experiments/V2_COMPARISON_MATRIX.md` for results.  
 **Implementation:** Requires changes to `MetaExtractor.lean` (out of scope for this proposal)
 
 ---
