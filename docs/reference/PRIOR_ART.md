@@ -8,11 +8,14 @@
 ## 1. Maith's position in one paragraph
 
 Recent progress in neural theorem proving has focused on two levers: model scale and data
-quantity (e.g. ReProver's 112K theorems, LeanNavigator's 4.7M, DeepSeek-Prover's RL
-training). **Everyone trains on source/tactics/state and scales data. Maith is the only
-project systematically testing whether the *representation* (a canonical semantic IR vs.
-raw source) is the bottleneck.** That is the gap this project fills, and the experimental
-record to date is a nuanced negative result. Across the full control grid (DEC-026/027), a
+quantity (e.g. ReProver's ~99K theorems, LeanNavigator's 4.7M, DeepSeek-Prover's RL
+training). **In formal mathematics / theorem proving, everyone trains on
+source/tactics/state and scales data. Maith is the only project systematically testing
+whether the *representation* (a canonical semantic IR vs. raw source) is the bottleneck.**
+(IRCoder and FAIR test the same hypothesis in the *programming-language* domain — see
+§2 — and find it holds; Maith tests it for formal math and finds it does not hold at this
+scale.) That is the gap this project fills, and the experimental record to date is a
+nuanced negative result. Across the full control grid (DEC-026/027), a
 semantic IR extracted from elaborated Lean terms *encodes* semantics (DEC-025: 75.4%
 linear-probe module-classification accuracy vs. 13.6% for a shape-only ablation, a 62-point
 gap) but does *not* improve next-token prediction or completion accuracy over a
@@ -23,6 +26,13 @@ semantic structure, but that structure is not rewarded by the next-token objecti
 scale. This dissociation lands inside an active, contested debate in the broader ML
 literature, mapped below.
 
+> **Epoch confound note.** The B (91.7%) and C (93.0%) figures are 3-epoch v1-era runs,
+> while A (90.0%) and B-small (90.5%) are 2-epoch v2 runs. The A-vs-B-small comparison is
+> epoch-matched and is the clean representation test; the A-vs-B/C comparison is not. If
+> B/C are re-run at 2 epochs, these numbers will change and this document will need
+> updating. See [`V2_COMPARISON_MATRIX`](../experiments/V2_COMPARISON_MATRIX.md) for per-run
+> epoch counts.
+
 ## 2. Code intermediate representations — the closest prior art, and the opposite result
 
 The single most relevant line of work applies Maith's thesis to *programming languages*
@@ -30,7 +40,7 @@ rather than formal mathematics: ground a language model in a compiler's intermed
 representation rather than surface syntax, on the hypothesis that the IR exposes semantic
 structure the surface hides.
 
-### IRCoder / SLTrans (Paul et al., ACL 2024)
+### IRCoder / SLTrans (Paul et al., ACL 2024; arXiv:2403.03894)
 
 IRCoder compiles a parallel dataset of ~4M source files paired with their LLVM IR
 (`SLTrans`), then continued-pretrains six code LMs (StarCoderBase, DeepSeek-Coder,
@@ -60,10 +70,11 @@ Two non-exclusive readings of the contrast, both open in Maith's decision log:
 
 ### Related code-IR line
 
-- **FAIR — Flow-Aware Pre-trained IR Model** (Niu et al., 2024). Graph Transformer over
-  IR with flow-type pretraining tasks; state-of-the-art on code tasks. Explicitly notes
-  that "IR-specific training may be essential to close the gap between source-level and
-  IR-level reasoning" — directly relevant to Maith's A-vs-B/C gap.
+- **FAIR — Flow Type-Aware Pre-Training of Compiler IRs** (Niu et al., 2023;
+  arXiv:2309.04828). Graph Transformer over IR with flow-type pretraining tasks;
+  state-of-the-art on code tasks. Explicitly notes that "IR-specific training may be
+  essential to close the gap between source-level and IR-level reasoning" — directly
+  relevant to Maith's A-vs-B/C gap.
 - **IR2Vec** (VenkataKeerthy et al., 2020). Hierarchical vector representations of LLVM IR.
 - **Meta LLM Compiler** (Cummins et al., 2024). Pretrained IR models for code optimization.
 - **AST-T5** (Gong et al., 2024). Structure-aware pretraining over ASTs. Analogous to
@@ -82,19 +93,21 @@ whether the cause is domain, IR type, or scale remains open.
 This line trains on Lean *source, tactics, or proof state*, not a semantic IR. Maith is
 the representation-research complement to it.
 
-- **ReProver / LeanDojo** (Yang et al., 2023). Tactic generation augmented with premise
-  retrieval; 112K Mathlib theorems. The retrieval-augmented baseline.
+- **ReProver / LeanDojo** (Yang et al., NeurIPS 2023). Tactic generation augmented with
+  premise retrieval; ~99K Mathlib theorems. The retrieval-augmented baseline.
 - **LeanNavigator** (arXiv:2503.04772, 2025). 4.7M theorems with proofs via state-transition
   graph exploration; outperforms prior SOTA. The "just add data" approach at scale.
 - **DeepSeek-Prover V1/V2** (Xin et al., 2024/2025). V2 uses reinforcement learning for
   subgoal decomposition.
-- **PACT — Proof Artifact Co-training** (Rute et al., AIMS 2022). Extracts self-supervised
-  data from kernel-level proof terms and co-trains alongside tactic prediction; improved
-  proving success 32%→48%. **PACT is Maith's closest methodological kin** — both extract
-  training signal from elaborated/kernel-level structure rather than surface source. The
-  key design difference: PACT *co-trains* the structural objective alongside the source
-  objective rather than *replacing* source with IR. PACT's gains where Maith's replacement
-  does not is a real design lesson worth carrying forward.
+- **PACT — Proof Artifact Co-training** (Han, Rute, Wu, Ayers, Polu; ICLR 2022;
+  arXiv:2102.06203). Extracts self-supervised data from kernel-level proof terms and
+  co-trains alongside tactic prediction; improved proving success 32%→48%. **PACT is
+  Maith's closest methodological kin** — both extract training signal from
+  elaborated/kernel-level structure rather than surface source. The key design difference:
+  PACT *co-trains* the structural objective alongside the source objective rather than
+  *replacing* source with IR. PACT's gains where Maith's replacement does not is a real
+  design lesson worth carrying forward (see §7 and the candidate direction noted in
+  [`V2_NEXT_STEPS.md`](../experiments/V2_NEXT_STEPS.md)).
 - **Lean Copilot** (Song et al., 2024). Human-in-the-loop LLM proof assistance.
 - **Lean Workbook** (arXiv:2406.03847, 2024). Synthetic NL↔Lean formalization pipeline.
 
@@ -112,12 +125,15 @@ model wastes capacity on surface detail and misses structure. Proposes JEPA — 
 *latent* space, not token space — and explicitly contrasts "word models" with "world
 models."
 
-**Maith's DEC-024/DEC-025 result pair is empirical support for the LeCun position,
+**Maith's DEC-024/DEC-025 result pair is consistent with the LeCun position,
 demonstrated in a new domain.** The probing result (Variant A encodes semantics, 75.4%)
 alongside the perplexity result (Variant A is penalized for semantics, +0.27 bits/token)
 shows precisely the dissociation LeCun predicts: token-prediction quality ≠ representation
 quality. Maith arrived at this dissociation empirically through ablation and probing;
-JEPA arrives at it architecturally. The convergence is worth stating explicitly.
+JEPA arrives at it architecturally. **This is an interpretive connection, not a proven
+link:** Maith does not test a JEPA architecture, and the dissociation could have causes
+beyond the one LeCun identifies (e.g. data volume, IR token format). The convergence is
+worth noting as compatible evidence, not as validation of the JEPA position.
 
 ### The JEPA family — operational instantiations
 
@@ -189,9 +205,8 @@ Despite the convergences above, two things are genuinely Maith's own:
    flat-IR ablation that isolates structure from semantics, followed by a linear probe
    testing whether semantics is *encoded* despite not helping *prediction* — is a
    methodological choice that surfaces a dissociation the prior art does not typically
-   measure. It is the basis for the claim that the null result reflects an
-   objective-mismatch (next-token prediction not rewarding semantic structure) rather than
-   a representation failure.
+   measure. It motivates (but does not prove) the interpretation that the null result
+   reflects an objective-mismatch rather than a representation failure.
 
 2. **Math-domain IR designed from elaborated terms.** Code-IR work uses existing compiler
    IRs (LLVM). Lean-prover work uses source. Maith designs a *new* semantic IR extracted
@@ -246,12 +261,13 @@ not a research contribution, and is not claimed as novelty.
   paper. https://openreview.net/forum?id=BZ5a1r-kVsf
 - Mao, Z., Song, H., Dabre, R., Chu, C., & Kurohashi, S. (2023). Variable-length Neural
   Interlingua Representations for Zero-shot Neural Machine Translation. *Multi3Generation*.
-- Niu, Y., et al. (2024). FAIR: Flow-Aware Pre-trained Model for Intermediate
-  Representations.
-- Paul, S., et al. (2024). IRCoder: Intermediate Representations Make Language Models
-  Better at Code. *ACL 2024*. (SLTrans dataset.)
-- Rute, J., et al. (2022). Proof Artifact Co-training for Theorem Proving with Language
-  Models (PACT). *AIMS 2022*.
+- Niu, Y., et al. (2023). FAIR: Flow Type-Aware Pre-Training of Compiler Intermediate
+  Representations. arXiv:2309.04828.
+- Paul, I., Glavaš, G., & Gurevych, I. (2024). IRCoder: Intermediate Representations Make
+  Language Models Robust Multilingual Code Generators. *ACL 2024*. arXiv:2403.03894.
+  (SLTrans dataset.)
+- Han, J. M., Rute, J., Wu, Y., Ayers, E., & Polu, S. (2022). Proof Artifact Co-training
+  for Theorem Proving with Language Models (PACT). *ICLR 2022*. arXiv:2102.06203.
 - Schuster, M., Johnson, M., & Thorat, N. (2016). Zero-Shot Translation with Google's
   Multilingual Neural Machine Translation System. Google Research Blog.
 - Song, P., Yang, K., & Anandkumar, A. (2024). Lean Copilot: Large Language Models as

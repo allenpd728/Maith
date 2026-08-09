@@ -216,6 +216,9 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
   representation deficit. The IR encodes real semantic content (DEC-025: 62pp probe gap
   vs. flat-IR), but that structure is not rewarded by the next-token objective at this
   scale. Cold-start (DEC-021) and model-size (DEC-027) confounds are both ruled out.
+  *(Epoch note: B and C are 3-epoch v1-era runs; A and B-small are 2-epoch v2 runs. The
+  A-vs-B-small comparison is epoch-matched and is the clean representation test; A-vs-B/C
+  is not. See `docs/experiments/V2_COMPARISON_MATRIX.md` for per-run epoch counts.)*
 - **Objective mismatch is the leading hypothesis for the null.** Next-token prediction may
   not be the objective that rewards semantic structure; a downstream task (proof search,
   completion) or a masked-reconstruction objective might. This is untested.
