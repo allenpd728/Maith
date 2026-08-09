@@ -312,6 +312,106 @@ confirmed that the IR's semantics are encoded in representations despite not hel
 perplexity — but encoding is a necessary condition, not proof of task benefit (see
 [`HYPOTHESIS_GRID`](HYPOTHESIS_GRID.md) H1 vs. H6/H7).
 
+### Why prediction metrics are structurally biased toward natural language
+
+The perplexity null raises a philosophical question: if a deliberately designed
+representation can't beat evolved natural language at predictability, does that mean natural
+language is already the optimal way to store knowledge? That conclusion would be
+astronomically improbable — and the improbability is the clue that the metric is circular.
+
+Natural language is highly predictable not because it's semantically optimal, but because
+it's *redundant*. It's full of conventions, formulaic patterns, and surface variation that
+constrains what comes next. When Lean source has 50 syntactic ways to express the same idea,
+each with its own predictable token patterns, the model can exploit those patterns. The IR
+canonicalizes to one form — removing the surface variation, which is semantically cleaner
+but statistically less predictable.
+
+This means prediction metrics are structurally biased toward natural language's properties
+(redundancy, convention, predictability) and against the IR's design goal (canonicalization,
+uniqueness, explicitness). Evaluating a semantic representation with a metric that favors
+redundancy is circular: you'll always conclude that the most redundant representation — raw
+text — is best. The IR being harder to predict is evidence it's doing its job (compressing
+away ambiguity), not evidence it's a worse representation.
+
+**But the bias has two components — and only one is fundamental.**
+
+The bias against the IR on perplexity is partly **fundamental** (canonicalization
+inherently removes surface variation, so a canonical form will always be less predictable
+than raw text) and partly **contingent** (the current IR designs haven't included the
+*right kind* of redundancy). These are different claims with different implications:
+
+- **Fundamental:** no canonical IR can match raw text on perplexity, because
+  canonicalization removes the multiple surface forms that make text predictable. This
+  is settled.
+- **Contingent:** v1's verbosity was structural noise (polarity tokens, IO markers —
+  predictable but meaningless, ~40-50% of tokens per DEC-024), not semantic redundancy.
+  v2 removed the noise but didn't add anything in its place. Neither v1 nor v2 tested
+  whether a well-designed canonical form could include redundancy that is *both*
+  semantically meaningful *and* contextually predictable.
+
+Natural language has **semantic redundancy**: multiple surface forms for the same meaning,
+each constrained by convention ("therefore" → conclusion; "by" → theorem name). This is
+redundancy *between meaningful tokens* — it helps prediction without adding ambiguity.
+
+v1 had **structural verbosity**: constant markers (neut, IN_, OUT_) and rare unique strings
+(gen:Mathlib.Algebra.Group.Basic.add) that were either trivially predictable or
+fundamentally unpredictable, but in neither case semantically useful. This is verbosity
+*scaffolding meaningful tokens* — it pads the sequence without helping the model predict
+the meaningful parts.
+
+**Implication for a v3 IR candidate:** the design goal would be tokens that are *both*
+semantically meaningful *and* contextually predictable — every token carries information
+about what the entity/relation/operation IS, AND constrains what comes next. Examples:
+
+- Instead of bare `TERM_3`, use a typed entity token like `TERM_RING_ELEM_3` — the type
+  constrains what operations follow (predictable) and carries semantic information (meaningful)
+- Instead of generic `GEN_ALGEBRA`, use operation-specific buckets like `GEN_ASSOC`,
+  `GEN_COMM`, `GEN_DIST` — more informative, and the preceding typeclass context constrains
+  which operation is likely
+- Instead of `eq`, use typed relations like `eq_on_Nat`, `eq_on_Ring` — the type is
+  predictable from context and carries semantic information
+
+The design principle: **every token should carry semantic information that also constrains
+what comes next.** That's what natural language does — "the" tells you a noun is coming
+(predictable) AND marks definiteness (meaningful). v1's "neut" was predictable but
+meaningless. A v3 typed token would be both.
+
+This doesn't guarantee perplexity parity — the fundamental component (canonicalization
+removes surface variation) still applies. But it could narrow the gap, making perplexity
+*partially informative* as a secondary metric. Primary evaluation remains retrieval/probing/ATP.
+
+### Evaluation framework: the correct metrics for this hypothesis
+
+Given that prediction metrics are structurally biased (above), the hypothesis requires
+evaluation on metrics that measure what the IR was designed to provide — semantic utility,
+not predictability.
+
+| Metric family | What it measures | Why it's the right test | Status |
+|---|---|---|---|
+| **Retrieval / similarity** | Can the model find semantically relevant declarations? | Tests the IR's canonicalization advantage directly: if two declarations mean the same thing, their IR should be similar; their surface text may not be. This is the IR's core value proposition. | Untested (H6) |
+| **Richer probing** | Does the model encode semantic structure beyond surface patterns? | Tests representation quality, not prediction quality. DEC-025 showed a 62-point gap on module classification; richer probes would confirm the gap generalizes to other semantic distinctions. | Partial (H10) |
+| **Downstream task (ATP, proof completion)** | Does the IR help the model actually do mathematics? | The actual research claim — "improves formal math tooling" means tools that prove, complete, and search. This is the only metric that can definitively close the hypothesis. | Untested (H7) |
+| **Objective redesign** | Does a different training loss reward the IR's semantics? | Tests whether the bottleneck is the objective, not the representation. If the IR wins under masked-reconstruction but not next-token, the objective was the problem. | Untested (H5) |
+
+**How we know these are better than perplexity** (three layers):
+
+1. **Theoretical:** perplexity measures predictability (redundancy exploitation), not
+   semantic utility. The IR trades redundancy for canonicalization. The metric and the
+   representation are misaligned by design — see the circularity argument above.
+2. **Empirical:** DEC-024 showed semantic content adds 0.27 bits/token of prediction
+   difficulty. DEC-025 showed the IR encodes 62pp more semantic content. Together: the IR
+   is doing what it's supposed to (encoding semantics) and being penalized for it by the
+   metric.
+3. **Precedent:** IRCoder — the positive counterpart in the code domain — evaluated on task
+   metrics (code completion, understanding, instruction following), not just perplexity.
+   Their gains appeared on tasks where structural representation helps, not on raw
+   prediction. See [`PRIOR_ART.md`](../reference/PRIOR_ART.md) §2.
+
+**What perplexity is still useful for:** confirming the model learned *something* from the
+training data (a sanity check that training worked). It is not a valid arbiter of the
+hypothesis. Future IR candidates should report perplexity for completeness but should not
+be judged on it.
+
 ## What a valid result looks like
 
 - **A < B and A < C**: IR tokens improve sample efficiency — the representation hypothesis has
