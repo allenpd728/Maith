@@ -52,6 +52,12 @@ progress; gate = improvement over 1.2458 and ultimately over B (1.11) / C (1.10)
   separate technique. Revisit if a warm-start approach is needed for the v2 custom vocab.
 - **C3 (attribute sparsity) deferred** — needs a Lean cross-check; not part of the current
   v2 run.
+- **Model size confound (2026-08-09).** The v2 A/B/C comparison is confounded: A runs at
+  358M params (601-token embedding table), B/C at 494M (151k-token table). The **B-small**
+  experiment (BPE, 358M params, same training data) is required to isolate the effect of
+  representation from model size. Until B-small runs, A's 90.0% vs B's 91.7% cannot be
+  cleanly attributed to the IR. See `docs/V2_COMPARISON_MATRIX.md` for the full 2×2 grid
+  and experiment protocol. Scoped as DEC-027.
 
 ---
 

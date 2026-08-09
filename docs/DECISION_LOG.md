@@ -1460,6 +1460,15 @@ quarantined to `runs/_stale_variant_*`; see `docs/runs_audit.md`,
   representation (A's representations encode strong semantic content, 62pp probe
   gap vs Flat-IR). Next levers: corpus expansion, IR pretraining, objective redesign.
 
+**Comparison gap identified (2026-08-09):**
+The A/B/C comparison is confounded by model size — A uses a 601-token embedding
+table (358M params) while B/C use 151k tokens (494M params). Two variables changed
+at once: representation *and* parameter count. The critical control experiment is
+**B-small** (BPE, 358M params, same training data as A) — if B-small ≈ A at 90%,
+the size gap explains A's deficit; if B-small << A, the IR structure is doing real
+work. See `docs/V2_COMPARISON_MATRIX.md` for the full 2×2 grid and DEC-027 for
+the B-small experiment scope.
+
 **Related fixes this session:**
 - `eval_completion.py` stale-checkpoint guard (commit `c8d0e4e`) — warns when
   `results.json` mtime is >1d off from the checkpoint weights. This caught the
