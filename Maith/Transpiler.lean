@@ -86,21 +86,24 @@ end Lean.DSL
 namespace Lean.DSL.Decompile
 
 /--
-Decompiler: reconstructs a structural skeleton from an IR graph.
+Decompiler: reconstructs Lean syntax from an IR graph.
 
-STATUS: produces a human-readable skeleton, NOT valid Lean syntax.
-The output is not parseable by Lean's elaborator. Known issues:
-- `Eq` is emitted as `Eq.<type>` which is malformed Lean
-- Universe levels are emitted as raw strings (e.g. `u_1 + 1`), not valid
-  universe level expressions
-- Forall binders are emitted without the `∀` keyword; the `(name : type),`
-  format is a tuple expression, not a binder
-- Lambda/fun binders (BVAR) are not yet supported
+STATUS (post Phase 8d, 2026-08-05): produces structurally well-formed Lean.
+Phase 8d fixed the three issues previously listed here:
+- `Eq` is now emitted as `Eq lhs rhs` (application form), not `Eq.<type>`
+- Universe levels are normalized via `normalizeLevel` (`u_1 + 1` → `succ u_1`)
+- Forall binders use the `∀` keyword with explicit binder syntax:
+  `∀ ({name} : {type}), {body}`
 
-This function is a scaffold for future work. Do not treat its output as
-valid Lean until elaboration has been verified (e.g. by running output
-through `lean --stdin` and checking for errors). "Verifiable SLM outputs"
-and "safe rewriting" depend on a correct implementation and remain future work.
+Remaining gaps (2026-08-08):
+- Lambda/fun binders (`BVAR`, `λ:` scopes) are not yet decompiled — see
+  `lambdaBinder` in `Expr` and `isLambdaBinder`/`buildLambda` (added but
+  pending verification). Graphs containing lambdas may drop those binders.
+- The output has NOT been validated against the actual Lean compiler. Test 8
+  in `Tests/DecompilerTests.lean` was a placeholder; it is now implemented
+  with `IO.Process` but still pending a `lake build` verification on Kit's
+  machine. Until that passes, do not treat the output as elaborator-verified.
+  "Verifiable SLM outputs" and "safe rewriting" depend on a passing `lean` check.
 -/
 
 -- Lean syntax expression types for the decompiled output
