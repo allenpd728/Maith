@@ -92,6 +92,31 @@ C3 won't change the conclusion and can stay deferred indefinitely. If run, it is
 
 ---
 
+### 4. Co-training vs. replacement — candidate direction from prior art (deferred)
+
+**Origin:** [`docs/reference/PRIOR_ART.md`](../reference/PRIOR_ART.md) §3, §7.
+
+PACT (Han et al., ICLR 2022) — Maith's closest methodological kin — extracts self-supervised
+signal from kernel-level proof terms and *co-trains* it alongside the tactic-prediction
+objective, gaining 32%→48% proving success. Maith, by contrast, *replaces* source with the
+IR and does not gain (DEC-027). The contrast suggests a candidate direction Maith has not
+tested: **co-train the IR objective alongside a source/BPE objective** rather than
+replacing source entirely. This would test whether the IR's encoded semantics
+(DEC-025: 62pp probe gap) can contribute as an auxiliary signal even when it does not
+suffice as a standalone training substrate.
+
+**Why deferred:** This is a new experimental design, not a v2 patch. It requires a
+multi-objective training setup (joint loss over IR and source sequences) that
+`python/train.py` does not currently support. It should be evaluated as a distinct IR
+candidate against the control grid, not folded into the v2 line. Prioritize after corpus
+expansion and objective-redesign experiments, both of which are more direct levers per
+DEC-027.
+
+**Reference:** PACT — Han, Rute, Wu, Ayers, Polu, ICLR 2022 (arXiv:2102.06203). See
+[`PRIOR_ART.md`](../reference/PRIOR_ART.md) §3 for the full comparison.
+
+---
+
 ## Merge-to-main checklist
 
 Run through this before merging `kit/dev` → `main`:
