@@ -1374,6 +1374,12 @@ A_encodes_semantics → proceed with v2 IR implementation and corpus rebuild. Th
 
 ---
 
+> **Naming note for future IR candidates:** The v2 changes use C1–C4 labels.
+> These map to the v1-era "Fix N" naming: C1 (polarity removal) = "Fix 2"
+> (DEC-022); C4 (GEN bucketing) is new in v2. "Fix 3" (IO marker simplification,
+> DEC-023) was a v1.4.0 change. Use this mapping when reading the decision history
+> to understand why a future candidate should or should not repeat a change.
+
 ### DEC-026 — IR v2 compression gate: PARTIAL, proceed to implementation
 
 **Date**: 2026-08-07

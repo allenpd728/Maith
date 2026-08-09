@@ -28,7 +28,7 @@ being small models on a narrow task.
 
 ### Variant A — IR v2 (C1+C2+C4), small model
 - **Run dir:** `runs/variant_A_v2_full/checkpoint-final`
-- **IR version:** `semantic_graph_ir_v2_0_0` (C1 polarity removal, C2 typeclass enrichment, C4 GEN module bucketing)
+- **IR version:** `semantic_graph_ir_v2_0_0` — Variant A serializes Maith's **semantic IR graph** (entity/relation/operation rows from elaborated Lean) into token sequences. v2 simplifies the v1 graph: C1 strips polarity noise, C4 collapses granular `gen:FullName` into `GEN_<area>` buckets (vocab 1,236→601), C2 adds typeclass names.
 - **Base model:** Qwen2.5-Coder-0.5B
 - **Vocab size:** 601 tokens (`datasets/vocab_A.json`)
 - **Params:** 358.4M
@@ -101,7 +101,7 @@ being small models on a narrow task.
 
 ## How to add a new IR candidate
 
-When testing a new IR representation (e.g. C3 attribute sparsity, or a future v3 IR):
+When testing a new IR candidate (e.g. C3 attribute sparsity, a v2.x tweak, or a v3 redesign):
 
 1. Add a new row section under "Completed runs" when training finishes.
 2. Record: IR version, vocab size, params, eval perplexity, completion accuracy, run dir, date.

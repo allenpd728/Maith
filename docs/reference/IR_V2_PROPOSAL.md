@@ -48,6 +48,10 @@ Named constants are the primary semantic content:
 
 **Verdict:** Keep unchanged (with current GEN_UNK threshold).
 
+**Update (DEC-026):** C4 superseded this — `gen:FullName` tokens are now bucketed
+by module into `GEN_<area>` tokens (GEN_ALGEBRA, GEN_ORDER, etc.) at
+`build_dataset.py` encode time, not kept granular. See `ENCODER_FORMAT.md` v2.0.0.
+
 ### Keep: Relational Operators (eq, lt, le, gt, ge)
 
 Non-trivial relations carry signal. However, `eq` (83% of relations) should be handled differently (see Section 2).
