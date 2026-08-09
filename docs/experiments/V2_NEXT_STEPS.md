@@ -89,6 +89,13 @@ the design-quality component remains open. See
 | H5 | Training objective is the bottleneck | Open | Masked-reconstruction or proof-completion objective experiment | ◐ Requires training-code changes (new loss function) |
 | H9 | Co-training (IR alongside source) recovers gains | Open | Multi-objective training experiment (PACT precedent) | ◐ Requires multi-objective training setup |
 | C3 | Attribute sparsity (v2.x IR candidate) | Deferred | Implement + evaluate against control grid | ◐ Requires Lean cross-check; **evaluate on retrieval, not perplexity** |
+| **DEC-028** | C4 bucketing confound — `per_operator` mode | Open | Add `bucket_mode` flag to MetaExtractor/encode_ir; re-run A-vs-B-small with `per_operator` | ✅ **Decisive test** — if A beats B-small, the null was a C4 artifact. Requires code change + training run. |
+
+### Code fixes (trivial — DEC-029)
+
+- [ ] **Device priority** — reorder `train.py` device selection to `cuda → mps → cpu` (currently `mps` first)
+- [ ] **Polarity no-ops** — delete `normalizePolarityEntity/Attr/Rel/Op` from `Normalizer.lean` (dead code from C1)
+- [ ] **B/C special-token note** — document that B adds BOS/EOS by default, C does not
 
 ### Explicitly deprioritized (but not fully closed — see H11 ◐)
 
@@ -105,7 +112,7 @@ the design-quality component remains open. See
 | # | Sub-claim | Status | Blocker |
 |---|---|---|---|
 | H4 | Model size at scale | Partial | Requires a larger *transformer-capacity* base model (1B+), not just a bigger embedding table |
-| H7 | IR improves proof completion / ATP | Open | Theorem-proving evaluation infrastructure + compute |
+| H7 | IR improves proof completion / ATP | Open | Theorem-proving eval infrastructure + **proof-term extraction mode** (DEC-029: current IR is statement-only; ATP needs proof terms) |
 | H8 | IR advantage above scale threshold | Open | 1B+ base model; blocked on compute |
 
 **Note on scale:** the metric-bias argument (H11) means scale alone will not resolve the
