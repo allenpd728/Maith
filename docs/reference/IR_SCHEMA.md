@@ -4,7 +4,9 @@
 **Reference:** DEC-021 (post-Phase 6 analysis)  
 **Author:** IR Candidate Analysis
 
-This document audits each token type in the current IR schema (`semantic_graph_ir_v1_2_0`) to determine whether it carries predictive signal or functions as noise.
+> **v2 update (2026-08-09):** This audit was written for v1.2.0. The v2 IR (v2.0.0) changed three things audited here: polarity tokens are removed (C1), gen:FullName tokens are bucketed to GEN_<area> (C4), and typeclass attributes use short names (C2). The audit's signal/noise findings remain valid as the rationale for those changes. See [`ENCODER_FORMAT.md`](ENCODER_FORMAT.md) v2.0.0 for the current token format.
+
+This document audits each token type in the v1.2.0 IR schema (`semantic_graph_ir_v1_2_0`) to determine whether it carries predictive signal or functions as noise.
 
 ---
 

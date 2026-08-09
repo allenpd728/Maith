@@ -14,7 +14,7 @@ This directory is organized into five subdirectories:
 |---|---|
 | [`decisions/`](decisions/) | Decision log and index (DEC-001+) — the experiment record |
 | [`experiments/`](experiments/) | Experiment designs, comparison matrix, probing task specs, next-steps |
-| [`reference/`](reference/) | IR schema/format specs, encoder/normalisation audits, design notes, corpus schema |
+| [`reference/`](reference/) | IR schema/format specs, encoder/normalisation audits, design notes, corpus schema, [glossary](reference/GLOSSARY.md) |
 | [`history/`](history/) | Phase 5–8 results, roadmaps, and validation plans (historical, per-phase) |
 | [`scratch/`](scratch/) | Session analyses, audits, and bug investigations (runs audit, variant C eval bug, v2 token analysis) |
 
