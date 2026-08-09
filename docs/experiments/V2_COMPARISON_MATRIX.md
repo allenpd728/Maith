@@ -30,8 +30,8 @@ confirming the A-vs-B/C gap is a parameter-count effect, not a representation de
 | | Narrow-vocab (601 tokens, 358M) | Full-vocab (151K tokens, 494M) |
 |---|---|---|
 | **IR vocab (601 tokens)** | **A** ✅ 90.0% acc / 1.2361 ppl | **A-large** ❌ untested |
-| **BPE vocab (151k tokens)** | **B-small** ✅ 90.5% acc / 1.1294 ppl | **B** ✅ 91.7% acc / 1.107 ppl |
-| **BPE variant vocab (151k tokens)** | **C-small** ❌ untested | **C** ✅ 93.0% acc / 1.098 ppl |
+| **BPE vocab (151k tokens)** | **B-small** ✅ 90.5% acc / 1.1294 ppl (v2, 2ep) | **B** ✅ 91.7% acc / 1.107 ppl (v1-era, 3ep; re-run in progress) |
+| **BPE variant vocab (151k tokens)** | **C-small** ❌ untested | **C** ✅ 93.0% acc / 1.098 ppl (v1-era, 3ep; re-run queued) |
 
 **Priority:** ~~B-small is the most important missing cell.~~ **B-small complete (DEC-027).**
 B-small = 90.5% acc / 1.1294 ppl — essentially tied with A (90.0% / 1.2361) at matched
