@@ -70,3 +70,6 @@ logs/*.pid
 # Intentionally-kept local dirs, not part of the repo
 local-models/
 ir-research/
+/check_phase5_status.sh
+/run_abc.sh
+/elan-init.sh
