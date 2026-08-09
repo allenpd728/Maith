@@ -236,6 +236,42 @@ the active rerun uses a bounded profile in `python/train.py`:
 - B/C learning rate reduced to `5e-5` with warmup ratio `0.10`
 - explicit `max_grad_norm=1.0`, periodic cache clears, and non-finite loss/perplexity hard-fail guards
 
+### v1 → v2 IR optimization assessment
+
+The v2 IR (C1+C2+C4) was designed to improve on v1 by removing structural noise and
+reducing vocabulary size. The optimization theory was partially confirmed, with a critical
+caveat:
+
+**Confirmed:**
+- v1 had structural noise. DEC-024's flat-IR ablation confirmed ~40-50% of v1 tokens were
+  noise (polarity markers, IO markers, rare unique tokens).
+- Removing noise improved perplexity. v1.4.0 (1,236-vocab) achieved 1.2751; v2 (601-vocab)
+  achieved 1.2361 — a real improvement.
+- C4 (GEN module bucketing) helped: C1+C2 alone got 1.2458; adding C4 got 1.2361.
+
+**Not confirmed:**
+- Optimization did not close the gap to BPE. A (v2, 1.2361) still trails B-small
+  (size-matched BPE, 1.1294) by 0.11 perplexity points.
+- The theory that a cleaner IR would be more learnable under next-token prediction is only
+  partially true — it's more learnable than v1, but not more learnable than BPE.
+
+**Not tested:**
+- C3 (attribute sparsity) — deferred; needs a Lean cross-check. An untested v2.x candidate.
+
+**The critical contradiction:**
+DEC-024 found that the IR's semantic content adds ~0.27 bits/token of prediction difficulty.
+This means v2's perplexity improvement came partly from *removing* semantic content
+(polarity tokens, rare unique tokens via C4 bucketing) — which is the opposite of the
+hypothesis's goal of making the representation more semantically rich. Optimizing the IR
+for perplexity is partially contradictory with optimizing it for semantic utility: you can
+make the IR more predictable by stripping semantics, but that may strip the value.
+
+**Implication for future IR candidates:** an IR candidate that improves perplexity is not
+necessarily a better semantic representation — it may simply be a more predictable one.
+Future IR candidates should be evaluated on non-prediction metrics (retrieval, probing,
+ATP) alongside perplexity, not on perplexity alone. See the experiment-scope matrix in
+[`HYPOTHESIS_GRID`](HYPOTHESIS_GRID.md).
+
 ## Evaluation
 
 Primary metric: **perplexity on held-out eval split** (lower = better).
@@ -244,6 +280,37 @@ Secondary metrics (if time permits):
 - Next-token accuracy at positions 1, 5, 10 (how quickly does the model "get" the graph?)
 - Perplexity stratified by sequence length bucket (short/medium/long graphs)
 - Perplexity on the `BVAR_*`/`TERM_*` positions specifically (variant A) vs equivalent positions in B/C
+
+### What perplexity measures — and what it doesn't
+
+**What perplexity measures:** how predictable the next token is. Lower = the model is less
+surprised. It is a prediction-family metric — it rewards the model for correctly guessing
+what comes next in the token stream.
+
+**What perplexity does not measure:** whether the model's representations contain useful
+semantic structure, whether the representation helps with any task beyond prediction, or
+whether the model "understands" the mathematics. A model can achieve low perplexity by
+learning surface statistical patterns without encoding meaning.
+
+**Why this matters for the IR:** semantic tokens are inherently less predictable than
+syntactic tokens. They carry information that depends on *meaning* (what does this entity
+represent? what typeclass is in play? what is this declaration's semantic role?), not on
+*what came before in the token stream*. DEC-024 found that the IR's semantic content adds
+approximately 0.27 bits/token of prediction difficulty above what shape alone requires.
+
+**The optimization contradiction:** this means optimizing the IR for perplexity is partially
+contradictory with the hypothesis's goal. Making the IR semantically richer (the whole point)
+makes perplexity *worse*, because richer tokens are harder to predict. The v2 improvements
+(C1 polarity removal, C4 GEN bucketing) improved perplexity partly by *removing* semantic
+content — polarity tokens and rare unique tokens — which is the opposite of making the
+representation more semantically useful. See the v1→v2 optimization assessment below.
+
+**Implication:** perplexity is a necessary but insufficient metric. A complete evaluation
+requires non-prediction metrics (retrieval, probing, ATP) that measure whether the IR's
+semantic structure translates to task-level advantage. The probing experiment (DEC-025)
+confirmed that the IR's semantics are encoded in representations despite not helping
+perplexity — but encoding is a necessary condition, not proof of task benefit (see
+[`HYPOTHESIS_GRID`](HYPOTHESIS_GRID.md) H1 vs. H6/H7).
 
 ## What a valid result looks like
 
