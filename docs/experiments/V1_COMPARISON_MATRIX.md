@@ -13,7 +13,13 @@
 
 ## The v1 grid
 
-| | Small model (365M, IR-vocab) | Large model (494M, BPE-vocab) |
+> **Scale note.** Same Qwen2.5-Coder-0.5B transformer base as v2 (toy-scale by field
+> standards; see the [model-size taxonomy](EXPERIMENT_DESIGN.md#model-size-taxonomy)). The
+> parameter difference between columns is embedding-table size, not transformer capacity.
+> The v1 IR used a 1,236-token vocab (v1.4.0) → ~365M params; v2's 601-token vocab → ~358M.
+> Both are the same 0.5B base with differently-sized embedding tables.
+
+| | Narrow-vocab (1,236 tokens, ~365M) | Full-vocab (151K tokens, 494M) |
 |---|---|---|
 | **IR vocab (1,236 tokens, v1.4.0)** | **A** ✅ 86.2% acc / 1.2751 ppl | **A-large** ❌ not tested |
 | **BPE vocab (151,643 tokens)** | **B-small** ❌ not tested | **B** ✅ 92.8% acc / 1.107 ppl |
