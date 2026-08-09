@@ -97,7 +97,44 @@ the design-quality component remains open. See
 - [x] **Polarity no-ops** — deleted `normalizePolarityEntity/Attr/Rel/Op` from `Normalizer.lean` (dead code from C1)
 - [x] **B/C special-token note** — documented that B adds BOS/EOS by default, C does not
 
-### Pre-existing test failures (resolve after Concern #1 and #2 land)
+### Active specs
+
+Two detailed specs are in `docs/reference/`. Their implementation status:
+
+### Spec 1: Operator Un-Bucketing (DEC-028) — [SPEC_PER_OPERATOR.md](../reference/SPEC_PER_OPERATOR.md)
+
+**Status: In progress.** Lean + Python changes landed on kit/dev (`213d013`). Gate 4
+(corpus rebuild + vocab check) pending — requires `lake build Mathlib` first.
+
+| Gate | Description | Status |
+|---|---|---|
+| 1 | headShortName threading (op:mul_comm emitted for real constants) | ✅ Passed |
+| 2 | Mode isolation (switching bucketMode changes only op payload) | ✅ Passed |
+| 3 | op:/proj: round-trip (decoder cases prevent silent .pow fallback) | ✅ Passed |
+| 4 | Vocab-size report (per_operator vocab meaningfully different from 601) | ⬜ Pending |
+
+**Next steps:** `lake build Mathlib` → `lake exe buildCorpus --per-operator` →
+`python3 python/build_dataset.py --bucket-mode per_operator` → check vocab size →
+run A-vs-B-small experiment.
+
+### Spec 2: Proof-Term Extraction (DEC-029 #2) — [SPEC_PROOF_TERMS.md](../reference/SPEC_PROOF_TERMS.md)
+
+**Status: Not started.** Spec finalized; implementation deferred until per_operator
+experiment is complete. The user is working on spec details.
+
+| Gate | Description | Status |
+|---|---|---|
+| 1 | Root-ID semantics (proof_of edge connects sensible endpoints) | ⬜ Not started |
+| 2 | .thmInfo match-arm binding (compiles without exhaustiveness issues) | ⬜ Not started |
+| 3 | Normalizer round-trip with proof_of | ⬜ Not started |
+| 4 | Size-threshold skip rate (measured before Layer-2 decisions) | ⬜ Not started |
+
+**Composes with Spec 1:** per-operator identity matters more on proof sub-graphs. The
+combined representation is `v2_1_2` (per_operator + proof-enabled).
+
+---
+
+## Pre-existing test failures (resolve after Concern #1 and #2 land)
 
 The following test failures are pre-existing (not caused by the per_operator or proof-term
 changes) and should be resolved after both specs are implemented and the corpus is rebuilt:
