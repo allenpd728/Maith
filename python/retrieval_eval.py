@@ -273,7 +273,34 @@ def main():
     parser.add_argument("--variants", default="A,B_small,B,C,flat")
     parser.add_argument("--mode", choices=["eval_to_train", "train_to_train"], default="eval_to_train")
     parser.add_argument("--k-values", default="1,5,10,20")
+    parser.add_argument("--skip-invariant-check", action="store_true",
+                        help="Skip the invariant checker precondition (NOT RECOMMENDED)")
     args = parser.parse_args()
+
+    # ENFORCED PRECONDITION: verify embedding shapes match datasets
+    if not args.skip_invariant_check:
+        import torch as _torch
+        embeddings_dir = Path(args.embeddings_dir)
+        datasets_dir = Path("datasets")
+        all_ok = True
+        for v in args.variants.split(","):
+            v = v.strip()
+            for split in ["train", "eval"]:
+                emb_path = embeddings_dir / f"embeddings_{v}_{split}.pt"
+                ds_path = datasets_dir / f"{split}_{v}.jsonl"
+                if emb_path.exists() and ds_path.exists():
+                    emb = _torch.load(emb_path, weights_only=True)
+                    with open(ds_path) as f:
+                        ds_n = sum(1 for _ in f)
+                    if emb.shape[0] != ds_n:
+                        print(f"SHAPE MISMATCH: {v}/{split} emb={emb.shape[0]} ds={ds_n}")
+                        all_ok = False
+        if not all_ok:
+            print("EMBEDDING/DATASET MISMATCH — eval blocked.")
+            print("Re-extract embeddings from the current datasets before proceeding.")
+            sys.exit(1)
+        print("Embedding shapes verified — all match current datasets.")
+        print()
 
     embeddings_dir = Path(args.embeddings_dir)
     out_path = Path(args.out)
