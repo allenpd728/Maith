@@ -143,10 +143,10 @@ def updateCorpusStats (stats : CorpusStats) (result : ProcessingResult TrainingE
   | ProcessingResult.fail msg =>
     { stats with failureStats := updateFailureStats stats.failureStats msg }
 
-def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) :
+def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) (bucketMode : BucketMode := .module) :
     ProcessingResult (List TrainingExample × CorpusStats) :=
   let rec loop (remaining : List ExtractedDeclaration)
-      (examples : List TrainingExample) (stats : CorpusStats) :
+      (examples : List TrainingExample) (stats : CorpusStats) (bucketMode : BucketMode := .module) :
       ProcessingResult (List TrainingExample × CorpusStats) :=
     match remaining with
     | [] =>
@@ -195,14 +195,14 @@ def processBatch (declarations : List ExtractedDeclaration) (encoder : Encoder) 
       }
       ProcessingResult.ok (examples, finalStats)
     | decl :: rest =>
-      let result := processDeclaration decl encoder
+      let result := processDeclaration decl encoder bucketMode
       let updatedExamples := match result with
         | ProcessingResult.ok ex => examples ++ [ex]
         | ProcessingResult.fail _ => examples
       let updatedStats := updateCorpusStats stats result
-      loop rest updatedExamples updatedStats
+      loop rest updatedExamples updatedStats bucketMode
 
   let initialStats : CorpusStats := { totalDeclarations := declarations.length }
-  loop declarations [] initialStats
+  loop declarations [] initialStats bucketMode
 
 end Lean.DSL
