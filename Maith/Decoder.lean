@@ -72,10 +72,14 @@ private def parseOperationOpToken (s : String) : OperationOp :=
   else if s = "pow" then .pow
   else if s.startsWith "gen:" then
     .generic (s.drop 4).toString
+  else if s.startsWith "GEN_" then
+    .generic s
   else if s.startsWith "op:" then
     .generic (s.drop 3).toString
   else if s.startsWith "proj:" then
     .generic s
+  else if s.startsWith "hof" then
+    .generic "hof"
   else .pow
 
 /--
