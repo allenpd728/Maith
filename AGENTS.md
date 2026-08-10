@@ -2,22 +2,8 @@
 
 > Condensed project reference — dense by design, not narrative prose. For human-readable
 > introductions see `README.md`; for term definitions see `docs/reference/GLOSSARY.md`.
-> For SSH access setup, see the SSH Primer (provided by the user when starting a session).
-> After connecting via SSH, read `AGENTS_LOCAL.md` (gitignored, machine-only) for
-> environment-specific details.
-
-## Getting SSH access
-
-The repo and trained checkpoints live on a remote macOS machine. To get access:
-
-1. Generate an SSH key pair (see the SSH Primer the user provides)
-2. Share your public key and the `authorized_keys` command with the user
-3. The user adds the key and provides the tunnel address
-4. Connect as `openhands-demo` via the ngrok tunnel
-5. Read `AGENTS_LOCAL.md` on the machine for paths, checkpoint inventory, and commands
-
-**Do not use `sudo`.** You have group write access to the entire repo. If you hit
-permission errors, ask the user rather than escalating.
+> For machine-specific details (paths, checkpoints, Python/Lean locations), read
+> `AGENTS_LOCAL.md` on the local machine (gitignored, not in this repo).
 
 ## Project overview
 
@@ -105,22 +91,24 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 
 **Lean:**
 ```bash
-PATH=/Users/philipallen/.elan/bin:$PATH lake build tests
+lake build tests
 ./.lake/build/bin/tests
 ```
 
 **Python:**
 ```bash
-/usr/local/bin/python3 python/train.py --variant A --datasets datasets/ --embed-project datasets/embed_proj_A.pt
-/usr/local/bin/python3 python/eval_completion.py --variants A B_SMALL --samples 200 --mask-last 10
-/usr/local/bin/python3 python/validate_roundtrip.py
+python3 python/train.py --variant A --datasets datasets/ --embed-project datasets/embed_proj_A.pt
+python3 python/eval_completion.py --variants A B_SMALL --samples 200 --mask-last 10
+python3 python/validate_roundtrip.py
 ```
 
 **Corpus rebuild:**
 ```bash
-PATH=/Users/philipallen/.elan/bin:$PATH lake exe buildCorpus          # module mode
-PATH=/Users/philipallen/.elan/bin:$PATH lake exe buildCorpus --per-operator  # per_operator mode
+lake exe buildCorpus              # module mode (GEN_* buckets)
+lake exe buildCorpus --per-operator  # per_operator mode (op:<shortName>)
 ```
+
+> Note: exact Python binary and lake paths vary by machine. See `AGENTS_LOCAL.md`.
 
 ## Git workflow
 
@@ -129,6 +117,13 @@ PATH=/Users/philipallen/.elan/bin:$PATH lake exe buildCorpus --per-operator  # p
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
 
 # Push to kit/dev (NOT main)
+git push origin your-branch:kit/dev
+```
+
+If kit/dev has diverged, use merge (not rebase) to avoid working-tree conflicts:
+```bash
+git fetch origin kit/dev
+git merge origin/kit/dev --no-edit
 git push origin your-branch:kit/dev
 ```
 
@@ -146,4 +141,3 @@ git push origin your-branch:kit/dev
 - Don't cite B/C numbers without the epoch-confound caveat
 - Don't conflate embedding-table size with transformer capacity
 - Don't run `extract_representations.py` for H6 — it has the input-variant bug (feeds IR tokens to all variants). Write a new extraction script using per-variant `input_ids` per `H6_RETRIEVAL_SCOPE.md` §4
-- Don't use `sudo` — ask the user if you hit permission errors
