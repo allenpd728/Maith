@@ -91,3 +91,7 @@ fix_projection_test.py
 fix_bucketmode_threading.py
 fix_trace_sig.py
 gate4_vocab_check.py
+fix_decoder_tests.py
+fix_in_quotes.py
+fix_output_tokens.py
+fix_gen_decoder.py
