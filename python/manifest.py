@@ -65,8 +65,17 @@ VARIANT_TO_SOURCE = {
     "B_small": "bpe_601",
     "B": "bpe_full",
     "C": "ast_split",
-    "flat": "ir_tokens",
-    "random": "bpe_full",
+    "flat": "ir_tokens",  # flat uses flat_ir as dataset source label
+}
+
+# Some variants use different labels in the dataset 'source' field than the
+# variant name itself. Map variant -> expected dataset source field value.
+VARIANT_TO_DATASET_SOURCE = {
+    "A": "A",
+    "B_small": "B_small",
+    "B": "B",
+    "C": "C",
+    "flat": "flat_ir",  # flat dataset records source='flat_ir'
 }
 
 
