@@ -95,3 +95,5 @@ fix_decoder_tests.py
 fix_in_quotes.py
 fix_output_tokens.py
 fix_gen_decoder.py
+fix_validate_roundtrip.py
+fix_in_many.py
