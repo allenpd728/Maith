@@ -90,6 +90,7 @@ been tested is one corner of a multi-dimensional space, not the whole hypothesis
 | **Corpus size** | ~3.5K examples (14 modules) | 10K+, 100K+, full Mathlib (~190K declarations) |
 | **IR version** | v1.2.0 → v1.4.0 → v2.0.0 (C1/C2/C4) | C3 (attribute sparsity, deferred), `per_operator` mode (DEC-028 — un-bucketed operators), v3 candidates — see [v1→v2 assessment](EXPERIMENT_DESIGN.md#v1--v2-ir-optimization-assessment) |
 | **Mathematical domain** | Algebra, order, topology (declaration-heavy) | Tactics, analysis, number theory, category theory |
+| **Model architecture** | Sequence transformer (causal LM) | GNN / GraphTransformer (graph-native — see [theoretical grounding](PRIOR_ART.md#the-alignment-fragility-barrier-where-maiths-null-is-predicted-by-theory)) |
 
 **How to read this matrix:** each "Tested" cell is a single point; each "Untested" cell is
 an open dimension. The hypothesis has been evaluated at one model size, one objective, two

@@ -236,6 +236,11 @@ not a research contribution, and is not claimed as novelty.
   prediction does not reward it. Whether a masked-reconstruction or proof-completion
   objective would recover an IR advantage is untested and is the most direct next lever
   flagged by the experimental record.
+- **Model architecture.** The IR is a graph; the model is a sequence transformer. The
+  linearization (graph → token stream) is a lossy step that forces the transformer to
+  reconstruct graph structure from positional patterns. A GNN or GraphTransformer would
+  consume the graph directly, with IR edges as message-passing paths. Architecture
+  alignment is an untested dimension — see §9.
 - **Co-training vs. replacement.** PACT co-trains structural signal alongside source and
   gains; Maith replaces source with IR and does not. Whether a co-training design would
   recover IRCoder-style gains for Maith's IR is untested.
@@ -247,7 +252,111 @@ not a research contribution, and is not claimed as novelty.
   completion — requires the theorem-proving evaluation scaffolded in
   [`docs/history/PHASE_7_ROADMAP.md`](../history/PHASE_7_ROADMAP.md) but not yet run.
 
-## 8. References
+## 8. Theoretical grounding: algorithmic alignment and disentanglement
+
+Maith's central hypothesis — that a canonical semantic representation improves learning —
+connects to two established research traditions that, taken together, explain both why the
+hypothesis is theoretically sound and why the experimental null (DEC-027) is expected under
+the current conditions.
+
+### Algorithmic alignment (Xu et al., ICML 2021)
+
+Xu et al. proved that a neural network learns a target reasoning task with lower sample
+complexity when its architecture's modules correspond to the target algorithm's subroutines.
+They demonstrated this with GNNs aligning with Bellman-Ford (shortest path): GNN
+message-passing mirrors the dynamic programming update, so the network only has to learn
+simple linear functions, and it extrapolates. The theorem: better alignment ⇒ lower sample
+complexity ⇒ better generalization, including out-of-distribution.
+
+This is the closest formal statement to "a representation isomorphic to the generative
+process makes learning easy" — except it's about the *architecture* mirroring the
+*algorithm*, not the *input representation* mirroring the *generative process*. Same
+principle, applied at a different layer of the stack.
+
+### Disentangled representation learning (Bengio et al., 2013)
+
+Bengio et al. defined a good representation as one that makes the explanatory factors of
+variation in the data explicit and independent. "Factors of variation" *is* the generative
+process — the latent variables that, when combined, produce the observed data. So
+"disentangle the factors of variation" is literally "make the representation isomorphic to
+the generative process."
+
+### The impossibility result (Locatello et al., NeurIPS 2019)
+
+Locatello et al. proved that **without inductive biases, unsupervised disentanglement is
+impossible** — provably, not just hard. Multiple generative processes can produce identical
+observed data, so no representation learned only from data can be guaranteed to recover the
+true factors. They showed empirically that across thousands of models and six benchmark
+datasets, none reliably disentangled without explicit inductive bias.
+
+This is the dark twin of the principle: the generative process is real, but *recovering it
+from data alone is not guaranteed to be possible.*
+
+### Why Maith sidesteps the impossibility result
+
+**Formal mathematics is one of the few domains where the generative process is actually
+known.** The generative process of a Lean theorem is the elaborator's construction of the
+`Expr` tree — typeclass resolution, implicit insertion, binder scoping, notation expansion.
+That's not ambiguous the way "what factors generated this face" is ambiguous. Maith has
+ground-truth access to the generative process via Lean's elaborated environment. It extracts
+from `Expr`, not from surface syntax.
+
+This means the disentanglement impossibility result **doesn't apply** to Maith's domain.
+The impossibility is about *recovering* the process from data — Maith doesn't have to
+recover it; the elaborator provides it for free. What remains is the *other* limitation:
+even with the generative process exposed, the model has to be able to exploit it.
+
+### The alignment-fragility barrier (where Maith's null is predicted by theory)
+
+Follow-up work on algorithmic alignment (Veličković & Dudzik, NeurIPS 2022 — "Graph Neural
+Networks are Dynamic Programmers") found that alignment is fragile: even in the cleanest
+alignment settings, GNNs "overfit to clever hacks and sidestep the actual procedure," and
+OOD generalization requires *additional* careful inductive biases beyond just architecture
+alignment. Alignment is necessary but not sufficient.
+
+**This is exactly the barrier Maith's experimental record shows.** Maith has cleared the
+impossible hurdle (the elaborator provides the generative process) and hit the possible-but-
+hard one (getting a small model under a biased objective to exploit exposed structure).
+The null result (DEC-027: IR doesn't improve prediction at toy scale) is *predicted by the
+theory*: alignment is fragile, especially when:
+
+1. **Architecture is misaligned:** the IR is a graph; the model is a sequence transformer.
+   The linearization forces the model to reconstruct graph structure from positional
+   patterns — an expensive inference the theory says should be fragile.
+2. **Objective is misaligned:** next-token prediction rewards surface predictability, not
+   semantic structure. The objective doesn't reward the isomorphism the IR provides.
+3. **Capacity is insufficient:** at 358M, the model is capacity-bound on structural
+   scaffolding (DEC-024) before it can fully exploit semantic content.
+
+### What the theory predicts would work
+
+The principle predicts that the IR should help under conditions where the alignment
+barriers are addressed:
+
+- **Graph architecture** (GNN/GraphTransformer on the IR's edges) — consumes the graph
+  directly, with edges as message-passing paths. No linearization loss.
+- **Reconstruction objective** mirroring the elaborator's term-building process — rewards
+  understanding the generative structure, not predicting surface tokens.
+- **Sufficient capacity** (1B+) — enough to learn both structural scaffolding and semantic
+  content (addresses DEC-024's capacity-bound finding).
+- **Semantic-task evaluation** (retrieval, ATP) — measures whether the exposed structure
+  translates to task advantage, which is what the isomorphism is designed to provide.
+
+Each of these is an experiment in Maith's open research front (H5, H6, H7, H8). The theory
+predicts they are the conditions under which the principle should hold — and that the
+current null (misaligned conditions) doesn't refute the principle, it confirms the theory's
+prediction about what happens under misalignment.
+
+### Implication for the experiment-scope matrix
+
+The experiment-scope matrix in
+[`HYPOTHESIS_GRID`](../experiments/HYPOTHESIS_GRID.md) is missing a dimension: **model
+architecture** (sequence vs. graph). The current experiments all use sequence transformers,
+which is the misaligned case. A graph-native architecture is the aligned case, and the
+theory predicts it should be where the IR's advantage appears. This dimension should be
+added to the matrix and tracked as an open experimental question.
+
+## 9. References
 
 - Assran, M., Duval, Q., Misra, I., Bojanowski, P., Vincent, P., Rabbat, M., LeCun, Y., &
   Ballas, N. (2023). Self-Supervised Learning from Images with a Joint-Embedding Predictive
@@ -284,3 +393,11 @@ not a research contribution, and is not claimed as novelty.
 - "From Tokens to States: LLMs as a Special Case of World Models and the Continuous Path
   Beyond." arXiv:2606.28127 (2026).
 - Survey of Abstract Meaning Representation: Then, Now, Future. arXiv:2505.03229 (2025).
+- Xu, K., Hu, W., Leskovec, J., & Jegelka, S. (2021). How Neural Networks Extrapolate:
+  From Feedforward to Graph Neural Networks. *ICML 2021*.
+- Bengio, Y., Courville, A., & Vincent, P. (2013). Representation Learning: A Review and
+  New Perspectives. *IEEE TPAMI*.
+- Locatello, F., et al. (2019). Challenging Common Assumptions in the Unsupervised Learning
+  of Disentangled Representations. *NeurIPS 2019*.
+- Veličković, P., & Dudzik, W. (2022). Graph Neural Networks are Dynamic Programmers.
+  *NeurIPS 2022*.
