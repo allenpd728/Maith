@@ -81,6 +81,10 @@ epoch-matched, embeddings came from the right input). That is the layer this wor
 
 ## 4. The harness to build — four components
 
+> **File-specific implementation details** (from repo inspection) are interleaved below
+> in `>` blockquotes. These are the exact line numbers, field names, and code patterns
+> a downstream agent needs.
+
 ### 4.1 Provenance manifests (the foundation)
 
 Every artifact gets a manifest recording *what it is and how it was made*. This already
@@ -103,6 +107,20 @@ inconsistent. Standardize a single manifest schema applied to every artifact typ
 embeddings came from `ir_tokens`, but this checkpoint was trained on `leanExpr`." A
 manifest with `source_input` on both artifacts makes that mismatch *detectable* — and
 the comparison gate (§4.3) makes it *blocking*.
+
+> **Current results.json format** (train.py line 610-628):
+> ```json
+> {"variant": "A", "vocab_size": 601, "n_params_M": 358.4, "train_examples": 3491,
+>  "eval_examples": 388, "epochs": 2, "eval_perplexity": 1.2361, "seed": 42,
+>  "base_model": "Qwen/Qwen2.5-Coder-0.5B", "smoke_test": false,
+>  "embed_pretrain": false, "embed_project": false}
+> ```
+> Fields to add: `actual_learning_rate`, `actual_batch_size`, `actual_max_seq_len`,
+> `checkpoint_sha256`, `source_input`, `config_vocab_size`, `config_hidden_size`.
+>
+> **Note:** per-variant hparam overrides (B/C's 5e-5 LR from commit `83f18a8`) are NOT
+> recorded in results.json — it records the global `LEARNING_RATE` (2e-4), not the
+> per-variant override. The `actual_*` fields fix this.
 
 **Deliverable:** `python/manifest.py` — write/read/verify manifests. Every existing
 pipeline step (build_dataset, train, extract, eval) writes a manifest alongside its
@@ -136,6 +154,26 @@ as a precondition by every experiment script.
      caught the IR-tokens-to-B/C bug.**
    - For eval: the eval dataset's variant matches the checkpoint's variant.
 
+> **The bug in detail:** `extract_representations.py` line 219 feeds `ex["tokens"]` (the
+> IR token list from `Corpus/corpus.jsonl`) to every variant. It joins tokens with spaces,
+> re-tokenizes, and forward-passes. Correct for A and flat (both trained on IR tokens);
+> **wrong for B, C, B_small** (trained on `leanExpr`/AST text via their own `input_ids`).
+>
+> **The fix:** extract each variant's embeddings from the `input_ids` field of that
+> variant's own dataset file (`datasets/eval_{variant}.jsonl`). All variant datasets have
+> identical field structure: `source, representation_id, example_id, name, module,
+> input_ids, labels, seq_len`. The `input_ids` field contains the exact integer token
+> sequences each model was trained on — feed directly, no re-tokenization.
+>
+> **The assertion to add:**
+> ```python
+> expected_source = variant  # "A", "B", "C", "B_small", "flat"
+> for record in dataset:
+>     assert record.get("source") == expected_source, (
+>         f"Input-variant mismatch: record source={record.get('source')} "
+>         f"but expected variant={expected_source}.")
+> ```
+
 4. **Vocab-range consistency (the bos/eos crash, generalized):**
    - For each checkpoint and its matching dataset, every `input_ids` value is within
      `[0, vocab_size)` of the checkpoint's embedding table. Hard-fail on any out-of-range.
@@ -148,6 +186,29 @@ as a precondition by every experiment script.
      `representation_at_matched_size`) and the invariant checker validates *that specific
      claim's* required matches. The A-vs-B-small claim requires epoch match; the A-vs-B
      claim does not (and the checker must say so, not silently allow it).
+
+> **Current per-variant hparam state** (from commit history and DEC entries):
+>
+> | Variant | Epochs | LR | Batch | Max seq | Vocab | Params | Notes |
+> |---|---|---|---|---|---|---|---|
+> | A (v2) | 2 | 2e-4 | 8 | 1024 | 601 | 358M | embed-project |
+> | B_small | 2 | 2e-4 | 8 | 1024 | 601 | 358M | DEC-027 control |
+> | B (v1-era) | 3 | 5e-5 | 4 | 512 | 151K | 494M | epoch confound |
+> | C (v1-era) | 3 | 5e-5 | 4 | 512 | 151K | 494M | epoch confound |
+> | flat | 2 | 2e-4 | 8 | 1024 | 11 | 358M | DEC-024 ablation |
+>
+> B/C's LR was reduced to 5e-5 for stability (commit `83f18a8`) but this is NOT recorded
+> in their results.json. The v2 2-epoch re-runs (in progress) would use 2e-4 matching
+> A/B_small. The `assert_comparable()` gate would flag the A-vs-B/C epoch mismatch
+> (2 vs 3) and the LR mismatch (2e-4 vs 5e-5) before any comparison table is emitted.
+
+> **Split integrity details** (verified from actual data):
+> - Train: 3,378 unique names | Eval: 386 unique names | Overlap: 13 names
+> - The 13 overlaps are distinct declarations in different modules sharing a short name.
+> - `check_split_integrity.py` already uses `example_id` (which includes module), so it
+>   correctly sees them as distinct — the collision is a phantom when matching on bare
+>   `name`, not a real bug.
+> - For retrieval: match by full `name` field and de-duplicate the candidate pool.
 
 6. **Provenance hash consistency:**
    - Two artifacts compared as "same data, different representation" must have matching
