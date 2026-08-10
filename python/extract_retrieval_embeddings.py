@@ -220,7 +220,25 @@ def main():
         "--out", default=str(_RUNS_DIR / "retrieval_embeddings"),
         help="Output directory"
     )
+    parser.add_argument(
+        "--skip-invariant-check", action="store_true",
+        help="Skip the invariant checker precondition (NOT RECOMMENDED)"
+    )
     args = parser.parse_args()
+
+    # ENFORCED PRECONDITION: invariant checker must pass before extraction
+    if not args.skip_invariant_check:
+        import subprocess as _sp
+        print("=" * 60)
+        print("PRECONDITION: INVARIANT CHECKER")
+        print("=" * 60)
+        _r = _sp.run([sys.executable, str(_REPO_ROOT / "python" / "check_invariants.py"),
+                       "--datasets", str(_DATASETS_DIR), "--runs", str(_RUNS_DIR)])
+        if _r.returncode != 0:
+            print("INVARIANT CHECK FAILED — extraction blocked.")
+            print("Fix the invariant violations before proceeding, or use --skip-invariant-check")
+            sys.exit(1)
+        print()
 
     variants = [v.strip() for v in args.variants.split(",")]
     out_dir = Path(args.out)
