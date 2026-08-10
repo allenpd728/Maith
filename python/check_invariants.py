@@ -26,7 +26,7 @@ from typing import Optional
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from manifest import (
     load_manifest, verify_manifest, expected_source_for_variant, VARIANT_TO_SOURCE,
-    REQUIRED_FIELDS,
+    VARIANT_TO_DATASET_SOURCE, REQUIRED_FIELDS,
 )
 
 # ---------------------------------------------------------------------------
@@ -199,6 +199,7 @@ def check_variant_input_consistency(datasets_dir: Path, variant: str) -> list[di
     """Dataset source field matches the variant's expected source_input."""
     results = []
     expected_source = expected_source_for_variant(variant)
+    expected_dataset_source = VARIANT_TO_DATASET_SOURCE.get(variant, variant)
 
     for split in ["train", "eval"]:
         path = datasets_dir / f"{split}_{variant}.jsonl"
@@ -207,19 +208,19 @@ def check_variant_input_consistency(datasets_dir: Path, variant: str) -> list[di
             continue
 
         rows = _load_jsonl(path)
-        mismatches = [r for r in rows if r.get("source") != variant]
+        mismatches = [r for r in rows if r.get("source") != expected_dataset_source]
 
         if mismatches:
             results.append(_report(
                 f"variant_input_{variant}_{split}", False,
-                f"{len(mismatches)}/{len(rows)} records have source != '{variant}' "
+                f"{len(mismatches)}/{len(rows)} records have source != '{expected_dataset_source}' "
                 f"(expected source_input='{expected_source}'). "
                 f"Example: source='{mismatches[0].get('source')}'"
             ))
         else:
             results.append(_report(
                 f"variant_input_{variant}_{split}", True,
-                f"all {len(rows)} records have source='{variant}' (expected: {expected_source})"
+                f"all {len(rows)} records have source='{expected_dataset_source}' (expected: {expected_source})"
             ))
 
     return results
@@ -234,15 +235,18 @@ def check_vocab_range(datasets_dir: Path, variant: str, vocab_size: Optional[int
     results = []
 
     if vocab_size is None:
-        # Try to infer from vocab_A.json or results.json
-        if variant == "A" or variant == "flat":
+        # Try to infer from vocab_A.json (A/flat) or results.json
+        if variant in ("A", "flat"):
             vocab_path = datasets_dir / f"vocab_{variant}.json"
-            if vocab_path.exists():
+            if not vocab_path.exists() and variant == "flat":
+                # flat may not have its own vocab; use 11 (the known flat vocab size)
+                vocab_size = 11
+            elif vocab_path.exists():
                 with open(vocab_path) as f:
                     vocab = json.load(f)
                 vocab_size = len(vocab)
         if vocab_size is None:
-            # Look at results.json
+            # B/C/B_small use Qwen BPE — check results.json for vocab_size
             for d in [datasets_dir.parent / "runs"]:
                 rp = d / f"variant_{variant}" / "results.json"
                 if rp.exists():
@@ -250,6 +254,18 @@ def check_vocab_range(datasets_dir: Path, variant: str, vocab_size: Optional[int
                         r = json.load(f)
                     vocab_size = r.get("vocab_size")
                     break
+        if vocab_size is None and variant in ("B", "C"):
+            # Full Qwen BPE vocab — check the checkpoint's tokenizer config
+            for d in [datasets_dir.parent / "runs"]:
+                tk = d / f"variant_{variant}" / "checkpoint-final" / "tokenizer_config.json"
+                if tk.exists():
+                    with open(tk) as f:
+                        tc = json.load(f)
+                    # Qwen vocab size is typically 151,643
+                    vocab_size = tc.get("vocab_size", 151643)
+                    break
+            if vocab_size is None:
+                vocab_size = 151643  # known Qwen2.5-Coder BPE vocab
 
     if vocab_size is None:
         results.append(_report(
