@@ -289,8 +289,43 @@ def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str =
     # Filter pathological examples before splitting
     print("Filtering pathological examples ...")
     drop_log = os.path.join(out_dir, "filtered_dropped.json")
+    # Fall back to a writable location if the drop log isn't writable
+    can_write = True
+    if os.path.exists(drop_log):
+        if not os.access(drop_log, os.W_OK):
+            can_write = False
+    else:
+        try:
+            with open(drop_log, "w") as f:
+                f.write("")
+            os.remove(drop_log)
+        except (PermissionError, OSError):
+            can_write = False
+    if not can_write:
+        alt_dir = os.path.join(os.path.dirname(os.path.abspath(out_dir)), "runs")
+        os.makedirs(alt_dir, exist_ok=True)
+        drop_log = os.path.join(alt_dir, "filtered_dropped.json")
+        print(f"  (drop log not writable, using -> {drop_log})")
     examples = filter_examples(examples, TERM_MANY_FILTER_THRESHOLD, drop_log_path=drop_log)
     print()
+
+    # Deduplicate by example_id before splitting — the corpus contains exact
+    # duplicates (same declaration extracted more than once, e.g. from multiple
+    # import paths). Without dedup, a duplicate can land in both train and eval.
+    seen_ids = set()
+    deduped = []
+    dupes_removed = 0
+    for ex in examples:
+        eid = example_id(ex)
+        if eid in seen_ids:
+            dupes_removed += 1
+            continue
+        seen_ids.add(eid)
+        deduped.append(ex)
+    if dupes_removed:
+        print(f"Deduplication: removed {dupes_removed} duplicate example_ids "
+              f"({len(examples)} -> {len(deduped)})")
+    examples = deduped
 
     # Deterministic split — fixed seed, same split used for A, B, C
     random.seed(seed)
