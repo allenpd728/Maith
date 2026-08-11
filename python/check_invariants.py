@@ -407,6 +407,89 @@ def check_provenance_hash(datasets_dir: Path, variants: list[str] = None) -> lis
 
 
 # ---------------------------------------------------------------------------
+# Invariant 7: Corpus-format consistency (P0-2 fix — corpus format verified)
+# ---------------------------------------------------------------------------
+
+def check_corpus_format(datasets_dir: Path) -> list[dict]:
+    """Verify the corpus on disk matches the format the datasets claim.
+
+    The corpus has been overwritten before (KNOWN_ISSUES issue 3 / AUDIT P0-2):
+    a per-operator build overwrote the v2 module-mode corpus. This check
+    verifies the corpus token format matches what the dataset manifest claims,
+    so future rebuilds can't silently produce wrong-format datasets.
+
+    v2 module-mode: GEN_<AREA> bucket tokens, 0 gen:<FullName> tokens
+    per-operator mode: gen:<FullName> tokens, 0 GEN_<AREA> tokens
+    """
+    results = []
+    corpus_path = datasets_dir.parent / "Corpus" / "corpus.jsonl"
+
+    if not corpus_path.exists():
+        results.append(_report("corpus_format", False, f"corpus not found at {corpus_path}"))
+        return results
+
+    # Sample the first 100 records to determine corpus format
+    gen_named_count = 0
+    gen_bucket_count = 0
+    records_checked = 0
+    with open(corpus_path) as f:
+        for i, line in enumerate(f):
+            if i >= 100:
+                break
+            d = json.loads(line)
+            for t in d.get("tokens", []):
+                if isinstance(t, str):
+                    if t.startswith("gen:") and t not in ("gen:hof", "gen:proj"):
+                        gen_named_count += 1
+                    elif t.startswith("GEN_"):
+                        gen_bucket_count += 1
+            records_checked += 1
+
+    # Determine corpus format
+    if gen_named_count > 0 and gen_bucket_count == 0:
+        corpus_format = "per_operator"
+    elif gen_bucket_count > 0 and gen_named_count == 0:
+        corpus_format = "v2_module"
+    elif gen_named_count > 0 and gen_bucket_count > 0:
+        corpus_format = "mixed (CORRUPT)"
+    else:
+        corpus_format = "unknown"
+
+    # Check against the canonical dataset manifest
+    manifest_path = datasets_dir / "representation_manifest.json"
+    expected_format = "unknown"
+    if manifest_path.exists():
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+        rep_id = manifest.get("representation_id", "")
+        if "v2_0_0" in rep_id:
+            expected_format = "v2_module"
+        elif "v2_1" in rep_id or "perop" in rep_id:
+            expected_format = "per_operator"
+
+    if corpus_format == "mixed (CORRUPT)":
+        results.append(_report(
+            "corpus_format", False,
+            f"corpus has BOTH gen:FullName ({gen_named_count}) and GEN_ buckets "
+            f"({gen_bucket_count}) in first {records_checked} records — CORRUPT"
+        ))
+    elif expected_format != "unknown" and corpus_format != expected_format:
+        results.append(_report(
+            "corpus_format", False,
+            f"corpus is {corpus_format} but manifest claims {expected_format} "
+            f"({manifest_path}) — rebuild datasets from the correct corpus"
+        ))
+    else:
+        results.append(_report(
+            "corpus_format", True,
+            f"corpus is {corpus_format}, manifest expects {expected_format} "
+            f"(gen:FullName={gen_named_count}, GEN_={gen_bucket_count} in {records_checked} records)"
+        ))
+
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Main: run all checks
 # ---------------------------------------------------------------------------
 
@@ -436,6 +519,9 @@ def run_all_checks(
 
     # Invariant 6: Provenance hash consistency
     all_results.extend(check_provenance_hash(datasets_dir, variants))
+
+    # Invariant 7: Corpus-format consistency
+    all_results.extend(check_corpus_format(datasets_dir))
 
     return all_results
 
