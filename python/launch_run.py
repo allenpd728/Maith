@@ -97,8 +97,37 @@ def cmd_train(args):
         print(f"ERROR: run dir {run_dir} already exists — refusing to overwrite.")
         return 1
 
-    # Step 1: invariant check
-    if not check_invariants(dataset_dir):
+    # Create run dir and log file
+    run_dir.mkdir(parents=True, exist_ok=True)
+    log_path = run_dir / "training.log"
+
+    # Step 1: invariant check (log to file + stdout)
+    print("=" * 60)
+    print(f"RUN ID: {run_id}")
+    print(f"Run dir: {run_dir}")
+    print(f"Log file: {log_path}")
+    print("=" * 60)
+
+    with open(log_path, "a") as logf:
+        logf.write(f"=== RUN {run_id} started at {now_iso()} ===\n")
+        logf.write(f"Config: variant={variant} epochs={epochs} dataset={dataset_dir}\n\n")
+        logf.write("=== INVARIANT CHECK ===\n")
+
+    print("Running invariant check...")
+    inv_result = subprocess.run(
+        [sys.executable, str(REPO / "python" / "check_invariants.py"),
+         "--datasets", str(dataset_dir), "--runs", str(RUNS_DIR)],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    inv_output = inv_result.stdout
+    print(inv_output)
+    with open(log_path, "a") as logf:
+        logf.write(inv_output)
+        if inv_result.returncode != 0:
+            logf.write("\nINVARIANT CHECK FAILED — experiment blocked.\n")
+            logf.write(f"=== RUN {run_id} ABORTED at {now_iso()} ===\n")
+    if inv_result.returncode != 0:
+        print("INVARIANT CHECK FAILED — experiment blocked.")
         return 1
 
     # Step 2: record in registry
@@ -111,10 +140,7 @@ def cmd_train(args):
     }
     append_to_registry(run_id, "train", config)
 
-    # Step 3: create run dir
-    run_dir.mkdir(parents=True, exist_ok=True)
-
-    # Step 4: launch training
+    # Step 3: launch training (tee output to log file)
     script = REPO / "python" / args.base_script
     cmd = [sys.executable, str(script),
            "--variant", variant,
@@ -125,10 +151,19 @@ def cmd_train(args):
         cmd.extend(["--lr", args.lr])
 
     print(f"Launching training: {' '.join(cmd)}")
-    result = subprocess.run(cmd)
+    with open(log_path, "a") as logf:
+        logf.write(f"\n=== TRAINING STARTED at {now_iso()} ===\n")
+        logf.write(f"Command: {' '.join(cmd)}\n\n")
+        # Run with output going to both stdout and log file
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in process.stdout:
+            print(line, end="")
+            logf.write(line)
+        process.wait()
+        train_result = process.returncode
 
-    # Step 5: write manifest if successful
-    if result.returncode == 0:
+    # Step 4: write manifest if successful
+    if train_result == 0:
         results_path = run_dir / "results.json"
         if results_path.exists():
             with open(results_path) as f:
@@ -149,12 +184,19 @@ def cmd_train(args):
                 repo_root=str(REPO),
             )
             print(f"Manifest written for {run_id}")
+        with open(log_path, "a") as logf:
+            logf.write(f"\n=== TRAINING COMPLETE at {now_iso()} ===\n")
+            logf.write(f"Results: {run_dir / 'results.json'}\n")
         print(f"\nTraining complete: {run_id}")
         print(f"Results: {run_dir}")
+        print(f"Log: {log_path}")
     else:
+        with open(log_path, "a") as logf:
+            logf.write(f"\n=== TRAINING FAILED at {now_iso()} (exit {train_result}) ===\n")
         print(f"\nTraining FAILED: {run_id}")
+        print(f"Log: {log_path}")
 
-    return result.returncode
+    return train_result
 
 
 def cmd_extract(args):
@@ -167,11 +209,39 @@ def cmd_extract(args):
         print("Use --force to overwrite, or specify a different --embeddings-dir.")
         return 1
 
+    # Create log file
+    log_path = RUNS_DIR / f"extraction_{datetime.now().strftime('%Y%m%d_%H%M')}.log"
+    run_id = run_id_for("extract", "emb")
+
+    print("=" * 60)
+    print(f"RUN ID: {run_id}")
+    print(f"Embeddings dir: {embeddings_dir}")
+    print(f"Log file: {log_path}")
+    print("=" * 60)
+
+    with open(log_path, "a") as logf:
+        logf.write(f"=== EXTRACTION {run_id} started at {now_iso()} ===\n")
+        logf.write(f"Variants: {variants}\n")
+        logf.write(f"Output: {embeddings_dir}\n\n")
+
     # Step 1: invariant check
-    if not check_invariants():
+    print("Running invariant check...")
+    inv_result = subprocess.run(
+        [sys.executable, str(REPO / "python" / "check_invariants.py"),
+         "--datasets", str(DATASETS_DIR), "--runs", str(RUNS_DIR)],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    print(inv_result.stdout)
+    with open(log_path, "a") as logf:
+        logf.write("=== INVARIANT CHECK ===\n")
+        logf.write(inv_result.stdout)
+        if inv_result.returncode != 0:
+            logf.write("\nINVARIANT CHECK FAILED — extraction blocked.\n")
+    if inv_result.returncode != 0:
+        print("INVARIANT CHECK FAILED — extraction blocked.")
         return 1
 
-    # Step 2: verify embedding shapes will match (check datasets exist)
+    # Step 2: verify datasets exist
     for v in variants:
         for split in ["train", "eval"]:
             ds_path = DATASETS_DIR / f"{split}_{v}.jsonl"
@@ -184,7 +254,6 @@ def cmd_extract(args):
         "variants": variants,
         "embeddings_dir": str(embeddings_dir),
     }
-    run_id = run_id_for("extract", "emb")
     append_to_registry(run_id, "extract", config)
 
     # Step 4: launch extraction
@@ -194,10 +263,18 @@ def cmd_extract(args):
            "--out", str(embeddings_dir)]
 
     print(f"Launching extraction: {' '.join(cmd)}")
-    result = subprocess.run(cmd)
+    with open(log_path, "a") as logf:
+        logf.write(f"\n=== EXTRACTION STARTED at {now_iso()} ===\n")
+        logf.write(f"Command: {' '.join(cmd)}\n\n")
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for line in process.stdout:
+            print(line, end="")
+            logf.write(line)
+        process.wait()
+        extract_result = process.returncode
 
     # Step 5: verify shapes match
-    if result.returncode == 0:
+    if extract_result == 0:
         all_ok = True
         import torch
         for v in variants:
@@ -215,8 +292,11 @@ def cmd_extract(args):
             print("All embedding shapes match datasets.")
         else:
             print("SHAPE MISMATCH DETECTED — results may be invalid.")
-
-    return result.returncode
+        with open(log_path, "a") as logf:
+            logf.write(f"\n=== EXTRACTION COMPLETE at {now_iso()} (exit {extract_result}) ===\n")
+            logf.write(f"Shape verification: {'OK' if all_ok else 'MISMATCH'}\n")
+    print(f"Log: {log_path}")
+    return extract_result
 
 
 def cmd_eval(args):
