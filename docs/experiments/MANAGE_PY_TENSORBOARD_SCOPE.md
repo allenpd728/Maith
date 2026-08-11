@@ -123,9 +123,23 @@ Generates `runs/dashboard.html` with:
 
 The user runs `manage.py watch` once, opens the file in a browser, and leaves
 it open. When training is running, the page auto-refreshes and shows updated
-status. No server process — just a static file that regenerates on each refresh
-via a small cron-like loop or a simple `while true; do python3 manage.py
-_gen_html; sleep 30; done` background process.
+status.
+
+**Where it runs:** the HTML regeneration loop runs **on the M4**, not locally
+on the user's machine, because the dashboard reads from `runs/` on disk. The
+loop is a simple shell process:
+
+```bash
+# Runs on the M4, in the background:
+while true; do python3 python/manage.py _gen_html > runs/dashboard.html; sleep 30; done &
+```
+
+The user accesses the dashboard by either:
+- Opening `runs/dashboard.html` directly on the M4 (if local)
+- SSH-tunneling and serving the file, or SCP-ing it locally
+- Using `manage.py watch --once` to generate a single snapshot without the loop
+
+No server process — just a static file that regenerates on each loop iteration.
 
 ### 3.5 Experiment aliases
 
@@ -159,6 +173,34 @@ The user runs `manage.py train-av3-2ep` and the script calls `launch_run.py`
 with the right flags. No memorizing flags. New experiments are added by adding
 an entry to the `EXPERIMENTS` dict.
 
+**Preflight guard (closes the loop with pipeline hardening):** every
+`train-*` alias calls `check_invariants.py` as a preflight before launching
+— the same enforced precondition that `launch_run.py` already runs, but
+explicitly surfaced in the alias output so the user sees the invariant check
+result before training starts. This is the wiring the manifest audit
+(`AUDIT_2026_08_10.md`) identified as missing: the manifest system and
+invariant checker exist but were never wired into the experiment entry points.
+The aliases close that gap — no experiment can be triggered through `manage.py`
+without the invariant checker passing first.
+
+**Corpus-provenance guard:** before launching a `train-*` alias, `manage.py`
+verifies that the dataset directory's `representation_manifest.json` matches
+the current corpus on disk. This guards against the corpus-overwrite bug
+(`KNOWN_ISSUES.md` issue 3): if the corpus has been overwritten (e.g., by a
+`--per-operator` run), the dataset's provenance hash won't match, and the
+alias refuses to launch with a clear error:
+
+```
+CORPUS PROVENANCE MISMATCH:
+  Dataset datasets_perop/representation_manifest.json claims semantic_graph_ir_v2_0_0
+  but Corpus/corpus.jsonl has per-operator tokens (gen:FullName), not GEN_ buckets.
+  The dataset may have been built from a different corpus version.
+  Rebuild the dataset before training, or use --skip-provenance-check to override.
+```
+
+This is the last line of defense against the contamination that invalidated
+the first H6 run.
+
 ### 3.6 `logs` command
 
 ```bash
@@ -168,6 +210,10 @@ manage.py logs variant_A_v3_2ep_20260811_1230
 Tails the `training.log` file in that run's directory. Uses `tail -f` under the
 hood. The user can see live training output without SSHing in and finding the
 log file.
+
+**SSH note:** `tail -f` holds the SSH connection open until interrupted (Ctrl-C).
+This is expected behavior for live log viewing. For a one-shot snapshot (last
+N lines without following), use `manage.py logs <run_id> --tail 50`.
 
 ---
 
@@ -192,9 +238,17 @@ Add `SummaryWriter` calls to `train_v2_resume.py` (and `train.py` if used):
 TensorBoard event files go in `runs/{run_id}/tb/`. The `--logdir runs/` flag
 makes TensorBoard discover all runs and overlay their loss curves for comparison.
 
-### 4.3 Code changes to train_v2_resume.py
+### 4.3 Code changes
 
-~15 lines added to the training loop:
+TensorBoard logging goes into **`train_v2_resume.py`** — this is the canonical
+training script going forward (it's what `launch_run.py` calls via
+`--base-script`). `train.py` is the older script used for the v1-era runs;
+it is not the canonical path for new experiments and will NOT receive
+TensorBoard logging. If a future experiment needs `train.py`, the logging
+calls should be ported then. This decision is documented here so the
+implementation doesn't need to revisit it.
+
+~15 lines added to `train_v2_resume.py`:
 
 ```python
 # At the top:
@@ -274,26 +328,33 @@ run `manage.py status` or open the browser dashboard.
 - `invariants` command — wraps check_invariants.py output
 - `logs` command — tails a run's training.log
 
-### Phase 2: Experiment aliases (1 hour)
+### Phase 2: Experiment aliases + guards (1.5 hours)
 
 - `train-av3-2ep` — pre-configured launcher call
 - `extract` — pre-configured extractor call
 - `eval` — pre-configured eval call
 - `EXPERIMENTS` dict for easy extension
+- **Preflight guard:** call `check_invariants.py` before every alias launch,
+  surface the result to the user
+- **Corpus-provenance guard:** verify dataset manifest matches current corpus
+  before training (check token format in Corpus/corpus.jsonl against
+  representation_manifest.json's irVersion)
 
 ### Phase 3: `watch` HTML dashboard (1 hour)
 
 - Generate `runs/dashboard.html` with grid + results + processes
 - Auto-refresh meta tag
-- Simple `while` loop background mode (`manage.py watch --daemon`)
+- Background loop runs on the M4 (not locally): `while true; do ...; sleep 30; done &`
+- `--once` flag for single snapshot without the loop
 
 ### Phase 4: TensorBoard integration (1 hour)
 
-- Add SummaryWriter calls to `train_v2_resume.py`
+- Add SummaryWriter calls to `train_v2_resume.py` only (canonical script)
+- `train.py` does NOT receive logging (older script, not canonical for new runs)
 - Test with a smoke run
 - Document the SSH tunnel command for remote access
 
-**Total: ~5 hours.** No new dependencies (tensorboard ships with torch). No
+**Total: ~5.5 hours.** No new dependencies (tensorboard ships with torch). No
 running server beyond `tensorboard --logdir runs/`. No infrastructure.
 
 ---
