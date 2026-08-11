@@ -142,5 +142,6 @@ git push origin your-branch:kit/dev
 - Don't cite B/C numbers without the epoch-confound caveat
 - Don't conflate embedding-table size with transformer capacity
 - Don't run `extract_representations.py` for H6 — it has the input-variant bug (feeds IR tokens to all variants). Use `python/extract_retrieval_embeddings.py` instead, which reads per-variant `input_ids` and has the invariant checker wired as a precondition
+- Don't use `train.py` directly — it's deprecated (no invariant checker, no manifest writes, no per-variant LR). Use `launch_run.py train` which calls `train_v2_resume.py` (the canonical script) with enforced preconditions
 - Don't run experiments without `check_invariants.py` passing first — it's wired into `extract_retrieval_embeddings.py` and `retrieval_eval.py` as an enforced precondition, and `launch_run.py` enforces it for training runs
 - Don't overwrite `datasets/` — use versioned dirs (`datasets_perop/`, `datasets_v{N}/`). See `docs/experiments/RUN_REGISTRY.md` contamination rules

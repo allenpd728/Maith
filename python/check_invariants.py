@@ -347,14 +347,23 @@ def check_comparison_validity(
 
     errors = []
     for field in spec["must_match"]:
-        values = {m.get(field) for m in manifests}
-        if len(values) > 1:
-            errors.append(f"{field} differs: {[m.get(field) for m in manifests]}")
+        values = [m.get(field) for m in manifests]
+        # Handle None gracefully (field may not exist in older results.json)
+        if None in values and len(set(v for v in values if v is not None)) > 1:
+            errors.append(f"{field} differs: {values}")
+        elif len(set(values)) > 1:
+            # Only flag if the values are actually different (not all None)
+            non_none = [v for v in values if v is not None]
+            if len(set(non_none)) > 1:
+                errors.append(f"{field} differs: {values}")
 
     for field in spec["must_differ"]:
         values = [m.get(field) for m in manifests]
-        if len(set(values)) == 1:
+        non_none = [v for v in values if v is not None]
+        if len(non_none) >= 2 and len(set(non_none)) == 1:
             errors.append(f"{field} identical across all ({values[0]}) — expected to differ")
+        elif len(non_none) < 2:
+            errors.append(f"{field} missing or None across all manifests — cannot verify difference")
 
     if errors:
         results.append(_report(f"comparison_{claim}", False, "; ".join(errors)))
@@ -522,6 +531,37 @@ def run_all_checks(
 
     # Invariant 7: Corpus-format consistency
     all_results.extend(check_corpus_format(datasets_dir))
+
+    # Invariant 5: Comparison validity (check all valid pairs from the grid)
+    # For each pair of variants with matching configs, verify the comparison
+    # is valid (epochs, seed, train/eval counts match where required)
+    comparison_pairs = []
+    results_by_variant = {}
+    for d in sorted(runs_dir.iterdir()):
+        if not d.is_dir() or not d.name.startswith("variant_"):
+            continue
+        rp = d / "results.json"
+        if not rp.exists():
+            continue
+        with open(rp) as f:
+            r = json.load(f)
+        v = r.get("variant", "")
+        if v in variants:
+            results_by_variant[v] = r
+
+    # Check A vs B_small (the primary comparison) if both exist
+    if "A" in results_by_variant and "B_small" in results_by_variant:
+        manifests = [results_by_variant["A"], results_by_variant["B_small"]]
+        all_results.extend(check_comparison_validity(
+            manifests, "representation_at_matched_size"
+        ))
+
+    # Check A vs flat (the DEC-024 ablation) if both exist
+    if "A" in results_by_variant and "flat" in results_by_variant:
+        manifests = [results_by_variant["A"], results_by_variant["flat"]]
+        all_results.extend(check_comparison_validity(
+            manifests, "ir_vs_flat_ablation"
+        ))
 
     return all_results
 
