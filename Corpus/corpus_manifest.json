@@ -1,0 +1,11 @@
+{
+  "file": "Corpus/corpus.jsonl",
+  "content_hash": "sha256:d3da238290f5ca46232de5df280d4bcfeab60b127e1b2898cff4172e898e7fe9",
+  "format": "per_operator",
+  "n_declarations": 4029,
+  "file_size_bytes": 60118873,
+  "generated_by": "lake exe buildCorpus",
+  "regeneration_note": "Run `lake exe buildCorpus` (module mode) or `lake exe buildCorpus --per-operator` (per-op mode). Requires Mathlib built. See AUDIT_2026_08_10.md P0-2.",
+  "backup": "Corpus/corpus.per_operator.jsonl",
+  "created_by_commit": "34053e2968e21740d33125ee4db25222dd963e05"
+}
