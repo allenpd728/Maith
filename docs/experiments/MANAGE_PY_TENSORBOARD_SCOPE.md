@@ -201,6 +201,46 @@ CORPUS PROVENANCE MISMATCH:
 This is the last line of defense against the contamination that invalidated
 the first H6 run.
 
+**P0-2 dependency (audit precondition):** the `train-av3-2ep` alias points at
+`datasets_perop/`, which was built from the current `Corpus/corpus.jsonl` —
+the per-operator corpus that overwrote the v2 module-mode corpus (AUDIT
+`P0-2`). The corpus-provenance guard above checks that the dataset *matches*
+the corpus on disk, but it does NOT verify that the corpus itself is *correct*
+— only that it hasn't changed since the dataset was built. P0-2 (corpus
+verification) must be resolved before this alias is used, otherwise the guard
+passes on an unverified corpus and produces another invalid run.
+
+The alias enforces this with an explicit precondition check:
+
+```python
+# In the alias launch logic:
+AUDIT_PRECONDITIONS = {
+    "train-av3-2ep": ["P0-2"],  # corpus verification must be marked resolved
+}
+
+# Before launching:
+for pre in AUDIT_PRECONDITIONS.get(alias_name, []):
+    if not is_precondition_resolved(pre):
+        print(f"BLOCKED: audit precondition {pre} is not resolved.")
+        print(f"  {pre} must be marked resolved in docs/experiments/AUDIT_2026_08_10.md")
+        print(f"  before this experiment can run.")
+        print(f"  Override with --skip-audit-check (NOT RECOMMENDED).")
+        sys.exit(1)
+```
+
+The `is_precondition_resolved()` function checks `AUDIT_2026_08_10.md` for a
+`[RESOLVED]` marker next to the precondition ID. This ties the alias system
+to the audit — no experiment that depends on an unresolved audit item can be
+triggered through `manage.py` without an explicit override.
+
+**Until P0-2 is resolved**, the alias prints:
+```
+BLOCKED: audit precondition P0-2 is not resolved.
+  P0-2 (corpus verification) must be marked resolved in AUDIT_2026_08_10.md
+  before this experiment can run.
+  Override with --skip-audit-check (NOT RECOMMENDED — risks another invalid run).
+```
+
 ### 3.6 `logs` command
 
 ```bash
