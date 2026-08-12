@@ -14,6 +14,8 @@
 > [`V2_COMPARISON_MATRIX`](docs/experiments/V2_COMPARISON_MATRIX.md) (control grid) ·
 > [`EXPERIMENT_DESIGN`](docs/experiments/EXPERIMENT_DESIGN.md) (evaluation framework) ·
 > [`PRIOR_ART`](docs/reference/PRIOR_ART.md) (related work) ·
+> [`LITERATURE_REVIEW_2026_08`](docs/experiments/LITERATURE_REVIEW_2026_08.md) (field check of open sub-claims) ·
+> [`LEAN_PIPELINE_AUDIT_2026_08`](docs/experiments/LEAN_PIPELINE_AUDIT_2026_08.md) (Lean IR/corpus code audit) ·
 > [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-026/027).
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
@@ -72,19 +74,32 @@ flowchart LR
     D --> E[IR Graph]
     E --> F[Normalizer.lean]
     F --> G[Canonical graph]
-    G --> H[Encoder.lean v2.0.0]
-    H --> I[Token sequence]
+    G --> H[Encoder.lean v1.2.0]
+    H --> I[Token sequence — v1-style strings]
     I --> J[CorpusSerializer.lean]
-    J --> K[Corpus/corpus.jsonl]
+    J --> K[Corpus/corpus.jsonl — v1 tokens, NOT committed]
     K --> L[python/build_dataset.py]
-    L --> M[datasets/train_*.jsonl + eval_*.jsonl]
+    L --> L1[v2 re-encode: C1/C2/C4 + integer mapping via vocab_A.json]
+    L1 --> M[datasets/train_*.jsonl + eval_*.jsonl — integer input_ids]
     M --> N[python/train.py variants A/B/C]
     N --> O[runs/variant_*/results.json + loss_curve.json]
 ```
 
+> **Where v2 encoding and integer mapping actually happen (diagram correction).**
+> The Lean-side `Encoder.lean` emits **v1-style string tokens** (`neut`, `gen:<FullName>`)
+> into `corpus.jsonl`. The **v2 token stream** (C1 polarity removal, C2 typeclass short
+> names, C4 GEN bucketing) and the **token→integer mapping** are both produced in
+> `python/build_dataset.py`'s `encode_ir` + `build_ir_vocab` at dataset-build time — not
+> in Lean, and not in `train.py`. So `corpus.jsonl` holds v1-style strings; the v2
+> integers exist only in `datasets/train_*.jsonl` (`input_ids`/`labels`). See
+> [`CORPUS_SCHEMA.md`](docs/reference/CORPUS_SCHEMA.md) and
+> [`build_dataset.py`](python/build_dataset.py) `encode_ir`/`bucket_from_module`.
+> `Corpus/corpus.jsonl` itself is gitignored (not committed); `Corpus/corpus_manifest.json`
+> records its hash and regeneration command.
+
 Concrete pipeline in this repo:
 
-`Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
+`Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean (v1 strings) -> corpus.jsonl -> build_dataset.py (v2 encode + int map) -> datasets/train_*.jsonl (int ids) -> train.py`
 
 For a fuller, stage-by-stage architecture and artifact map, see:
 [`docs/reference/Design.md#detailed-pipeline-diagram`](docs/reference/Design.md#detailed-pipeline-diagram).
