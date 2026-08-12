@@ -14,6 +14,7 @@
 > [`V2_COMPARISON_MATRIX`](docs/experiments/V2_COMPARISON_MATRIX.md) (control grid) ·
 > [`EXPERIMENT_DESIGN`](docs/experiments/EXPERIMENT_DESIGN.md) (evaluation framework) ·
 > [`PRIOR_ART`](docs/reference/PRIOR_ART.md) (related work) ·
+> [`LITERATURE_REVIEW_2026_08`](docs/experiments/LITERATURE_REVIEW_2026_08.md) (field check of open sub-claims) ·
 > [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-026/027).
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.

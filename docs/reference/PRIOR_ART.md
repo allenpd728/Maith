@@ -67,11 +67,16 @@ The contrast is the contribution-relevant fact:
 
 Two non-exclusive readings of the contrast, both open in Maith's decision log:
 
-1. **Scale.** IRCoder's gains appear at 1.1B+ parameters (small tier) on millions of
-   examples. Maith's 358M / 3.5K (toy tier) may be below the regime where IR grounding
-   pays off — and the gap is in *transformer capacity*, not just embedding-table size
-   (see [`EXPERIMENT_DESIGN`](../experiments/EXPERIMENT_DESIGN.md#model-size-taxonomy)).
+1. **Scale.** IR grounding shows task-dependent, non-monotonic gains across
+   1.1B–7.3B parameters in code — no clean threshold is established (several 7.3B cells
+   in IRCoder's results table are negative), and it has never been tested in formal math
+   at any scale. Maith's 358M / 3.5K (toy tier) may be below the regime where IR
+   grounding pays off — and the gap is in *transformer capacity*, not just
+   embedding-table size (see
+   [`EXPERIMENT_DESIGN`](../experiments/EXPERIMENT_DESIGN.md#model-size-taxonomy)).
    This is DEC-024's open question (a): would semantic content help with 10K+ examples?
+   See [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md) §H4/H8
+   for the full non-monotonicity analysis.
 2. **IR type.** LLVM IR is a lossy, operational lowering designed to be compact and
    regular. Maith's IR is a semantic graph that preserves more structure but is harder to
    predict token-by-token. DEC-024's flat-IR ablation supports this: the semantic tokens
@@ -249,7 +254,17 @@ Despite the convergences above, two things are genuinely Maith's own:
    testing whether semantics is *encoded* despite not helping *prediction* — is a
    methodological choice that surfaces a dissociation the prior art does not typically
    measure. It motivates (but does not prove) the interpretation that the null result
-   reflects an objective-mismatch rather than a representation failure.
+   reflects an objective-mismatch rather than a representation failure. *Novelty narrowed
+   (per [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md) §H10/H11):*
+   the perplexity-vs-probe dissociation in a formal-semantics LM setting was demonstrated
+   first by "Meaning in Language Models: A Formal Semantics..." (WFVML 2023), which trains
+   a Transformer on program traces and shows a linear probe recovers semantic state while
+   perplexity/BLEU diverges from it. That paper is Maith's methodology with the same
+   finding, in a sibling domain, pre-dating this work. Maith's contribution is therefore
+   *not* the dual-evaluation methodology itself; it is demonstrating the dissociation
+   *for a canonical semantic IR in formal mathematics specifically*, paired with a
+   flat-IR ablation that isolates the semantic content from structural scaffolding — a
+   decomposition the program-trace paper does not perform.
 
 2. **Math-domain IR designed from elaborated terms.** Code-IR work uses existing compiler
    IRs (LLVM). Lean-prover work uses source. Maith designs a *new* semantic IR extracted
@@ -272,22 +287,33 @@ not a research contribution, and is not claimed as novelty.
 
 ## 7. Open questions the prior art does not resolve for Maith
 
-- **Scale regime.** IRCoder's positive result is at 1.1B+ parameters and millions of
-  examples. Whether Maith's null holds at larger scale (the A-large cell in the
+- **Scale regime.** IR grounding shows task-dependent, non-monotonic gains across
+  1.1B–7.3B in code (no clean threshold; several 7.3B cells negative) and has never been
+  tested in formal math at any scale. Whether Maith's null holds at larger scale (the
+  A-large cell in the
   [`V2_COMPARISON_MATRIX`](../experiments/V2_COMPARISON_MATRIX.md), unrun) remains the most
   important open scale question. DEC-027 resolved the *parameter-count* confound at 358M
   (B-small vs. A), but did not test whether IR grounding pays off at IRCoder-scale model
-  size.
+  size. See [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md) §H4/H8.
 - **Training objective.** DEC-027's interpretation points at objective mismatch rather
   than representation failure: the IR encodes semantics (DEC-025) but next-token
   prediction does not reward it. Whether a masked-reconstruction or proof-completion
   objective would recover an IR advantage is untested and is the most direct next lever
-  flagged by the experimental record.
+  flagged by the experimental record. *Objective precedent:* the masked-subterm
+  reconstruction objective itself has been tested on source/proof terms — skip-tree
+  (Rabe et al., 2021) and PACT's skip-proof (§3) — and helps. What is untested is pairing
+  that objective with a *canonical semantic IR* as the prediction target; Maith's H5
+  novelty is the representation×objective interaction, not the objective alone. See
+  [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md) §H5.
 - **Model architecture.** The IR is a graph; the model is a sequence transformer. The
   linearization (graph → token stream) is a lossy step that forces the transformer to
   reconstruct graph structure from positional patterns. A GNN or GraphTransformer would
   consume the graph directly, with IR edges as message-passing paths. Architecture
-  alignment is an untested dimension — see §9.
+  alignment is an untested dimension — see §9. *Concrete realization now exists:*
+  Nazrin/ExprGraph (Aniva et al., 2026; arXiv:2602.18767) is a GNN-based Lean 4 prover
+  that converts Lean expressions to a minimal graph and consumes them directly — the
+  aligned-architecture case §8 predicts should work, now implemented in Lean. See
+  [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md) §H4/H8.
 - **Co-training vs. replacement.** PACT co-trains structural signal alongside source and
   gains; Maith replaces source with IR and does not. Whether a co-training design would
   recover IRCoder-style gains for Maith's IR is untested.
@@ -305,7 +331,12 @@ not a research contribution, and is not claimed as novelty.
   improves *dependency/premise retrieval* over BPE at Maith's scale is the untested cell
   most aligned with where the field's positive results live (ReProver's wins are on
   retrieval, not perplexity). This is the [`HYPOTHESIS_GRID`](../experiments/HYPOTHESIS_GRID.md)
-  H6 cell, unrun.
+  H6 cell, unrun. *As of 2026, this is the most clearly-open cell in the field:* the
+  2025–26 Lean retrieval wave (LeanSearch v2, Lean Finder, LeanPremise/LeanHammer,
+  LeanProgress) all use BPE/text embeddings, sometimes augmented with structural edges,
+  and none tests an elaboration-grounded canonical semantic IR as the retrieval
+  representation. See [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md)
+  §H6.
 
 ## 8. Theoretical grounding: algorithmic alignment and disentanglement
 
@@ -465,3 +496,29 @@ added to the matrix and tracked as an open experimental question.
   of Disentangled Representations. *NeurIPS 2019*.
 - Veličković, P., & Dudzik, W. (2022). Graph Neural Networks are Dynamic Programmers.
   *NeurIPS 2022*.
+
+### References added by the [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md)
+
+- Aniva, L., Oikawa, I., Dill, D., & Barrett, C. (2026). Nazrin: Atomic Tactics for
+  Graph Neural Networks for Theorem Proving in Lean 4. arXiv:2602.18767.
+- Rabe, M. N., Lee, D., Bansal, K., & Szegedy, C. (2021). Mathematical reasoning via
+  self-supervised skip-tree training. *ICLR 2021*.
+  https://openreview.net/forum?id=YmqAnY0CMEy
+- "Meaning in Language Models: A Formal Semantics..." WFVML 2023. (ETH, paper_26.pdf.)
+- "LeanTree: Accelerating White-Box Proof Search with Factorized States in Lean 4."
+  arXiv:2507.14722 (2025).
+- "LeanSearch v2: Global Premise Retrieval for Lean 4 Theorem Proving." arXiv:2605.13137
+  (2026).
+- "Lean Finder: Semantic Search for Mathlib That Understands User Intents."
+  arXiv:2510.15940 (ICLR 2026).
+- "Premise Selection for a Lean Hammer." arXiv:2506.07477 (2025).
+- "LeanProgress: Guiding Search for Neural Theorem Proving via Proof Progress Prediction."
+  arXiv:2502.17925 (2025).
+- "SorryDB: Can AI Provers Complete Real-World Lean Theorems?" arXiv:2603.02668 (2026).
+- "Thinking Machines: Mathematical Reasoning in the Age of LLMs." MDPI AI (2025).
+- "Canonical Autoregressive Generation." arXiv:2506.06446 (2025).
+- "Language Models over Canonical Byte-Pair Encodings." ICML 2025.
+  https://icml.cc/virtual/2025/poster/44596
+- "LLM Knowledge is Brittle: Truthfulness Representations Rely on Superficial
+  Resemblance." arXiv:2510.11905 (2025).
+- Math information retrieval representation study. CEUR Vol-2696, paper_235.
