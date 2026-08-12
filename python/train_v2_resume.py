@@ -641,6 +641,9 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         "smoke_test": smoke_test,
         "embed_pretrain": embed_pretrain,
         "embed_project": embed_project,
+        "learning_rate": lr_for_variant(variant),
+        "effective_batch_size": BATCH_SIZE * GRAD_ACCUM,
+        "max_seq_len": MAX_SEQ_LEN,
     }
     if embed_pretrain and not smoke_test:
         results["embed_pretrain_eval_ppl"] = round(embed_ppl, 4)

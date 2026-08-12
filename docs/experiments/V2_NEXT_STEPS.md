@@ -89,6 +89,71 @@ the design-quality component remains open. See
 | H5 | Training objective is the bottleneck | Open | Masked-reconstruction or proof-completion objective experiment | ◐ Requires training-code changes (new loss function) |
 | H9 | Co-training (IR alongside source) recovers gains | Open | Multi-objective training experiment (PACT precedent) | ◐ Requires multi-objective training setup |
 | C3 | Attribute sparsity (v2.x IR candidate) | Deferred | Implement + evaluate against control grid | ◐ Requires Lean cross-check; **evaluate on retrieval, not perplexity** |
+| **DEC-028** | C4 bucketing confound — `per_operator` mode | Open | Add `bucket_mode` flag to MetaExtractor/encode_ir; re-run A-vs-B-small with `per_operator` | ✅ **Decisive test** — if A beats B-small, the null was a C4 artifact. Requires code change + training run. |
+
+### Code fixes (trivial — DEC-029)
+
+- [x] **Device priority** — reorder `train.py` device selection to `cuda → mps → cpu` (was `mps` first)
+- [x] **Polarity no-ops** — deleted `normalizePolarityEntity/Attr/Rel/Op` from `Normalizer.lean` (dead code from C1)
+- [x] **B/C special-token note** — documented that B adds BOS/EOS by default, C does not
+
+### Active specs
+
+Two detailed specs are in `docs/reference/`. Their implementation status:
+
+### Spec 1: Operator Un-Bucketing (DEC-028) — [SPEC_PER_OPERATOR.md](../reference/SPEC_PER_OPERATOR.md)
+
+**Status: In progress.** Lean + Python changes landed on kit/dev (`213d013`). Gate 4
+(corpus rebuild + vocab check) pending — requires `lake build Mathlib` first.
+
+| Gate | Description | Status |
+|---|---|---|
+| 1 | headShortName threading (op:mul_comm emitted for real constants) | ✅ Passed |
+| 2 | Mode isolation (switching bucketMode changes only op payload) | ✅ Passed |
+| 3 | op:/proj: round-trip (decoder cases prevent silent .pow fallback) | ✅ Passed |
+| 4 | Vocab-size report (per_operator vocab meaningfully different from 601) | ⬜ Pending |
+
+**Next steps:** `lake build Mathlib` → `lake exe buildCorpus --per-operator` →
+`python3 python/build_dataset.py --bucket-mode per_operator` → check vocab size →
+run A-vs-B-small experiment.
+
+### Spec 2: Proof-Term Extraction (DEC-029 #2) — [SPEC_PROOF_TERMS.md](../reference/SPEC_PROOF_TERMS.md)
+
+**Status: Not started.** Spec finalized; implementation deferred until per_operator
+experiment is complete. The user is working on spec details.
+
+| Gate | Description | Status |
+|---|---|---|
+| 1 | Root-ID semantics (proof_of edge connects sensible endpoints) | ⬜ Not started |
+| 2 | .thmInfo match-arm binding (compiles without exhaustiveness issues) | ⬜ Not started |
+| 3 | Normalizer round-trip with proof_of | ⬜ Not started |
+| 4 | Size-threshold skip rate (measured before Layer-2 decisions) | ⬜ Not started |
+
+**Composes with Spec 1:** per-operator identity matters more on proof sub-graphs. The
+combined representation is `v2_1_2` (per_operator + proof-enabled).
+
+---
+
+## Pre-existing test failures (resolve after Concern #1 and #2 land)
+
+The following test failures are pre-existing (not caused by the per_operator or proof-term
+changes) and should be resolved after both specs are implemented and the corpus is rebuilt:
+
+1. **Decoder round-trip format mismatch (2 tests + 9 Phase 8b tests)** — decoder expects
+   `inputs:FVAR_0` format but encoder emits `IN_1`. This is a v1.3.0/v2.0.0 encoder format
+   change that the decoder's input-format handling hasn't caught up with. All 11 failures
+   show the same pattern: "expected inputs:FVAR_0, got IN_1".
+
+2. **Injectivity: non-commutative operations collapse (1 test)** — `sub(a,b)` and `sub(b,a)`
+   produce identical tokens. The normalizer may be treating subtraction as commutative, or
+   the operation input ordering isn't preserved through encode → normalize → decode.
+
+3. **Lean validity check (1 test)** — decompiled output doesn't type-check. Pre-existing
+   decompiler issue; not related to bucketing or proof-term work.
+
+These are tracked here so they aren't lost. They should be investigated after the corpus
+is rebuilt under per_operator mode (which changes the token stream and may surface or
+resolve some of these issues naturally).
 
 ### Explicitly deprioritized (but not fully closed — see H11 ◐)
 
@@ -105,7 +170,7 @@ the design-quality component remains open. See
 | # | Sub-claim | Status | Blocker |
 |---|---|---|---|
 | H4 | Model size at scale | Partial | Requires a larger *transformer-capacity* base model (1B+), not just a bigger embedding table |
-| H7 | IR improves proof completion / ATP | Open | Theorem-proving evaluation infrastructure + compute |
+| H7 | IR improves proof completion / ATP | Open | Theorem-proving eval infrastructure + **proof-term extraction mode** (DEC-029: current IR is statement-only; ATP needs proof terms) |
 | H8 | IR advantage above scale threshold | Open | 1B+ base model; blocked on compute |
 
 **Note on scale:** the metric-bias argument (H11) means scale alone will not resolve the

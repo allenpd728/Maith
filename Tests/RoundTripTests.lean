@@ -79,9 +79,9 @@ private def ex_MulOne_mk : List String :=
    "A", "FVAR_2", "typeclass", "Mul",
    "A", "TERM_0", "sort", "u_2 + 1",
    "R", "FVAR_0", "TERM_0", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:One",
-   "O", "inputs:FVAR_0", "output:TERM_2", "gen:Mul",
-   "O", "inputs:FVAR_0", "output:TERM_3", "gen:MulOne",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_2", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_3", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- Single O row with arity-1 input, 32 tokens
@@ -93,7 +93,7 @@ private def ex_IsDedekindFiniteMonoid : List String :=
    "A", "TERM_0", "sort", "u_2 + 1",
    "A", "TERM_2", "sort", "0",
    "R", "FVAR_0", "TERM_0", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:MulOne",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- O rows with `neg` op (tests that neg is handled as OperationOp, not polarity), 48 tokens
@@ -106,9 +106,9 @@ private def ex_AddGroup_proof : List String :=
    "R", "FVAR_0", "TERM_0", "eq",
    "R", "FVAR_2", "FVAR_0", "eq",
    "R", "TERM_3", "FVAR_2", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:AddGroup",
-   "O", "inputs:FVAR_2", "output:TERM_2", "neg",
-   "O", "inputs:TERM_2", "output:TERM_3", "neg",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_2", "neg",
+   "O", "IN_1", "OUT_3", "neg",
    "GRAPH_END"]
 
 -- FVAR and BVAR together, var EntityId "Nat", 58 tokens
@@ -124,8 +124,8 @@ private def ex_AddCancelMonoid_ctorIdx : List String :=
    "R", "BVAR_1", "TERM_3", "eq",
    "R", "FVAR_0", "TERM_0", "eq",
    "R", "FVAR_1", "TERM_1", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:AddCancelMonoid",
-   "O", "inputs:BVAR_0", "output:TERM_3", "gen:AddCancelMonoid",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_3", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- Arity-2 O rows (inputs:FVAR_0,FVAR_1 compound token), 56 tokens
@@ -137,11 +137,11 @@ private def ex_AddLeftCancelMonoid_mk : List String :=
    "A", "FVAR_2", "typeclass", "IsLeftCancelAdd",
    "A", "TERM_0", "sort", "u + 1",
    "R", "FVAR_0", "TERM_0", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:AddMonoid",
-   "O", "inputs:FVAR_0,FVAR_1", "output:TERM_2", "gen:AddMonoid.toAddSemigroup",
-   "O", "inputs:FVAR_0,TERM_2", "output:TERM_3", "gen:AddSemigroup.toAdd",
-   "O", "inputs:FVAR_0,TERM_3", "output:TERM_4", "gen:IsLeftCancelAdd",
-   "O", "inputs:FVAR_0", "output:TERM_5", "gen:AddLeftCancelMonoid",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_2", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_3", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_4", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_5", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- Arity-3 O row (inputs:FVAR_0,FVAR_1,FVAR_3), 50 tokens
@@ -154,9 +154,9 @@ private def ex_IsLeftCancelMul : List String :=
    "R", "FVAR_0", "TERM_0", "eq",
    "R", "FVAR_1", "TERM_1", "eq",
    "R", "FVAR_3", "FVAR_0", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:Mul",
-   "O", "inputs:FVAR_0,FVAR_1", "output:TERM_2", "gen:IsLeftCancelMul",
-   "O", "inputs:FVAR_0,FVAR_1,FVAR_3", "output:TERM_3", "gen:IsLeftRegular",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_2", "GEN_ALGEBRA",
+   "O", "IN_3", "OUT_3", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- BVAR + FVAR, same structure as AddCancelMonoid.ctorIdx for a different decl, 58 tokens
@@ -172,8 +172,8 @@ private def ex_AddRightCancelMonoid_ctorIdx : List String :=
    "R", "BVAR_1", "TERM_3", "eq",
    "R", "FVAR_0", "TERM_0", "eq",
    "R", "FVAR_1", "TERM_1", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:AddRightCancelMonoid",
-   "O", "inputs:BVAR_0", "output:TERM_3", "gen:AddRightCancelMonoid",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_3", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- Large example: 8 O rows, mixed arity, 104 tokens
@@ -193,14 +193,14 @@ private def ex_AddRightCancelSemigroup_rec : List String :=
    "R", "FVAR_2", "TERM_1", "eq",
    "R", "FVAR_3", "TERM_7", "eq",
    "R", "FVAR_5", "TERM_8", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:AddRightCancelSemigroup",
-   "O", "inputs:FVAR_0", "output:TERM_3", "gen:AddSemigroup",
-   "O", "inputs:FVAR_0,FVAR_4", "output:TERM_4", "gen:AddSemigroup.toAdd",
-   "O", "inputs:FVAR_0,TERM_4", "output:TERM_5", "gen:IsRightCancelAdd",
-   "O", "inputs:FVAR_0,FVAR_4,FVAR_6", "output:TERM_6", "gen:AddRightCancelSemigroup.mk",
-   "O", "inputs:FVAR_1,TERM_6", "output:TERM_7", "gen:hof",
-   "O", "inputs:FVAR_0", "output:TERM_8", "gen:AddRightCancelSemigroup",
-   "O", "inputs:FVAR_1,FVAR_5", "output:TERM_9", "gen:hof",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_3", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_4", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_5", "GEN_ALGEBRA",
+   "O", "IN_3", "OUT_6", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_7", "hof",
+   "O", "IN_1", "OUT_8", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_9", "hof",
    "GRAPH_END"]
 
 -- Large example: multiple R rows between TERM nodes (non-FVAR relations), 88 tokens
@@ -216,14 +216,14 @@ private def ex_MulOneClass_ext : List String :=
    "R", "FVAR_2", "TERM_2", "eq",
    "R", "FVAR_3", "TERM_5", "eq",
    "R", "TERM_5", "TERM_8", "eq",
-   "O", "inputs:FVAR_0", "output:TERM_1", "gen:MulOneClass",
-   "O", "inputs:FVAR_0", "output:TERM_2", "gen:MulOneClass",
-   "O", "inputs:FVAR_0,FVAR_1", "output:TERM_3", "gen:MulOneClass.toMulOne",
-   "O", "inputs:FVAR_0,TERM_3", "output:TERM_4", "gen:MulOne.toMul",
-   "O", "inputs:FVAR_0,TERM_4", "output:TERM_5", "gen:Mul.mul",
-   "O", "inputs:FVAR_0,FVAR_2", "output:TERM_6", "gen:MulOneClass.toMulOne",
-   "O", "inputs:FVAR_0,TERM_6", "output:TERM_7", "gen:MulOne.toMul",
-   "O", "inputs:FVAR_0,TERM_7", "output:TERM_8", "gen:Mul.mul",
+   "O", "IN_1", "OUT_1", "GEN_ALGEBRA",
+   "O", "IN_1", "OUT_2", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_3", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_4", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_5", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_6", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_7", "GEN_ALGEBRA",
+   "O", "IN_2", "OUT_8", "GEN_ALGEBRA",
    "GRAPH_END"]
 
 -- ──────────────────────────────────────────────────────────────────────────────

@@ -34,8 +34,16 @@ nohup.out
 
 # Local backup artifacts — regenerable, not tracked
 Corpus/*.bak
+Corpus/corpus.jsonl
+Corpus/corpus.per_operator.jsonl
 datasets_phase5_backup/
 datasets_phase5_v1/
+
+# Datasets are build artifacts (derived from corpus). Only manifests + vocabs tracked.
+datasets/train_*.jsonl
+datasets/eval_*.jsonl
+datasets/embed_proj_*.pt
+datasets/filtered_dropped.json
 
 # Local Ollama model definitions — not part of the repo
 Modelfile
@@ -74,3 +82,29 @@ ir-research/
 /run_abc.sh
 /elan-init.sh
 docs/scratch/resume_notes_v2.md
+
+# Local-only environment reference (never commit)
+AGENTS_LOCAL.md
+remote_check.py
+apply_fixes.py
+fix_polarity.py
+fix_docstring.py
+apply_corpus_builder.py
+apply_per_operator.py
+apply_python_per_operator.py
+fix_decoder.py
+fix_polarity_test.py
+fix_proj_test.py
+fix_projection_test.py
+fix_bucketmode_threading.py
+fix_trace_sig.py
+gate4_vocab_check.py
+fix_decoder_tests.py
+fix_in_quotes.py
+fix_output_tokens.py
+fix_gen_decoder.py
+fix_validate_roundtrip.py
+fix_in_many.py
+fix_bsmall_vocab.py
+fix_bsmall_vocab2.py
+fix_bsmall3.py

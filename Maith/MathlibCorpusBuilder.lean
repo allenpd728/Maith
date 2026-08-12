@@ -42,7 +42,8 @@ def buildMathlibIRCorpus
     (enumerationConfig : EnumerationConfig := defaultEnumerationConfig)
     (serializationConfig : SerializationConfig := defaultSerializationConfig)
     (encoder : Encoder := Lean.DSL.defaultEncoder)
-    (traceDecl : Option String := none) :
+    (traceDecl : Option String := none)
+    (bucketMode : BucketMode := .module) :
     IO Unit := do
   IO.println "=== Mathlib IR Training Corpus Builder ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
@@ -88,7 +89,7 @@ def buildMathlibIRCorpus
 
   -- Stage 2-9: Process all declarations through the pipeline
   IO.println "[Stage 2-9] Running processing pipeline..."
-  let processingResult := processBatch allDeclarations encoder
+  let processingResult := processBatch allDeclarations encoder bucketMode
   match processingResult with
   | .fail msg =>
     IO.println s!"[ERROR] Pipeline failed: {msg}"
@@ -156,7 +157,8 @@ Build corpus with custom modules and default settings.
 def buildMathlibIRCorpusCustomModules
     (modules : List String)
     (encoder : Encoder := Lean.DSL.defaultEncoder)
-    (traceDecl : Option String := none) :
+    (traceDecl : Option String := none)
+    (bucketMode : BucketMode := .module) :
     IO Unit :=
   buildMathlibIRCorpus
     modules
@@ -164,6 +166,7 @@ def buildMathlibIRCorpusCustomModules
     defaultSerializationConfig
     encoder
     traceDecl
+    bucketMode
 
 /--
 Detailed execution trace for debugging and metrics.
@@ -188,7 +191,8 @@ def buildMathlibIRCorpusWithTrace
     (modules : List String)
     (enumerationConfig : EnumerationConfig := defaultEnumerationConfig)
     (serializationConfig : SerializationConfig := defaultSerializationConfig)
-    (encoder : Encoder := Lean.DSL.defaultEncoder) :
+    (encoder : Encoder := Lean.DSL.defaultEncoder)
+    (bucketMode : BucketMode := .module) :
     IO Unit := do
   IO.println "=== Mathlib IR Training Corpus Builder (with Trace) ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
@@ -210,7 +214,7 @@ def buildMathlibIRCorpusWithTrace
 
   -- Trace: Full pipeline
   IO.println "[TRACE] Stages 2-9: Processing Pipeline"
-  let processingResult := processBatch allDeclarations encoder
+  let processingResult := processBatch allDeclarations encoder bucketMode
   match processingResult with
   | .fail msg =>
     IO.println s!"  ERROR: {msg}"
