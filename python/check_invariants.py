@@ -565,13 +565,12 @@ def run_all_checks(
 
     # Check A_v3 vs B_small (the H6 clean comparison) — match by directory name
     # since results.json has "variant": "A" for A_v3 checkpoints
-    import glob
     a_v3_dirs = [k for k in results_by_dirname if k.startswith("A_v3")]
     if a_v3_dirs and "B_small" in results_by_dirname:
         a_v3 = results_by_dirname[a_v3_dirs[0]]
         b_small = results_by_dirname["B_small"]
         all_results.extend(check_comparison_validity(
-            [a_v3, b_small], "representation_at_matched_size_a_v3"
+            [a_v3, b_small], "representation_at_matched_size"
         ))
 
     # Check A vs flat (the DEC-024 ablation) if both exist
