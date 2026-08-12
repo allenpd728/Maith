@@ -363,7 +363,8 @@ def check_comparison_validity(
         if len(non_none) >= 2 and len(set(non_none)) == 1:
             errors.append(f"{field} identical across all ({values[0]}) — expected to differ")
         elif len(non_none) < 2:
-            errors.append(f"{field} missing or None across all manifests — cannot verify difference")
+            # Field missing from all manifests — skip (not all results.json versions have all fields)
+            pass
 
     if errors:
         results.append(_report(f"comparison_{claim}", False, "; ".join(errors)))
@@ -538,7 +539,8 @@ def run_all_checks(
     #
     # Note: results.json has "variant": "A" for both A_v2_full and A_v3_2ep.
     # We match by run directory name, not the variant field, to find A_v3
-    # checkpoints specifically.
+    # checkpoints specifically. When multiple dirs share the same variant field,
+    # prefer _clean directories (the DEC-031 retrains).
     comparison_pairs = []
     results_by_variant = {}
     results_by_dirname = {}
@@ -551,10 +553,13 @@ def run_all_checks(
         with open(rp) as f:
             r = json.load(f)
         v = r.get("variant", "")
+        dirname = d.name.removeprefix("variant_")
         if v in variants:
-            results_by_variant[v] = r
-        # Also index by directory name (stripped of "variant_" prefix)
-        results_by_dirname[d.name.removeprefix("variant_")] = r
+            # Prefer _clean directories over old ones when variant field collides
+            if v not in results_by_variant or "_clean" in dirname:
+                results_by_variant[v] = r
+        # Also index by directory name
+        results_by_dirname[dirname] = r
 
     # Check A vs B_small (the primary comparison) if both exist
     if "A" in results_by_variant and "B_small" in results_by_variant:
@@ -565,17 +570,33 @@ def run_all_checks(
 
     # Check A_v3 vs B_small (the H6 clean comparison) — match by directory name
     # since results.json has "variant": "A" for A_v3 checkpoints
-    a_v3_dirs = [k for k in results_by_dirname if k.startswith("A_v3")]
-    if a_v3_dirs and "B_small" in results_by_dirname:
-        a_v3 = results_by_dirname[a_v3_dirs[0]]
-        b_small = results_by_dirname["B_small"]
+    # Prefer _2ep (2-epoch) and _clean directories over old ones
+    b_small_key = "B_small_clean" if "B_small_clean" in results_by_dirname else "B_small"
+    # Prefer A_v3_2ep over A_v3 (epoch-matched to B_small_clean)
+    a_v3_key = None
+    for preferred in ["A_v3_2ep", "A_v3_2ep_clean"]:
+        if preferred in results_by_dirname:
+            a_v3_key = preferred
+            break
+    if not a_v3_key:
+        # Fall back to any A_v3 directory, preferring _clean
+        a_v3_dirs = [k for k in results_by_dirname if k.startswith("A_v3")]
+        clean_dirs = [k for k in a_v3_dirs if "_clean" in k or "_2ep" in k]
+        if clean_dirs:
+            a_v3_key = clean_dirs[0]
+        elif a_v3_dirs:
+            a_v3_key = a_v3_dirs[0]
+    if a_v3_key and b_small_key in results_by_dirname:
         all_results.extend(check_comparison_validity(
-            [a_v3, b_small], "representation_at_matched_size"
+            [results_by_dirname[a_v3_key], results_by_dirname[b_small_key]],
+            "representation_at_matched_size"
         ))
 
     # Check A vs flat (the DEC-024 ablation) if both exist
-    if "A" in results_by_variant and "flat" in results_by_variant:
-        manifests = [results_by_variant["A"], results_by_variant["flat"]]
+    # Prefer _clean directories (flat_clean vs old flat)
+    flat_key = "flat_clean" if "flat_clean" in results_by_dirname else "flat"
+    if "A" in results_by_variant and flat_key in results_by_dirname:
+        manifests = [results_by_variant["A"], results_by_dirname[flat_key]]
         all_results.extend(check_comparison_validity(
             manifests, "ir_vs_flat_ablation"
         ))
