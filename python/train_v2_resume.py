@@ -67,6 +67,14 @@ try:
 except ImportError:
     pass  # covered by torch above
 
+# TensorBoard SummaryWriter (ships with torch). Guarded so a missing or broken
+# tensorboard install degrades to no-op logging instead of crashing training.
+_tb_available = True
+try:
+    from torch.utils.tensorboard import SummaryWriter
+except ImportError:
+    _tb_available = False
+
 if missing:
     print(f"ERROR: missing dependencies: {', '.join(missing)}")
     print("Run: pip install transformers torch trl datasets")
@@ -366,12 +374,47 @@ class ThermalGuardCallback(TrainerCallback):
 
 
 # ---------------------------------------------------------------------------
+# TensorBoard logging callback
+# ---------------------------------------------------------------------------
+
+class TensorBoardCallback(TrainerCallback):
+    """
+    Logs train/loss and eval/perplexity to TensorBoard via a SummaryWriter.
+    All logging is wrapped in try/except so a TensorBoard failure never
+    crashes training.
+    """
+
+    def __init__(self, writer):
+        self.writer = writer
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if self.writer is None or logs is None:
+            return
+        if "loss" in logs:
+            try:
+                self.writer.add_scalar("train/loss", logs["loss"], state.global_step)
+            except Exception:
+                pass
+
+    def on_evaluate(self, args, state, control, logs=None, **kwargs):
+        if self.writer is None or logs is None:
+            return
+        if "eval_loss" in logs:
+            try:
+                ppl = math.exp(float(logs["eval_loss"]))
+                self.writer.add_scalar("eval/perplexity", ppl, state.epoch)
+            except Exception:
+                pass
+
+
+# ---------------------------------------------------------------------------
 # Training loop
 # ---------------------------------------------------------------------------
 
 def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
          resume: bool = False, embed_pretrain: bool = False,
-         embed_project: str = "") -> None:
+         embed_project: str = "", epochs_override: int = None,
+         lr_override: float = None) -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
 
@@ -443,6 +486,10 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
     # the full model starts training. Neutralises the cold-start confound so that
     # any remaining gap to B/C is attributable to representation quality rather
     # than initialisation.
+
+    epochs = 1 if smoke_test else (epochs_override if epochs_override is not None else EPOCHS)
+    lr = lr_override if lr_override is not None else lr_for_variant(variant)
+
     if embed_pretrain and not smoke_test:
         print()
         print("=" * 60)
@@ -469,7 +516,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
             per_device_train_batch_size=BATCH_SIZE,
             per_device_eval_batch_size=BATCH_SIZE,
             gradient_accumulation_steps=GRAD_ACCUM,
-            learning_rate=lr_for_variant(variant),
+            learning_rate=lr,
             weight_decay=WEIGHT_DECAY,
             warmup_steps=1,
             lr_scheduler_type="linear",
@@ -524,9 +571,21 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         n_samples=3,
         out_dir=out_dir,
     )
-    epochs = 1 if smoke_test else EPOCHS
     total_steps = max(1, (len(train_dataset) // (BATCH_SIZE * GRAD_ACCUM)) * epochs)
     warmup_steps = max(1, int(WARMUP_RATIO * total_steps))
+
+    # TensorBoard SummaryWriter — event files go in runs/{out_dir}/tb/
+    writer = None
+    if _tb_available:
+        try:
+            writer = SummaryWriter(log_dir=os.path.join(out_dir, "tb"))
+            writer.add_text("config/variant", str(variant), 0)
+            writer.add_text("config/epochs", str(epochs), 0)
+            writer.add_text("config/vocab_size", str(vocab_size), 0)
+            writer.add_text("config/learning_rate", str(lr), 0)
+        except Exception as e:
+            print(f"  Warning: TensorBoard writer init failed ({e}); logging disabled.")
+            writer = None
     # Checkpoint ~twice per epoch so a mid-epoch stall (sleep/disconnect) can be
     # resumed via --resume instead of restarting epoch 0 from scratch.
     steps_per_epoch = max(1, len(train_dataset) // (BATCH_SIZE * GRAD_ACCUM))
@@ -541,7 +600,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         per_device_train_batch_size=BATCH_SIZE,
         per_device_eval_batch_size=BATCH_SIZE,
         gradient_accumulation_steps=GRAD_ACCUM,
-        learning_rate=lr_for_variant(variant),
+        learning_rate=lr,
         weight_decay=WEIGHT_DECAY,
         warmup_steps=warmup_steps,
         lr_scheduler_type="cosine",
@@ -564,7 +623,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=lambda batch: collate_fn(batch),
-        callbacks=[ThermalGuardCallback()],
+        callbacks=[ThermalGuardCallback(), TensorBoardCallback(writer)],
     )
 
     # Resolve resume checkpoint — find the latest epoch checkpoint in out_dir.
@@ -626,6 +685,12 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
     print(f"  Variant {variant} eval perplexity: {ppl:.2f}")
     print()
 
+    if writer is not None:
+        try:
+            writer.add_scalar("eval/perplexity", ppl, epochs)
+        except Exception:
+            pass
+
     # Save results
     results = {
         "variant": variant,
@@ -641,6 +706,9 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         "smoke_test": smoke_test,
         "embed_pretrain": embed_pretrain,
         "embed_project": embed_project,
+        "learning_rate": lr,
+        "effective_batch_size": BATCH_SIZE * GRAD_ACCUM,
+        "max_seq_len": MAX_SEQ_LEN,
     }
     if embed_pretrain and not smoke_test:
         results["embed_pretrain_eval_ppl"] = round(embed_ppl, 4)
@@ -665,6 +733,12 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         else:
             print(f"  Variant {v}: (not run yet)")
 
+    if writer is not None:
+        try:
+            writer.close()
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -684,6 +758,12 @@ if __name__ == "__main__":
                         help="Path to embedding projection matrix (.pt file) for Variant A. "
                              "If provided, loads the projection and applies it to initialize "
                              "the embedding table. Mutually exclusive with --embed-pretrain.")
+    parser.add_argument("--epochs", type=int, default=None,
+                        help="Override the number of training epochs (default: 2). "
+                             "Used by launch_run.py to pass the configured epoch count.")
+    parser.add_argument("--lr", type=float, default=None,
+                        help="Override the learning rate (default: 2e-4 for A/B_small/flat, "
+                             "5e-5 for B/C). Used by launch_run.py to pass the configured LR.")
     args = parser.parse_args()
 
     # Default output goes directly into the Studio artifacts directory so Kit
@@ -697,4 +777,5 @@ if __name__ == "__main__":
         out = f"runs/variant_{args.variant}"
 
     run(args.variant, args.datasets, out, args.smoke_test, resume=args.resume,
-        embed_pretrain=args.embed_pretrain, embed_project=args.embed_project)
+        embed_pretrain=args.embed_pretrain, embed_project=args.embed_project,
+        epochs_override=args.epochs, lr_override=args.lr)
