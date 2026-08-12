@@ -141,6 +141,13 @@ The user accesses the dashboard by either:
 
 No server process — just a static file that regenerates on each loop iteration.
 
+**Lockfile (prevents duplicate loops):** before starting the watch loop, check
+for a PID file (`runs/.watch.pid`). If it exists and the PID is alive, refuse
+to start a second loop. Same pattern should be applied to `launch_run.py` —
+a lockfile per run directory prevents two concurrent training runs against
+the same `runs/variant_{id}/` directory. Both the watch loop and the
+launcher need this guard before implementation.
+
 ### 3.5 Experiment aliases
 
 Pre-configured wrappers around `launch_run.py` for the common experiments:
@@ -322,7 +329,7 @@ runs with `tb/` subdirectories and overlays their metrics. The page auto-refresh
 
 For SSH access from a remote machine, the user can tunnel:
 ```bash
-ssh -L 6006:localhost:6006 -i ~/.ssh/maith_openhands -p 15643 openhands-demo@4.tcp.ngrok.io
+ssh -L 6006:localhost:6006 -i <key_path> -p <port> <user>@<host>
 ```
 
 Then open `http://localhost:6006` locally.
