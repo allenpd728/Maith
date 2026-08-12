@@ -535,8 +535,13 @@ def run_all_checks(
     # Invariant 5: Comparison validity (check all valid pairs from the grid)
     # For each pair of variants with matching configs, verify the comparison
     # is valid (epochs, seed, train/eval counts match where required)
+    #
+    # Note: results.json has "variant": "A" for both A_v2_full and A_v3_2ep.
+    # We match by run directory name, not the variant field, to find A_v3
+    # checkpoints specifically.
     comparison_pairs = []
     results_by_variant = {}
+    results_by_dirname = {}
     for d in sorted(runs_dir.iterdir()):
         if not d.is_dir() or not d.name.startswith("variant_"):
             continue
@@ -548,12 +553,25 @@ def run_all_checks(
         v = r.get("variant", "")
         if v in variants:
             results_by_variant[v] = r
+        # Also index by directory name (stripped of "variant_" prefix)
+        results_by_dirname[d.name.removeprefix("variant_")] = r
 
     # Check A vs B_small (the primary comparison) if both exist
     if "A" in results_by_variant and "B_small" in results_by_variant:
         manifests = [results_by_variant["A"], results_by_variant["B_small"]]
         all_results.extend(check_comparison_validity(
             manifests, "representation_at_matched_size"
+        ))
+
+    # Check A_v3 vs B_small (the H6 clean comparison) — match by directory name
+    # since results.json has "variant": "A" for A_v3 checkpoints
+    import glob
+    a_v3_dirs = [k for k in results_by_dirname if k.startswith("A_v3")]
+    if a_v3_dirs and "B_small" in results_by_dirname:
+        a_v3 = results_by_dirname[a_v3_dirs[0]]
+        b_small = results_by_dirname["B_small"]
+        all_results.extend(check_comparison_validity(
+            [a_v3, b_small], "representation_at_matched_size_a_v3"
         ))
 
     # Check A vs flat (the DEC-024 ablation) if both exist

@@ -857,6 +857,67 @@ def cmd_gen_html(args):
 
 
 # ---------------------------------------------------------------------------
+# Phase 4: Quality gates
+# ---------------------------------------------------------------------------
+
+def cmd_gate(args):
+    """Run a pipeline quality gate (see PIPELINE_QUALITY_GATES.md)."""
+    station = args.station
+    py = sys.executable
+    repo = str(REPO)
+    ds = args.datasets or str(DATASETS_DIR)
+    runs = args.runs or str(RUNS_DIR)
+
+    gates = []
+
+    if station in ("ir", "all"):
+        corpus = args.corpus or str(CORPUS_DIR / "corpus.per_operator.jsonl")
+        cmd = [py, f"{repo}/python/check_ir_build.py", "--corpus", corpus]
+        if args.skip_roundtrip:
+            cmd.append("--skip-roundtrip")
+        gates.append(("Gate 1 — IR Build", cmd))
+
+    if station in ("corpus", "all"):
+        corpus = args.corpus or str(CORPUS_DIR / "corpus.per_operator.jsonl")
+        cmd = [py, f"{repo}/python/check_corpus.py", "--corpus", corpus]
+        gates.append(("Gate 2 — Corpus Acceptance", cmd))
+
+    if station in ("dataset", "all"):
+        cmd = [py, f"{repo}/python/check_invariants.py", "--datasets", ds, "--runs", runs]
+        gates.append(("Gate 3 — Dataset Quality", cmd))
+
+    if station in ("train", "all"):
+        cmd = [py, f"{repo}/python/check_invariants.py", "--datasets", ds, "--runs", runs, "--check", "ckpt"]
+        gates.append(("Gate 4 — Training Output", cmd))
+
+    if station in ("eval", "all"):
+        # Gate 5 uses the same invariant checker (Invariant 5 = comparison validity)
+        cmd = [py, f"{repo}/python/check_invariants.py", "--datasets", ds, "--runs", runs]
+        gates.append(("Gate 5 — Evaluation Integrity", cmd))
+
+    if not gates:
+        print(f"Unknown gate station: {station}")
+        return 1
+
+    all_pass = True
+    for name, cmd in gates:
+        print(f"\n{'='*60}")
+        print(name)
+        print(f"{'='*60}")
+        result = subprocess.run(cmd)
+        if result.returncode != 0:
+            all_pass = False
+
+    print(f"\n{'='*60}")
+    if all_pass:
+        print("ALL GATES PASSED")
+    else:
+        print("ONE OR MORE GATES FAILED — do not proceed to experiments.")
+    print(f"{'='*60}")
+    return 0 if all_pass else 1
+
+
+# ---------------------------------------------------------------------------
 # Main / argparse
 # ---------------------------------------------------------------------------
 
@@ -906,6 +967,16 @@ def main():
     # Internal: _gen_html (used by the watch loop)
     sub.add_parser("_gen_html", help=argparse.SUPPRESS)
 
+    # Phase 4: quality gates
+    p_gate = sub.add_parser("gate", help="Run a pipeline quality gate")
+    p_gate.add_argument("station", choices=["ir", "corpus", "dataset", "train", "eval", "all"],
+                        help="Which gate to run")
+    p_gate.add_argument("--datasets", default=None, help="Datasets directory (for dataset/train/eval gates)")
+    p_gate.add_argument("--runs", default=None, help="Runs directory (for train/eval gates)")
+    p_gate.add_argument("--corpus", default=None, help="Corpus JSONL path (for ir/corpus gates)")
+    p_gate.add_argument("--skip-roundtrip", action="store_true",
+                        help="Skip G1-1 round-trip (use when Lean not available)")
+
     args = parser.parse_args()
 
     if args.command is None:
@@ -934,6 +1005,8 @@ def main():
         return cmd_watch(args)
     elif args.command == "_gen_html":
         return cmd_gen_html(args)
+    elif args.command == "gate":
+        return cmd_gate(args)
     else:
         parser.print_help()
         return 1
