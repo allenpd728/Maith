@@ -86,6 +86,7 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | `docs/reference/GLOSSARY.md` | Term definitions for cross-domain readers |
 | `docs/reference/ENCODER_FORMAT.md` | Canonical token format spec |
 | `docs/experiments/EXPERIMENT_DESIGN.md` | Experiment protocol, evaluation framework, model-size taxonomy |
+| `python/manage.py` | Self-service control layer (status, results, aliases, dashboard) — wraps `launch_run.py` |
 
 ## Build and test commands
 
@@ -100,6 +101,16 @@ lake build tests
 python3 python/train.py --variant A --datasets datasets/ --embed-project datasets/embed_proj_A.pt
 python3 python/eval_completion.py --variants A B_SMALL --samples 200 --mask-last 10
 python3 python/validate_roundtrip.py
+```
+
+**Self-service control (manage.py):**
+```bash
+python3 python/manage.py status          # grid + processes + latest results
+python3 python/manage.py results         # H6 retrieval + probing formatted
+python3 python/manage.py grid            # comparison matrix (valid vs confounded)
+python3 python/manage.py invariants      # invariant checker
+python3 python/manage.py train-av3-2ep   # pre-configured A v3 retrain (guarded)
+python3 python/manage.py watch --once    # HTML dashboard snapshot
 ```
 
 **Corpus rebuild:**
