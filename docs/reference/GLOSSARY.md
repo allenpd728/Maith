@@ -50,6 +50,30 @@ token sequence for model training. The core hypothesis: this representation expo
 semantic structure that source syntax hides.
 See: ENCODER_FORMAT.md, Design.md
 
+**Terminology: family, candidate, structure** dagger
+The project uses one canonical noun — **semantic graph IR** — for the representation.
+This matches the family ID `semantic_graph_ir` in `Scripts/representation_families.json`
+and the representation IDs `semantic_graph_ir_v1_2_0` / `semantic_graph_ir_v2_0_0` in
+`datasets/representation_manifest.json`. The term **canonical** is a *property* of
+this IR (it canonicalizes ordering and resolves implicits), used as a modifier
+("canonical semantic graph IR") when the canonicalization is the point — not a separate
+representation name. Older docs occasionally wrote "canonical semantic IR" (dropping
+"graph"); this is the same thing and is being consolidated to "semantic graph IR."
+
+Three levels to keep distinct:
+- **Family** (`semantic_graph_ir`): the graph structure — Entity/Attribute/Relation/
+  Operation rows extracted from elaborated `Expr`. v1.x and v2.x are *the same family*.
+- **Candidate** (`semantic_graph_ir_v1_2_0`, `..._v2_0_0`): a concrete tokenization of
+  that graph. v1 → v2 changed *which graph attributes become tokens and how granularly*
+  (C1/C2/C4); the graph structure (E/R/O rows) is preserved across candidates. So v1
+  and v2 are same-structure, different-tokenization candidates — not different structures.
+- **Different-structure candidates** (`typed_term_ir`, `hybrid_graph_term`): registered
+  as "planned" in `representation_families.json` but never built. These would change the
+  graph structure itself. Nazrin/ExprGraph (arXiv:2602.18767, external) is a
+  different-structure *approach* — a GNN consuming Lean expression graphs directly,
+  without linearization to tokens.
+See: REPRESENTATION_EVOLUTION.md, ENCODER_FORMAT.md v2.0.0
+
 **E / A / R / O rows** dagger
 The four row types in the IR graph serialization:
 - E (Entity): declares an entity (variable, term, bound binder)
@@ -207,7 +231,7 @@ structured view of which sub-claims each DEC closes.
 |---|---|
 | A/B/C | The three representation variants (IR / raw BPE / AST-split BPE) |
 | B-small | BPE truncated to 601 tokens, 358M params (size-matched control for A) |
-| IR | Intermediate Representation (Maith's semantic graph) |
+| IR | Intermediate Representation — Maith's semantic graph (family `semantic_graph_ir`); see [terminology](#terminology-family-candidate-structure) for family vs candidate vs structure |
 | leanExpr | Serialized string of a Lean declaration's type |
 | MPS | Metal Performance Shaders (Apple GPU compute) |
 | BPE | Byte-Pair Encoding (standard subword tokenization) |
