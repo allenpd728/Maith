@@ -34,8 +34,16 @@ nohup.out
 
 # Local backup artifacts — regenerable, not tracked
 Corpus/*.bak
+Corpus/corpus.jsonl
+Corpus/corpus.per_operator.jsonl
 datasets_phase5_backup/
 datasets_phase5_v1/
+
+# Datasets are build artifacts (derived from corpus). Only manifests + vocabs tracked.
+datasets/train_*.jsonl
+datasets/eval_*.jsonl
+datasets/embed_proj_*.pt
+datasets/filtered_dropped.json
 
 # Local Ollama model definitions — not part of the repo
 Modelfile
