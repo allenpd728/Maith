@@ -396,12 +396,12 @@ class TensorBoardCallback(TrainerCallback):
             except Exception:
                 pass
 
-    def on_evaluate(self, args, state, control, logs=None, **kwargs):
-        if self.writer is None or logs is None:
+    def on_evaluate(self, args, state, control, metrics=None, **kwargs):
+        if self.writer is None or metrics is None:
             return
-        if "eval_loss" in logs:
+        if "eval_loss" in metrics:
             try:
-                ppl = math.exp(float(logs["eval_loss"]))
+                ppl = math.exp(float(metrics["eval_loss"]))
                 self.writer.add_scalar("eval/perplexity", ppl, state.epoch)
             except Exception:
                 pass
