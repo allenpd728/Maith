@@ -60,6 +60,11 @@ CHECKPOINTS = {
     "random":  None,  # Loaded from HuggingFace cache, no fine-tuning
 }
 
+# Map checkpoint variant names to dataset file names (e.g., A_v3_2ep uses train_A.jsonl)
+VARIANT_FILE_MAP = {
+    "A_v3_2ep": "A",
+}
+
 BASE_MODEL = "Qwen/Qwen2.5-Coder-0.5B"
 
 # ---------------------------------------------------------------------------
@@ -283,9 +288,12 @@ def main():
         else:
             ds_dir = default_dataset_dir
 
+        # Map checkpoint variant to dataset file name (e.g., A_v3_2ep → A)
+        file_variant = VARIANT_FILE_MAP.get(variant, variant)
+
         # Load the variant's actual datasets
-        train_rows = load_dataset_split(variant, "train", ds_dir)
-        eval_rows = load_dataset_split(variant, "eval", ds_dir)
+        train_rows = load_dataset_split(file_variant, "train", ds_dir)
+        eval_rows = load_dataset_split(file_variant, "eval", ds_dir)
 
         if not train_rows and not eval_rows:
             print(f"No data for variant {variant}, skipping.")

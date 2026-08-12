@@ -1714,3 +1714,22 @@ Undocumented difference, minor confound.
 - DEC-028 (bucketing confound — the primary finding)
 - `docs/experiments/HYPOTHESIS_GRID.md` — H2, H7, H11
 - `docs/experiments/EXPERIMENT_DESIGN.md` — variant definitions, evaluation framework
+
+### DEC-030 — H6 retrieval retest: IR does not improve retrieval over BPE at toy scale (2026-08-12)
+
+**Date:** 2026-08-12
+**Status:** Closed
+**Scope:** H6 (retrieval/similarity)
+
+**Decision:** H6 is closed (negative) at toy scale under the prediction-trained objective.
+
+**Experiment:** Clean 2-epoch retest of A_v3_2ep (per-operator IR, 2254-vocab, 359.9M params,
+perplexity 1.2928) vs B_small (BPE truncated to 601-vocab, 358M params), both on the same
+clean 3375/376 split. Fixes the epoch confound and dataset contamination from the initial run.
+
+**Results:** Both modes agree — A_v3_2ep does not beat B_small (Recall@10: 0.0052 vs 0.0064
+Mode 1, 0.0012 vs 0.0028 Mode 2, CIs overlap). The IR's explicit dep-name tokens didn't help
+retrieval under next-token prediction.
+
+**See:** `docs/experiments/H6_RESULTS.md` for full results and confound acknowledgment.
+
