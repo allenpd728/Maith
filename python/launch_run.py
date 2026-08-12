@@ -83,6 +83,52 @@ def append_to_registry(run_id, kind, config):
     print(f"Recorded in registry: {run_id}")
 
 
+def _validate_training_output(run_dir: Path, variant: str) -> list[str]:
+    """Gate 4: validate training output. Returns list of failure strings (empty = all pass)."""
+    errors = []
+
+    # G4-1: checkpoint exists
+    ckpt = run_dir / "checkpoint-final"
+    if not ckpt.exists():
+        errors.append("G4-1: checkpoint-final/ not found")
+        return errors
+
+    # G4-2: results.json has required fields
+    rp = run_dir / "results.json"
+    if not rp.exists():
+        errors.append("G4-2: results.json not written")
+        return errors
+
+    with open(rp) as f:
+        r = json.load(f)
+    required = ["eval_perplexity", "epochs", "train_examples", "n_params_M", "vocab_size"]
+    missing = [f for f in required if f not in r]
+    if missing:
+        errors.append(f"G4-2: results.json missing fields: {missing}")
+
+    # G4-4: perplexity plausible
+    ppl = r.get("eval_perplexity")
+    vocab = r.get("vocab_size", 151643)
+    if ppl is not None and not (1.0 < ppl < vocab):
+        errors.append(f"G4-4: eval_perplexity={ppl} not in (1.0, {vocab})")
+
+    # G4-3: loss descended (from loss_curve.json)
+    lc = run_dir / "loss_curve.json"
+    if lc.exists():
+        curve = json.load(open(lc))
+        train = curve.get("train", [])
+        if len(train) >= 2:
+            initial = train[0]["loss"]
+            final = train[-1]["loss"]
+            if final >= initial * 0.5:
+                errors.append(f"G4-3: loss did not descend sufficiently: {initial:.3f} → {final:.3f} "
+                               f"({(1 - final/initial)*100:.0f}% reduction, need ≥50%)")
+    else:
+        errors.append("G4-3: loss_curve.json not written — cannot verify loss descent")
+
+    return errors
+
+
 def cmd_train(args):
     """Launch a training run with enforced process."""
     variant = args.variant
@@ -162,7 +208,20 @@ def cmd_train(args):
         process.wait()
         train_result = process.returncode
 
-    # Step 4: write manifest if successful
+    # Step 4: Gate 4 — validate training output before registering
+    if train_result == 0:
+        gate4_errors = _validate_training_output(run_dir, variant)
+        if gate4_errors:
+            print("\nGATE 4 FAILED — training output validation:")
+            for e in gate4_errors:
+                print(f"  {e}")
+            print("Run registered but may have quality issues. Review before using results.")
+            with open(log_path, "a") as logf:
+                logf.write("\n=== GATE 4 VALIDATION FAILED ===\n")
+                for e in gate4_errors:
+                    logf.write(f"  {e}\n")
+
+    # Step 5: write manifest if successful
     if train_result == 0:
         results_path = run_dir / "results.json"
         if results_path.exists():
