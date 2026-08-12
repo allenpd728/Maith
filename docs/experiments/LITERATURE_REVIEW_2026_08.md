@@ -15,7 +15,7 @@
 > **Verdict summary.** Of Maith's open sub-claims, only one — H11's dual-evaluation
 > methodology — has a direct precedent that materially narrows a novelty claim
 > ("Meaning in Language Models," WFVML 2023). The representation-as-a-variable cell
-> Maith occupies (canonical semantic IR vs. BPE, in formal mathematics) remains
+> Maith occupies (canonical semantic graph IR vs. BPE, in formal mathematics) remains
 > untested by the field across every metric family: prediction, retrieval, and ATP.
 > The 2025–26 Lean retrieval wave confirms H6 as the most clearly-open and most
 > active frontier.
@@ -28,7 +28,7 @@
 |---|---|---|
 | H4/H8 (scale threshold) | Still open — and messier than prior framing | IRCoder gains are non-monotonic across 1.1B–7.3B; no clean threshold |
 | H5 (objective redesign) | Partially answered in code/HOL domain; open for Lean semantic IR | Skip-tree (Rabe 2021) + PACT skip-proof already do masked-subterm prediction |
-| H6 (retrieval/similarity) | Still open — the most active, untested gap | Every 2025–26 Lean retriever uses BPE/text; none uses a canonical semantic IR |
+| H6 (retrieval/similarity) | Still open — the most active, untested gap | Every 2025–26 Lean retriever uses BPE/text; none uses a canonical semantic graph IR |
 | H7 (proof completion / ATP) | Still open | All SOTA provers train on tactics/proof-state, not IR |
 | H9 (co-training) | Answered in code domain; open for formal-math semantic IR | IRCoder & PACT both effectively co-train; gains confirmed |
 | H10 (richer probing) | Open, but a direct methodological precedent exists (uncited pre-review) | "Meaning in Language Models" (WFVML 2023) does the same probe + perplexity-divergence methodology |
@@ -102,10 +102,10 @@ direct precedent — partially traced in PRIOR_ART via PACT but not fully:
 **H5 is partially answered at the objective level, but open for Maith's specific
 question.** The masked-subterm reconstruction objective *itself* has been tested —
 skip-tree (Rabe 2021) and skip-proof (PACT) — and it helps. But these were applied to
-**source/proof terms**, not to a **canonical semantic IR extracted from elaborated
+**source/proof terms**, not to a **canonical semantic graph IR extracted from elaborated
 Expr**. The specific open question — "would a masked-reconstruction objective reward
 the IR's semantic structure that next-token loss doesn't?" — is **not answered**,
-because no one has paired the masked-subterm objective with a canonical semantic IR as
+because no one has paired the masked-subterm objective with a canonical semantic graph IR as
 the prediction target. H5 remains novel *as a representation×objective interaction*,
 even though the objective alone is not new. PRIOR_ART should acknowledge skip-tree/
 skip-proof as the objective precedent so the novelty claim is precise: it's the
@@ -119,7 +119,7 @@ skip-proof as the objective precedent so the novelty claim is precise: it's the
 This is the most active 2025–26 front, and it makes H6 both the most important and most
 clearly-open question. The Lean retrieval/premise-selection literature expanded rapidly:
 
-| System | Year | Representation used | Tests canonical semantic IR? |
+| System | Year | Representation used | Tests canonical semantic graph IR? |
 |---|---|---|---|
 | ReProver (LeanDojo) | 2023 | BPE text embeddings | No |
 | Piotrowski et al. | 2023 | Hand-crafted n-gram features (random forest) | No |
@@ -132,7 +132,7 @@ clearly-open question. The Lean retrieval/premise-selection literature expanded 
 
 **The pattern is striking and directly confirms H6 is open:** *every* 2025–26 Lean
 retriever uses BPE/text embeddings, sometimes augmented with structural edges, and *none*
-tests an elaboration-grounded canonical semantic IR as the retrieval representation. The
+tests an elaboration-grounded canonical semantic graph IR as the retrieval representation. The
 closest neighbor — the graph-augmented LeanDojo work (arXiv:2510.23637, already cited) —
 *adds* an RGCN over dependency edges to BPE text and beats ReProver by 25%. That's
 "text + structure," not "canonical IR replacing text."
@@ -146,7 +146,7 @@ representation.
 ### Verdict
 **H6 is open and is the most clearly-unanswered question in this review.** The retrieval
 front is the field's most active area, and representation-as-a-variable is visibly
-under-explored at exactly the axis Maith occupies (canonical semantic IR vs. BPE). The
+under-explored at exactly the axis Maith occupies (canonical semantic graph IR vs. BPE). The
 DEC-025 `extract_representations.py` infrastructure is reusable here. This should be the
 highest-priority next experiment — the literature is moving fast on retrieval and leaving
 this exact cell empty.
@@ -211,7 +211,7 @@ Co-training / multi-view IR+source is established and effective in the code doma
 ### Verdict
 **H9 is answered in the code domain but open for formal-math semantic IR.** The design
 lesson (co-train, don't replace) is well-supported — PACT and IRCoder both confirm it.
-What's untested is whether co-training *Maith's canonical semantic IR* alongside Lean
+What's untested is whether co-training *Maith's canonical semantic graph IR* alongside Lean
 source recovers IRCoder-style gains in the formal-math domain. PRIOR_ART already flags
 this correctly as a candidate direction. The novelty is the *domain + representation
 combination*, not the co-training idea itself.
@@ -241,7 +241,7 @@ this review. PRIOR_ART §6 previously claimed the dual-evaluation methodology as
 "genuinely Maith's own" (contribution #1). This paper weakens that novelty claim: the
 perplexity-vs-probe dissociation in a formal-semantics LM setting was demonstrated first
 here. It should be cited and the novelty claim narrowed — Maith's contribution is
-demonstrating the dissociation *for a canonical semantic IR in formal mathematics
+demonstrating the dissociation *for a canonical semantic graph IR in formal mathematics
 specifically*, not the dual-evaluation methodology itself.
 
 Adjacent probing work:
@@ -325,7 +325,7 @@ open and untested.
 
 3. **Acknowledge H5's objective precedent** (done in this change set): skip-tree (Rabe
    2021) and skip-proof (PACT) already do masked-subterm prediction. H5's novelty is
-   the *pairing* of that objective with a canonical semantic IR, not the objective
+   the *pairing* of that objective with a canonical semantic graph IR, not the objective
    itself.
 
 4. **Priority remains H6 then H10**: H6 is the most clearly-open and most active field

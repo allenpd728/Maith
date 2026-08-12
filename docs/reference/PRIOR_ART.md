@@ -14,7 +14,7 @@ narrower axis: prior work tests **structural-format variants** of a given repres
 (tree-with-names vs. graph-without-names; text-only vs. dependency-graph) on
 retrieval/premise-selection tasks (Wang et al., 2017; Paliwal et al., 2020; the 2025
 textual+structural Lean premise-selection work — see §3). **Maith tests something narrower
-and different: whether a *canonical semantic IR extracted from elaborated Lean `Expr`*** —
+and different: whether a *canonical semantic graph IR extracted from elaborated Lean `Expr`*** —
 a representation that resolves implicits, canonicalizes ordering, and exposes
 declaration-level semantics — improves *prediction* and *retrieval* over a raw BPE
 baseline, with size-matched controls. The closest analogues test format variants, not
@@ -130,7 +130,7 @@ the representation-research complement to it.
 The above systems keep the representation as source/tactics/state. A separate, smaller
 lineage *does* vary the representation and measure the effect — and it is the closest
 prior art to Maith's representation comparison. None of it, however, tests
-elaboration-grounded canonical semantic IR vs. raw BPE, which is Maith's specific
+elaboration-grounded canonical semantic graph IR vs. raw BPE, which is Maith's specific
 contribution.
 
 - **Wang et al., "Premise Selection for Theorem Proving by Deep Graph Embedding"
@@ -152,14 +152,14 @@ contribution.
   ReProver's ByT5 text embeddings, comparing text-only vs. text+structure for premise
   retrieval in Lean 4. The closest Lean-specific representation comparison: it tests
   *adding* structural edges to text embeddings, where Maith tests *replacing* text with a
-  canonical semantic IR. Also a retrieval task, not a prediction task.
+  canonical semantic graph IR. Also a retrieval task, not a prediction task.
 - **Crouse et al., "Improving GNN Representations of Logical Formulae with Subgraph
   Pooling" (DLG-KDD 2020).** GNN representations of logical formulae for premise
   selection; an adjacent representation-design study in the same task family.
 
 The pattern across this literature: representation-as-a-variable *has* been tested in
 formal math, on retrieval/premise-selection, with structural-format variants. What remains
-unexamined by this lineage is elaboration-grounded canonical semantic IR vs. raw BPE,
+unexamined by this lineage is elaboration-grounded canonical semantic graph IR vs. raw BPE,
 under prediction metrics, with size-matched controls — which is the specific corner Maith
 occupies.
 
@@ -262,7 +262,7 @@ Despite the convergences above, two things are genuinely Maith's own:
    perplexity/BLEU diverges from it. That paper is Maith's methodology with the same
    finding, in a sibling domain, pre-dating this work. Maith's contribution is therefore
    *not* the dual-evaluation methodology itself; it is demonstrating the dissociation
-   *for a canonical semantic IR in formal mathematics specifically*, paired with a
+   *for a canonical semantic graph IR in formal mathematics specifically*, paired with a
    flat-IR ablation that isolates the semantic content from structural scaffolding — a
    decomposition the program-trace paper does not perform.
 
@@ -271,7 +271,7 @@ Despite the convergences above, two things are genuinely Maith's own:
    from the elaborator's ground-truth semantics (`MetaExtractor.lean` over elaborated
    `Expr`) — the "elaborator as oracle" move. The extraction-source move is *shared* with
    PACT (§3), which extracts self-supervised signal from kernel-level proof terms in Lean;
-   what is Maith's own is the representation design — a canonical semantic IR with
+   what is Maith's own is the representation design — a canonical semantic graph IR with
    normalized entity/relation/operation structure — and the *replacement* of source with
    that IR, rather than PACT's co-training. The representation-comparison lineage (Wang et
    al., Paliwal et al., the 2025 Lean graph-retrieval work) varies *format* of a
@@ -302,7 +302,7 @@ not a research contribution, and is not claimed as novelty.
   flagged by the experimental record. *Objective precedent:* the masked-subterm
   reconstruction objective itself has been tested on source/proof terms — skip-tree
   (Rabe et al., 2021) and PACT's skip-proof (§3) — and helps. What is untested is pairing
-  that objective with a *canonical semantic IR* as the prediction target; Maith's H5
+  that objective with a *canonical semantic graph IR* as the prediction target; Maith's H5
   novelty is the representation×objective interaction, not the objective alone. See
   [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md) §H5.
 - **Model architecture.** The IR is a graph; the model is a sequence transformer. The
@@ -324,17 +324,17 @@ not a research contribution, and is not claimed as novelty.
   and probing. The downstream claim — better theorem prediction, proof search, proof
   completion — requires the theorem-proving evaluation scaffolded in
   [`docs/history/PHASE_7_ROADMAP.md`](../history/PHASE_7_ROADMAP.md) but not yet run.
-- **Retrieval on the canonical semantic IR specifically.** Representation has been tested
+- **Retrieval on the canonical semantic graph IR specifically.** Representation has been tested
   on retrieval/premise-selection in formal math — but with structural-format variants
   (Wang et al., 2017; Paliwal et al., 2020; the 2025 Lean graph-retrieval work, §3), not
-  with an elaboration-grounded canonical semantic IR vs. raw BPE. Whether Maith's IR
+  with an elaboration-grounded canonical semantic graph IR vs. raw BPE. Whether Maith's IR
   improves *dependency/premise retrieval* over BPE at Maith's scale is the untested cell
   most aligned with where the field's positive results live (ReProver's wins are on
   retrieval, not perplexity). This is the [`HYPOTHESIS_GRID`](../experiments/HYPOTHESIS_GRID.md)
   H6 cell, unrun. *As of 2026, this is the most clearly-open cell in the field:* the
   2025–26 Lean retrieval wave (LeanSearch v2, Lean Finder, LeanPremise/LeanHammer,
   LeanProgress) all use BPE/text embeddings, sometimes augmented with structural edges,
-  and none tests an elaboration-grounded canonical semantic IR as the retrieval
+  and none tests an elaboration-grounded canonical semantic graph IR as the retrieval
   representation. See [`LITERATURE_REVIEW_2026_08`](../experiments/LITERATURE_REVIEW_2026_08.md)
   §H6.
 
