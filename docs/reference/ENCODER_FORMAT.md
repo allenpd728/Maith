@@ -121,6 +121,15 @@ one targeted semantic signal (typeclass short names). The graph structure (E/R/O
 rows) is preserved; what changes is which graph attributes become tokens and how
 granularly.
 
+**v1 and v2 are the same structure, different tokenization.** Both are candidates in
+the `semantic_graph_ir` family (Entity/Attribute/Relation/Operation graph extracted
+from elaborated `Expr`). v1 → v2 changed *which graph attributes are emitted as tokens
+and how granularly* (C1/C2/C4); the graph structure itself is unchanged. A
+different-structure candidate would be a different family (e.g. the unbuilt
+`typed_term_ir` or `hybrid_graph_term`). See
+[`GLOSSARY.md`](GLOSSARY.md#terminology-family-candidate-structure) and
+[`REPRESENTATION_EVOLUTION.md`](REPRESENTATION_EVOLUTION.md).
+
 **Naming note:** The v2 changes use C1–C4 labels. These map to the v1-era
 "Fix N" naming in the decision log: C1 (polarity removal) = "Fix 2" (DEC-022);
 C4 (GEN bucketing) is new in v2. "Fix 3" (IO marker simplification, DEC-023) was

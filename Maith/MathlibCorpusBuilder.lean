@@ -126,8 +126,12 @@ def buildMathlibIRCorpus
         stats with
         totalDeclarations := enumerationStats.totalEnumerated
         mathlibCommitHash := mathlibHash
-        encoderVersion := "1.2.0"
-        irVersion := "0.1.0"
+        -- Lean-side encoder is v1.4.0 (v1-style string tokens; the v2 token stream
+        -- is produced downstream in python/build_dataset.py). The corpus.jsonl this
+        -- writes is therefore the v1 format; the v2 representation_id
+        -- (semantic_graph_ir_v2_0_0) is assigned at dataset-build time.
+        encoderVersion := "1.4.0"
+        irVersion := "semantic_graph_ir_v1_4_0"
       }
     }
 

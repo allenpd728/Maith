@@ -183,7 +183,7 @@ candidate pool C:
 representation test, mirroring the DEC-027 B-small control that made H2's null
 interpretable. If A > B-small by a meaningful margin (define "meaningful" before
 running — suggest ≥2pp Recall@10 + non-overlapping bootstrap CIs), H6 is positive: the
-canonical semantic IR helps dependency retrieval where it did not help prediction. If
+canonical semantic graph IR helps dependency retrieval where it did not help prediction. If
 A ≈ B-small, H6 is negative: at this scale, canonicalization doesn't produce more
 useful retrieval embeddings than BPE, and the project's reachable evidence is a clean
 characterization (encodes semantics, doesn't beat BPE on prediction or retrieval at toy
