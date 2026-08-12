@@ -130,6 +130,7 @@ git push origin your-branch:kit/dev
 ## Conventions
 
 - **Decision log:** Append-only; format `### DEC-0XX` with Date, Status, Scope, Decision, Rationale
+- **Audit resolution:** When resolving an audit item in `docs/experiments/AUDIT_2026_08_10.md`, mark it `[RESOLVED <commit-sha>]` next to the heading (e.g., `### P0-2. ... [RESOLVED 73dfc18]`). Use the commit SHA, not a date — it's unique, orderable, and traces directly to the diff. The `manage.py` alias system checks for this marker before allowing experiments that depend on the audit item to launch.
 - **Negative-claim scoping:** Every "not a representation deficit" must carry "under prediction-family metrics at this scale"
 - **Grid axes:** Use "narrow-vocab" / "full-vocab" (not "small model" / "large model")
 - **H11:** Perplexity cannot be the sole arbiter; use semantic-task metrics as primary
@@ -140,4 +141,7 @@ git push origin your-branch:kit/dev
 - Don't use "small model" / "large model" for grid axes — both are toy-scale
 - Don't cite B/C numbers without the epoch-confound caveat
 - Don't conflate embedding-table size with transformer capacity
-- Don't run `extract_representations.py` for H6 — it has the input-variant bug (feeds IR tokens to all variants). Write a new extraction script using per-variant `input_ids` per `H6_RETRIEVAL_SCOPE.md` §4
+- Don't run `extract_representations.py` for H6 — it has the input-variant bug (feeds IR tokens to all variants). Use `python/extract_retrieval_embeddings.py` instead, which reads per-variant `input_ids` and has the invariant checker wired as a precondition
+- Don't use `train.py` directly — it's deprecated (no invariant checker, no manifest writes, no per-variant LR). Use `launch_run.py train` which calls `train_v2_resume.py` (the canonical script) with enforced preconditions
+- Don't run experiments without `check_invariants.py` passing first — it's wired into `extract_retrieval_embeddings.py` and `retrieval_eval.py` as an enforced precondition, and `launch_run.py` enforces it for training runs
+- Don't overwrite `datasets/` — use versioned dirs (`datasets_perop/`, `datasets_v{N}/`). See `docs/experiments/RUN_REGISTRY.md` contamination rules

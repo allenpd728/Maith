@@ -347,14 +347,23 @@ def check_comparison_validity(
 
     errors = []
     for field in spec["must_match"]:
-        values = {m.get(field) for m in manifests}
-        if len(values) > 1:
-            errors.append(f"{field} differs: {[m.get(field) for m in manifests]}")
+        values = [m.get(field) for m in manifests]
+        # Handle None gracefully (field may not exist in older results.json)
+        if None in values and len(set(v for v in values if v is not None)) > 1:
+            errors.append(f"{field} differs: {values}")
+        elif len(set(values)) > 1:
+            # Only flag if the values are actually different (not all None)
+            non_none = [v for v in values if v is not None]
+            if len(set(non_none)) > 1:
+                errors.append(f"{field} differs: {values}")
 
     for field in spec["must_differ"]:
         values = [m.get(field) for m in manifests]
-        if len(set(values)) == 1:
+        non_none = [v for v in values if v is not None]
+        if len(non_none) >= 2 and len(set(non_none)) == 1:
             errors.append(f"{field} identical across all ({values[0]}) — expected to differ")
+        elif len(non_none) < 2:
+            errors.append(f"{field} missing or None across all manifests — cannot verify difference")
 
     if errors:
         results.append(_report(f"comparison_{claim}", False, "; ".join(errors)))
@@ -407,6 +416,89 @@ def check_provenance_hash(datasets_dir: Path, variants: list[str] = None) -> lis
 
 
 # ---------------------------------------------------------------------------
+# Invariant 7: Corpus-format consistency (P0-2 fix — corpus format verified)
+# ---------------------------------------------------------------------------
+
+def check_corpus_format(datasets_dir: Path) -> list[dict]:
+    """Verify the corpus on disk matches the format the datasets claim.
+
+    The corpus has been overwritten before (KNOWN_ISSUES issue 3 / AUDIT P0-2):
+    a per-operator build overwrote the v2 module-mode corpus. This check
+    verifies the corpus token format matches what the dataset manifest claims,
+    so future rebuilds can't silently produce wrong-format datasets.
+
+    v2 module-mode: GEN_<AREA> bucket tokens, 0 gen:<FullName> tokens
+    per-operator mode: gen:<FullName> tokens, 0 GEN_<AREA> tokens
+    """
+    results = []
+    corpus_path = datasets_dir.parent / "Corpus" / "corpus.jsonl"
+
+    if not corpus_path.exists():
+        results.append(_report("corpus_format", False, f"corpus not found at {corpus_path}"))
+        return results
+
+    # Sample the first 100 records to determine corpus format
+    gen_named_count = 0
+    gen_bucket_count = 0
+    records_checked = 0
+    with open(corpus_path) as f:
+        for i, line in enumerate(f):
+            if i >= 100:
+                break
+            d = json.loads(line)
+            for t in d.get("tokens", []):
+                if isinstance(t, str):
+                    if t.startswith("gen:") and t not in ("gen:hof", "gen:proj"):
+                        gen_named_count += 1
+                    elif t.startswith("GEN_"):
+                        gen_bucket_count += 1
+            records_checked += 1
+
+    # Determine corpus format
+    if gen_named_count > 0 and gen_bucket_count == 0:
+        corpus_format = "per_operator"
+    elif gen_bucket_count > 0 and gen_named_count == 0:
+        corpus_format = "v2_module"
+    elif gen_named_count > 0 and gen_bucket_count > 0:
+        corpus_format = "mixed (CORRUPT)"
+    else:
+        corpus_format = "unknown"
+
+    # Check against the canonical dataset manifest
+    manifest_path = datasets_dir / "representation_manifest.json"
+    expected_format = "unknown"
+    if manifest_path.exists():
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+        rep_id = manifest.get("representation_id", "")
+        if "v2_0_0" in rep_id:
+            expected_format = "v2_module"
+        elif "v2_1" in rep_id or "perop" in rep_id:
+            expected_format = "per_operator"
+
+    if corpus_format == "mixed (CORRUPT)":
+        results.append(_report(
+            "corpus_format", False,
+            f"corpus has BOTH gen:FullName ({gen_named_count}) and GEN_ buckets "
+            f"({gen_bucket_count}) in first {records_checked} records — CORRUPT"
+        ))
+    elif expected_format != "unknown" and corpus_format != expected_format:
+        results.append(_report(
+            "corpus_format", False,
+            f"corpus is {corpus_format} but manifest claims {expected_format} "
+            f"({manifest_path}) — rebuild datasets from the correct corpus"
+        ))
+    else:
+        results.append(_report(
+            "corpus_format", True,
+            f"corpus is {corpus_format}, manifest expects {expected_format} "
+            f"(gen:FullName={gen_named_count}, GEN_={gen_bucket_count} in {records_checked} records)"
+        ))
+
+    return results
+
+
+# ---------------------------------------------------------------------------
 # Main: run all checks
 # ---------------------------------------------------------------------------
 
@@ -436,6 +528,40 @@ def run_all_checks(
 
     # Invariant 6: Provenance hash consistency
     all_results.extend(check_provenance_hash(datasets_dir, variants))
+
+    # Invariant 7: Corpus-format consistency
+    all_results.extend(check_corpus_format(datasets_dir))
+
+    # Invariant 5: Comparison validity (check all valid pairs from the grid)
+    # For each pair of variants with matching configs, verify the comparison
+    # is valid (epochs, seed, train/eval counts match where required)
+    comparison_pairs = []
+    results_by_variant = {}
+    for d in sorted(runs_dir.iterdir()):
+        if not d.is_dir() or not d.name.startswith("variant_"):
+            continue
+        rp = d / "results.json"
+        if not rp.exists():
+            continue
+        with open(rp) as f:
+            r = json.load(f)
+        v = r.get("variant", "")
+        if v in variants:
+            results_by_variant[v] = r
+
+    # Check A vs B_small (the primary comparison) if both exist
+    if "A" in results_by_variant and "B_small" in results_by_variant:
+        manifests = [results_by_variant["A"], results_by_variant["B_small"]]
+        all_results.extend(check_comparison_validity(
+            manifests, "representation_at_matched_size"
+        ))
+
+    # Check A vs flat (the DEC-024 ablation) if both exist
+    if "A" in results_by_variant and "flat" in results_by_variant:
+        manifests = [results_by_variant["A"], results_by_variant["flat"]]
+        all_results.extend(check_comparison_validity(
+            manifests, "ir_vs_flat_ablation"
+        ))
 
     return all_results
 
