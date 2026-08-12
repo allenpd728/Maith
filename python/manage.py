@@ -80,12 +80,13 @@ AUDIT_PRECONDITIONS = {
 # Helpers
 # ---------------------------------------------------------------------------
 
-def now_utc():
-    return datetime.now(timezone.utc)
+def now_local():
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York"))
 
 
 def now_str():
-    return now_utc().strftime("%Y-%m-%d %H:%M UTC")
+    return now_local().strftime("%Y-%m-%d %H:%M ET")
 
 
 def run_cmd(cmd, capture=True, cwd=None):
@@ -778,10 +779,20 @@ def cmd_watch(args):
     """Generate auto-refreshing HTML dashboard. Starts a background loop by default."""
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
 
-    if args.once:
+    def _write_dashboard():
         html = gen_dashboard_html()
-        DASHBOARD_PATH.write_text(html)
-        print(f"Dashboard snapshot written → {DASHBOARD_PATH}")
+        try:
+            DASHBOARD_PATH.write_text(html)
+            os.chmod(DASHBOARD_PATH, 0o664)
+            return True
+        except PermissionError:
+            print(f"ERROR: cannot write {DASHBOARD_PATH} (owned by another user).")
+            print("  Fix: sudo chmod 664 " + str(DASHBOARD_PATH))
+            return False
+
+    if args.once:
+        if _write_dashboard():
+            print(f"Dashboard snapshot written → {DASHBOARD_PATH}")
         return 0
 
     # Lockfile check — prevent duplicate loops
@@ -794,8 +805,8 @@ def cmd_watch(args):
         return 0
 
     # Generate first snapshot
-    html = gen_dashboard_html()
-    DASHBOARD_PATH.write_text(html)
+    if not _write_dashboard():
+        return 1
     print(f"Dashboard written → {DASHBOARD_PATH}")
     print()
 
@@ -837,7 +848,11 @@ def cmd_gen_html(args):
     """Internal: generate a single dashboard HTML snapshot (for the watch loop)."""
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
     html = gen_dashboard_html()
-    DASHBOARD_PATH.write_text(html)
+    try:
+        DASHBOARD_PATH.write_text(html)
+        os.chmod(DASHBOARD_PATH, 0o664)
+    except PermissionError:
+        pass
     return 0
 
 
