@@ -1733,3 +1733,36 @@ retrieval under next-token prediction.
 
 **See:** `docs/experiments/H6_RESULTS.md` for full results and confound acknowledgment.
 
+
+### DEC-031 — Comparison invariants invalidated: B_small and flat retrain pending (2026-08-12)
+
+**Date:** 2026-08-12
+**Status:** Active
+**Scope:** Pipeline quality gates, H2/H6 comparison validity
+
+**Decision:** Retrain B_small and flat on the clean 3375/376 split to resolve the
+comparison-validity invariant failures (Gate 5-G5-4).
+
+**Context:** The quality gate system (DEC-030 era, PIPELINE_QUALITY_GATES.md) identified
+three comparison-validity failures in the invariant checker:
+
+1. `comparison_representation_at_matched_size`: A (3375/376, 2ep) vs B_small (3491/388, 2ep) —
+   train_examples and eval_examples differ. B_small was trained on the old leaky split.
+2. `comparison_representation_at_matched_size` (A_v3): A_v3_2ep (3375/376, 2ep) vs B_small
+   (3491/388, 2ep) — same issue, different train/eval counts.
+3. `comparison_ir_vs_flat_ablation`: A (3375/376) vs flat (3627/402) — flat was trained on
+   a different split.
+
+**Resolution:** Retrain B_small and flat on the clean 3375/376 split at 2 epochs and
+max_seq_len=512 (matching A_v3_2ep). This makes all three variants comparable: same
+split, same epochs, same truncation.
+
+**max_seq_len decision:** 512 (not 1024). Rationale: A_v3_2ep was already trained at 512;
+switching to 1024 for B_small/flat would introduce a new truncation confound. G1-4 (330
+sequences exceeding 512) remains a known warning — it affects all variants equally and
+does not bias the comparison. A 1024 retrain of all variants is deferred unless results
+suggest truncation matters.
+
+**Pre-condition:** All quality gates must pass after retrain before any hypothesis test
+(H1-H14) runs. Sanity checks (S1, S2) must also pass first.
+
