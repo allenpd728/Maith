@@ -64,7 +64,15 @@ def check_g1_2_yield(args):
     total = stats.get("totalDeclarations", 0)
     success = stats.get("successfulExamples", 0)
     failures = stats.get("failureStats", {})
-    total_failures = sum(failures.values()) if isinstance(failures, dict) else 0
+    total_failures = 0
+    if isinstance(failures, dict):
+        for v in failures.values():
+            if isinstance(v, (int, float)):
+                total_failures += v
+            elif isinstance(v, list):
+                total_failures += len(v)
+    elif isinstance(failures, (int, float)):
+        total_failures = failures
     passed = (success == total and total_failures == 0)
     return _report("G1-2 yield", passed,
                     f"{success}/{total} successful, {total_failures} failures")
