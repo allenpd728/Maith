@@ -35,6 +35,25 @@
 | H9 | Would co-training (IR alongside source) recover gains where replacement didn't? | ⬜ | Co-training (IR alongside source) recovers gains where replacement didn't | PACT precedent (ICLR 2022, 32%→48%); design lesson in [`PRIOR_ART.md`](../reference/PRIOR_ART.md) §3, candidate in [`V2_NEXT_STEPS`](V2_NEXT_STEPS.md) §4. | Multi-objective training experiment (joint IR + source loss). |
 | H10 | Does the IR beat AST on semantic probing tasks beyond module classification? | ◐ | The IR beats AST specifically on semantic probing tasks | DEC-025 tested module classification only. Richer semantic probes untested. | Extended probing: typeclass arity, theorem-vs-definition, semantic category. |
 | H11 | Is perplexity a valid primary metric for evaluating semantic representations? | ◐ | Perplexity is a valid primary metric for evaluating semantic representations | **Partly closed.** Two components: (1) **Fundamental:** perplexity is structurally biased toward redundancy — canonicalization removes the surface variation that makes text predictable, so a canonical IR will always be less predictable than raw text. This is settled. (2) **Contingent:** v1's verbosity was structural noise (polarity tokens, IO markers — predictable but meaningless, ~40-50% of tokens per DEC-024), not semantic redundancy. v2 removed the noise but didn't add the *right kind* of redundancy (semantically meaningful + contextually predictable tokens). The current IR designs haven't tested whether a well-designed canonical form could partially narrow the perplexity gap. Evidence: DEC-024 (semantic content adds prediction difficulty) + DEC-025 (semantics encoded but not rewarded) + v1→v2 assessment ([EXPERIMENT_DESIGN](EXPERIMENT_DESIGN.md#v1--v2-ir-optimization-assessment)). See [prediction-metric bias analysis](EXPERIMENT_DESIGN.md#why-prediction-metrics-are-structurally-biased-toward-natural-language). | Core finding stands (perplexity cannot be the sole arbiter). But the design-quality component is open — a v3 IR with semantic redundancy (meaningful + predictable tokens) could partially narrow the gap. Test retrieval first; perplexity second. |
+| H12 | Does a graph-native architecture (GNN/GraphTransformer) outperform a sequence transformer on the same IR? | ⬜ | A graph-native model that consumes the IR's edges directly as message-passing paths will outperform a sequence transformer on the linearized IR, because algorithmic alignment reduces sample complexity (Xu et al., ICML 2021) | Not tested. All Maith experiments use sequence transformers (the misaligned case). The theory predicts the null is caused by architecture misalignment, not by the IR being wrong. **Partially answerable by reading:** Nazrin/ExprGraph (arXiv:2602.18767) is a Lean 4 GNN prover that operates on expression graphs. If it outperforms tactic-based sequence models on the same theorems, that's field evidence for H12 without implementation work. Read that paper first. | (1) Read Nazrin/ExprGraph results — if positive, partial answer. (2) Implement a GraphTransformer on Maith's IR graph and compare to the sequence transformer at matched capacity. |
+| H13 | Would a JEPA-style latent-prediction objective produce better representations than next-token prediction? | ⬜ | A latent-space prediction objective (predict in embedding space, not token space) will produce representations that support retrieval better than next-token prediction, even from the same IR and model (LeCun, 2022; I-JEPA, Assran et al., CVPR 2023) | Not tested. Refinement of H5 with a specific mechanism: JEPA theory predicts token-prediction quality ≠ representation quality, and latent prediction should close the gap. H5 stays open as the broad claim; H13 is the specific JEPA instantiation. | Implement a masked-latent-prediction loss (predict the embedding of masked IR sub-graphs, not the tokens) and compare retrieval/probing performance to next-token training. |
+
+> **H14 (footnote, not a row):** An operational IR (compact, regular, predictable — closer to LLVM IR's
+> design philosophy) would improve perplexity over Maith's semantic-graph IR, even if it sacrifices
+> some semantic content. This is not a new hypothesis — it's a validation of the existing theory (H11's
+> fundamental component: canonicalization removes redundancy → harder to predict). Building a less
+> canonical IR would just confirm that explanation. Tracked here as a footnote, not a research claim.
+
+## Infrastructure checks
+
+> These are not research hypotheses — they are gates that confirm the measurement pipeline is
+> functioning correctly. They live here so they are visible alongside the research claims, but they
+> are infrastructure validators, not sub-claims of the central hypothesis.
+
+| # | Check | Status | What it confirms |
+|---|---|---|---|
+| H-SANITY-1 | A randomly-initialized (untrained) model scores Recall@10 ≈ 0 on retrieval | ✅ | The retrieval eval is not trivially passing — it requires a trained model to score above zero. |
+| H-SANITY-2 | A model evaluated against its own training set scores Recall@10 near 1.0 | ✅ | The embedding extraction and ranking pipeline is functioning — when the answer is in the pool and the model has seen it, retrieval works. |
 
 ## How to read this grid
 
@@ -52,8 +71,13 @@
   secondary. See [EXPERIMENT_DESIGN evaluation framework](EXPERIMENT_DESIGN.md#evaluation-framework-the-correct-metrics-for-this-hypothesis).
 
 **What is open and tractable on current hardware (M4/16GB):**
-- H5 (objective redesign), H6 (retrieval/similarity), H9 (co-training), H10 (richer
-  probing). These are the live research front and should be prioritized over scale.
+- H5 (objective redesign), H9 (co-training), H10 (richer probing). These are the live
+  research front and should be prioritized over scale. H13 (JEPA objective) is a specific
+  refinement of H5 — both stay open; H13 is the mechanistic instantiation.
+
+**What is open and partially answerable by reading:**
+- H12 (architecture alignment) — Nazrin/ExprGraph (arXiv:2602.18767) may partially
+  answer this before any implementation work. Read first, then decide whether to build.
 
 **What is open and blocked on compute:**
 - H4 at scale (A-large), H7 (ATP eval — partially blocked; scaffold exists), H8 (scale
@@ -62,8 +86,8 @@
 **The key non-obvious point:** H2 being closed-negative does *not* close the central
 hypothesis. Perplexity measures predictability, not semantic utility (see H5's mechanism
 and [`PRIOR_ART.md`](../reference/PRIOR_ART.md) §4). The IR's value proposition lives in
-H6/H7/H10 — tasks where semantic structure, not token predictability, is what matters.
-Those are untested, not disproven.
+H6/H7/H10/H12/H13 — tasks where semantic structure, not token predictability, is what
+matters. Those are untested, not disproven.
 
 ## Relationship to the decision log
 
@@ -98,10 +122,11 @@ metric families, one corpus scale, four IR versions, and three domain families. 
 positive precedent (IRCoder) saw gains at 1B+ parameters and 4M examples — roughly 1,000x
 larger on data and 3x larger on model capacity than what's been tested here.
 
-**Priority for closing dimensions:** the most tractable untested cells are retrieval/similarity
-(metric dimension, H6) and objective redesign (objective dimension, H5) — both testable at
-current scale on current hardware. Model size and corpus scale are blocked on compute. IR
-version and domain are blocked on design work (C3 cross-check, corpus expansion).
+**Priority for closing dimensions:** the most tractable untested cells are objective
+redesign (H5/H13 — testable at current scale) and co-training (H9 — testable at current
+scale). Architecture alignment (H12) is partially answerable by reading Nazrin/ExprGraph
+before building. Model size and corpus scale are blocked on compute. IR version and domain
+are blocked on design work (C3 cross-check, corpus expansion).
 
 ## Update protocol
 
