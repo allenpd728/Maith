@@ -245,3 +245,59 @@ marked as unverified in the registry.
 | `docs/experiments/H6_RETRIEVAL_SCOPE.md` | H6 experiment spec |
 | `docs/experiments/H6_RETEST_PLAN.md` | H6 retest plan (triangulated verification) |
 | `docs/experiments/EXPERIMENT_PROCESS.md` | This document |
+| `python/manage.py` | Self-service control layer — status, results, aliases, dashboard |
+| `docs/experiments/MANAGE_PY_TENSORBOARD_SCOPE.md` | Design doc for manage.py + TensorBoard |
+
+---
+
+## `manage.py` — self-service control layer
+
+`launch_run.py` is the structured launcher; `manage.py` wraps it with a
+one-command, no-flags interface so the user can check status, see results, and
+trigger experiments without memorizing flag combinations. See
+[`MANAGE_PY_TENSORBOARD_SCOPE.md`](MANAGE_PY_TENSORBOARD_SCOPE.md) for the full
+spec.
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `manage.py status` | Show grid + running processes + latest results + what's needed |
+| `manage.py results` | Show H6 retrieval (both modes) + probing vs retrieval, with 95% CIs |
+| `manage.py grid` | Show the comparison matrix (valid vs confounded) |
+| `manage.py invariants` | Run the invariant checker (formatted pass/fail report) |
+| `manage.py logs <run_id>` | Tail a specific run's training.log (`--tail N` for one-shot) |
+| `manage.py train-av3-2ep` | Launch A v3 2-epoch retrain (pre-configured, guarded) |
+| `manage.py extract [variants]` | Extract embeddings (default: all) |
+| `manage.py eval [variants] [mode]` | Run H6 retrieval eval |
+| `manage.py watch` | Generate auto-refreshing HTML dashboard (`--once` for single snapshot) |
+| `manage.py watch --stop` | Stop the watch loop |
+
+### Guards on experiment aliases
+
+Every `train-*` alias enforces three preconditions before launching:
+
+1. **Audit precondition check** — verifies that required audit items (listed in
+   `AUDIT_PRECONDITIONS` inside `manage.py`) are marked `[RESOLVED <sha>]` in
+   `AUDIT_2026_08_10.md`. Blocks with a clear message if not resolved. Override
+   with `--skip-audit-check` (not recommended).
+2. **Corpus-provenance check** — verifies the dataset directory's
+   `representation_manifest.json` is consistent with the corpus format on disk
+   (guards against the corpus-overwrite bug). Override with
+   `--skip-provenance-check` (not recommended).
+3. **Invariant check** — runs `check_invariants.py` as a preflight. Blocks if
+   any invariant fails.
+
+### TensorBoard
+
+Training runs log `train/loss` and `eval/perplexity` to TensorBoard event files
+in `runs/{run_id}/tb/`. To visualize:
+
+```bash
+tensorboard --logdir runs/ --port 6006
+```
+
+Then open `http://localhost:6006` in a browser. For remote access, tunnel:
+```bash
+ssh -L 6006:localhost:6006 -i <key> -p <port> <user>@<host>
+```
