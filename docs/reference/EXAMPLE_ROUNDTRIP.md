@@ -263,6 +263,25 @@ Since `neg_neg` is already in canonical form (simple structure, no commutative o
 
 **Provenance: direct read from `Corpus/corpus.jsonl` `.tokens` field**
 
+> **Clarification (2026-08): what this stage shows vs. what training sees.** The
+> `.tokens` field in `corpus.jsonl` is **v1-style string tokens** emitted by the Lean-side
+> `Encoder.lean` (it includes `neut` polarity and `gen:<FullName>` operation tokens). The
+> example token sequence below is therefore a v1 trace, retained because it illustrates
+> the graph→tokens mapping clearly. The **v2 token stream** actually used for training
+> (C1 polarity removal, C2 typeclass short names, C4 GEN bucketing) and the
+> **token→integer mapping** are produced later, in `python/build_dataset.py`'s `encode_ir`
+> + `build_ir_vocab` (see [`CORPUS_SCHEMA.md`](CORPUS_SCHEMA.md) v2 note and the corrected
+> [architecture diagram](../../README.md#6-architecture)). The `Integer Reduction` block
+> immediately below describes that Python-side mapping, not a Lean-side step. What
+> `train.py` ultimately consumes is the integer `input_ids`/`labels` in
+> `datasets/train_*.jsonl` — it never sees the string tokens shown here.
+>
+> **Note on corpus format:** `Corpus/corpus_manifest.json` records `format: per_operator`
+> (the DEC-028 un-bucketed operator mode), which is newer than the v1 `.tokens` shown in
+> this walkthrough. The `neg_neg` example predates that rebuild and is retained for
+> continuity; a current `--per-operator` corpus rebuild would carry per-operator `op:`
+> tokens instead of `gen:InvolutiveNeg`. The graph→tokens *shape* is unchanged.
+
 ### What is Tokenization?
 
 Tokenization converts the graph into a sequence of tokens—a format suitable for transformer models. Each token represents a graph component.
@@ -328,6 +347,14 @@ The vocabulary file (`vocab_A.json`) maps common tokens to IDs. Dynamic tokens l
 ## Stage 6 — Round-Trip Verification
 
 **Provenance: live output of `validate_roundtrip.py`**
+
+> **Scope clarification (2026-08).** `validate_roundtrip.py` operates on the **v1-style
+> string `.tokens`** in `corpus.jsonl` (decode → re-encode → compare). It does **not**
+> verify the v2 integer pipeline (`build_dataset.py`'s `encode_ir` → `input_ids`), nor
+> does it verify Graph→Lean elaboration (see below). The 2,554/2,554 figure is the v1
+> string-token round-trip only. The v2 integer path has no dedicated round-trip test; its
+> correctness rests on `build_dataset.py`'s unit tests (`python/test_build_dataset.py`,
+> 14 tests) and the v1→v2 mapping being a pure function of `encode_ir`.
 
 ### What is Round-Trip Testing?
 
