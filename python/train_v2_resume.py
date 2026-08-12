@@ -414,7 +414,7 @@ class TensorBoardCallback(TrainerCallback):
 def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
          resume: bool = False, embed_pretrain: bool = False,
          embed_project: str = "", epochs_override: int = None,
-         lr_override: float = None) -> None:
+         lr_override: float = None, vocab_override: str = "") -> None:
     hf_set_seed(SEED)
     random.seed(SEED)
 
@@ -447,6 +447,10 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         # A and B_small both use a custom (truncated) vocab + resized embedding table.
         vocab_path = os.path.join(datasets_dir, f"vocab_{variant}.json") if variant in ("A", "B_small") else None
         expected_source = variant
+
+    # Allow an explicit vocab override (e.g., per-operator vocab_A_perop.json)
+    if vocab_override:
+        vocab_path = vocab_override
 
     assert os.path.exists(train_path), f"Missing: {train_path} — run build_dataset.py first"
     assert os.path.exists(eval_path),  f"Missing: {eval_path}"
@@ -764,6 +768,10 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=None,
                         help="Override the learning rate (default: 2e-4 for A/B_small/flat, "
                              "5e-5 for B/C). Used by launch_run.py to pass the configured LR.")
+    parser.add_argument("--vocab", type=str, default="",
+                        help="Override the vocab JSON file path (e.g., per-operator "
+                             "vocab_A_perop.json). By default the script looks for "
+                             "vocab_{variant}.json in the datasets directory.")
     args = parser.parse_args()
 
     # Default output goes directly into the Studio artifacts directory so Kit
@@ -778,4 +786,5 @@ if __name__ == "__main__":
 
     run(args.variant, args.datasets, out, args.smoke_test, resume=args.resume,
         embed_pretrain=args.embed_pretrain, embed_project=args.embed_project,
-        epochs_override=args.epochs, lr_override=args.lr)
+        epochs_override=args.epochs, lr_override=args.lr,
+        vocab_override=args.vocab)
