@@ -4,7 +4,7 @@ Normalizer.lean
 
 Canonical normalization for IR graphs.
 
-Ensures deterministic ordering and polarity propagation.
+Ensures deterministic ordering and structural consistency.
 
 -/
 
@@ -165,53 +165,11 @@ else EntityId.compare o1.output o2.output
 
 )
 
-/-- Normalize polarity: ensure all neutral entities propagate neutrality. -/
-
-def normalizePolarityEntity (e : Entity) : Entity :=
-
-match e.polarity with
-
-| Polarity.neut => { e with polarity := Polarity.neut }
-
-| _             => e
-
-/-- Normalize polarity for attributes. -/
-
-def normalizePolarityAttr (a : Attribute) : Attribute :=
-
-match a.polarity with
-
-| Polarity.neut => { a with polarity := Polarity.neut }
-
-| _             => a
-
-/-- Normalize polarity for relations. -/
-
-def normalizePolarityRel (r : Relation) : Relation :=
-
-match r.polarity with
-
-| Polarity.neut => { r with polarity := Polarity.neut }
-
-| _             => r
-
-/-- Normalize polarity for operations. -/
-
-def normalizePolarityOp (o : Operation) : Operation :=
-
-match o.polarity with
-
-| Polarity.neut => { o with polarity := Polarity.neut }
-
-| _             => o
-
 /--
 
 Normalize an entire graph:
 
 * canonical ordering
-
-* polarity normalization
 
 * structural consistency
 
@@ -219,13 +177,13 @@ Normalize an entire graph:
 
 def normalizeGraph (g : Graph) : Graph :=
 
-let ents := normalizeEntities (g.entities.map normalizePolarityEntity)
+let ents := normalizeEntities g.entities
 
-let attrs := normalizeAttributes (g.attributes.map normalizePolarityAttr)
+let attrs := normalizeAttributes g.attributes
 
-let rels := normalizeRelations (g.relations.map normalizePolarityRel)
+let rels := normalizeRelations g.relations
 
-let ops := normalizeOperations (g.operations.map normalizePolarityOp)
+let ops := normalizeOperations g.operations
 
 { entities := ents, attributes := attrs, relations := rels, operations := ops }
 

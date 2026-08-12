@@ -82,6 +82,11 @@ def build_ir_vocab(examples: list[dict], freq_threshold: int = GEN_UNK_THRESHOLD
         # in v2 (GEN_ALGEBRA, GEN_ORDER, etc.). Skip any residual gen:* entries.
         if tok.startswith("gen:"):
             continue
+        # per_operator mode: rare op:* tokens below frequency threshold are excluded
+        # (they'll be mapped to GEN_UNK in encode_ir). proj:* tokens are always kept
+        # (deterministic, low-count by nature — they encode field identity).
+        if tok.startswith("op:") and count < freq_threshold:
+            continue
         vocab[tok] = next_id
         next_id += 1
 
@@ -133,6 +138,9 @@ def encode_ir(tokens: list[str], vocab: dict[str, int], module: str = "") -> lis
     for tok in tokens:
         if tok in vocab:
             result.append(vocab[tok])
+        elif tok.startswith("op:"):
+            # per_operator token that fell below freq threshold → GEN_UNK
+            result.append(gen_unk_id)
         elif tok.startswith("gen:"):
             result.append(bucket_id)
         else:
@@ -185,6 +193,13 @@ def build_variant_A(examples: list[dict], vocab: dict[str, int], representation_
 
 
 def build_variant_B(examples: list[dict], tokenizer, representation_id: str) -> list[dict]:
+    """Variant B: raw leanExpr via Qwen BPE.
+
+    Note: tokenizer.encode(text) adds BOS/EOS by default (HuggingFace convention).
+    Variant C uses add_special_tokens=False per AST piece, so B and C differ in
+    special-token framing. This is intentional (B = "raw source as a model sees it",
+    C = "AST boundaries only") but is a known minor confound (DEC-029 #6).
+    """
     rows = []
     for ex in examples:
         text = ex.get("leanExpr", "")
@@ -274,8 +289,43 @@ def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str =
     # Filter pathological examples before splitting
     print("Filtering pathological examples ...")
     drop_log = os.path.join(out_dir, "filtered_dropped.json")
+    # Fall back to a writable location if the drop log isn't writable
+    can_write = True
+    if os.path.exists(drop_log):
+        if not os.access(drop_log, os.W_OK):
+            can_write = False
+    else:
+        try:
+            with open(drop_log, "w") as f:
+                f.write("")
+            os.remove(drop_log)
+        except (PermissionError, OSError):
+            can_write = False
+    if not can_write:
+        alt_dir = os.path.join(os.path.dirname(os.path.abspath(out_dir)), "runs")
+        os.makedirs(alt_dir, exist_ok=True)
+        drop_log = os.path.join(alt_dir, "filtered_dropped.json")
+        print(f"  (drop log not writable, using -> {drop_log})")
     examples = filter_examples(examples, TERM_MANY_FILTER_THRESHOLD, drop_log_path=drop_log)
     print()
+
+    # Deduplicate by example_id before splitting — the corpus contains exact
+    # duplicates (same declaration extracted more than once, e.g. from multiple
+    # import paths). Without dedup, a duplicate can land in both train and eval.
+    seen_ids = set()
+    deduped = []
+    dupes_removed = 0
+    for ex in examples:
+        eid = example_id(ex)
+        if eid in seen_ids:
+            dupes_removed += 1
+            continue
+        seen_ids.add(eid)
+        deduped.append(ex)
+    if dupes_removed:
+        print(f"Deduplication: removed {dupes_removed} duplicate example_ids "
+              f"({len(examples)} -> {len(deduped)})")
+    examples = deduped
 
     # Deterministic split — fixed seed, same split used for A, B, C
     random.seed(seed)
@@ -383,6 +433,17 @@ if __name__ == "__main__":
     parser.add_argument("--corpus", default="Corpus/corpus.jsonl")
     parser.add_argument("--out", default="datasets/")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--representation-id", default="semantic_graph_ir_v2_0_0")
+    parser.add_argument("--representation-id", default=None,
+                        help="IR version string. Auto-set from bucket-mode if not specified.")
+    parser.add_argument("--bucket-mode", choices=["module", "per_operator"],
+                        default="module",
+                        help="module = v2 GEN_* buckets (default); "
+                             "per_operator = op:<shortName> per distinct operator")
     args = parser.parse_args()
+    # Auto-set representation_id from bucket mode if not explicitly specified
+    if args.representation_id is None:
+        args.representation_id = (
+            "semantic_graph_ir_v2_0_0" if args.bucket_mode == "module"
+            else "semantic_graph_ir_v2_1_1"
+        )
     run(args.corpus, args.out, args.seed, args.representation_id)

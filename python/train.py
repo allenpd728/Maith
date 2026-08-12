@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 """
-train.py
+train.py  [DEPRECATED — use launch_run.py + train_v2_resume.py instead]
+
+This script is the older training entry point. It does not run the invariant
+checker, does not write manifests, and does not use lr_for_variant() (uses a
+flat LR for all variants). For new experiments, use:
+
+    python3 python/launch_run.py train --variant <V> --epochs <N> ...
+
+launch_run.py enforces the invariant checker as a precondition, writes
+manifests, and calls train_v2_resume.py (the canonical training script).
+
+This script is kept for backward compatibility with existing run commands
+documented in README.md and older docs. If you must use it, be aware that
+it bypasses all pipeline-hardening guards.
 
 Fine-tune Qwen2.5-Coder-0.5B on one of the A/B/C dataset variants and report
 perplexity on the eval split. Run three times (once per variant) with identical
@@ -370,8 +383,8 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         print("  or --embed-pretrain for embedding-only pretraining, not both.")
         sys.exit(1)
 
-    device = "mps" if torch.backends.mps.is_available() else \
-             "cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else \
+             "mps" if torch.backends.mps.is_available() else "cpu"
     print(f"Device: {device}")
     print(f"Variant: {variant}")
     if embed_project:
@@ -620,6 +633,9 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         "smoke_test": smoke_test,
         "embed_pretrain": embed_pretrain,
         "embed_project": embed_project,
+        "learning_rate": LEARNING_RATE,
+        "effective_batch_size": BATCH_SIZE * GRAD_ACCUM,
+        "max_seq_len": MAX_SEQ_LEN,
     }
     if embed_pretrain and not smoke_test:
         results["embed_pretrain_eval_ppl"] = round(embed_ppl, 4)

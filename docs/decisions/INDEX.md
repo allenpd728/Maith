@@ -94,6 +94,8 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | **DEC-025** | ✅ Complete — A encodes semantics. Linear probe: Variant A 75.4% vs Flat-IR 13.6% (62pp gap) on 11-class module prediction. Semantic content is linearly decodable; higher perplexity is task-difficulty, not failure to learn. Triggers v2 IR + corpus expansion. |
 | **DEC-026** | IR v2 compression gate PARTIAL → implementation. C1+C2 partial run = 1.2458 (beats DEC-021 baseline 1.2978). C4 (GEN module bucketing) was missing from the dataset (encode_ir mapped all gen:* → GEN_UNK); fixed (commit `f194027`), datasets rebuilt (GEN_UNK → 0). Full C1+C2+C4 re-run in progress; gate = improvement over 1.2458 and ultimately over B/C baselines. See `docs/scratch/v2_token_analysis.md`. |
 | **DEC-027** | ✅ Complete — B-small control. B-small (BPE, 358M, 601-vocab) = 90.5% top-1 / 1.1294 ppl, essentially tied with A (90.0% / 1.2361). Size explains the A-vs-B/C gap; the v2 IR is not yet doing measurable work *under prediction metrics* beyond small-vocab BPE at this scale. Non-prediction metrics (retrieval, ATP) open (H6/H7). Next levers: corpus expansion, objective redesign, IR pretraining, retrieval eval. See `docs/experiments/V2_COMPARISON_MATRIX.md`. |
+| **DEC-028** | ⬜ Accepted — C4 GEN bucketing identified as a competing explanation for the perplexity null. C4 collapses operator identity into ~20 GEN_* tokens, making the IR more lossy than BPE on operator identity. Experiment: `per_operator` mode (un-bucketed) vs current `module` mode. Decisive test of whether H2's null is representation-intrinsic or a C4 artifact. |
+| **DEC-029** | ⬜ Accepted — Code review findings (6 items): C4 bucketing (DEC-028), proof terms skipped (doc fix), polarity no-ops (code fix), device priority bug (code fix), asymmetric init framing (already addressed), B/C special-token inconsistency (doc fix). |
 
 ---
 
@@ -110,6 +112,8 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | Can the IR beat the AST (Variant C)? | **Open (size-confounded)** — v2 A=90.0% vs B=91.7% / C=93.0%, but DEC-027 B-small (90.5% at matched params) shows the gap is a size effect, not a representation deficit *under prediction-family metrics at this scale*. IR not yet doing measurable work *under prediction metrics* over small-vocab BPE; non-prediction metrics (retrieval, ATP) untested (H6/H7). Next: corpus expansion, objective redesign, retrieval eval. |
 | Does Variant A encode semantic content in its representations? | **Closed** — DEC-025: yes, 62pp probe gap vs Flat-IR. Under prediction metrics, bottleneck appears to be data/objective; under non-prediction metrics, untested (H6/H7). |
 | Is Phase 8 validation complete? | **Yes** — 8a, 8a-ii, 8b, 8c, 8d all complete as of 2026-08-05 |
+| Is C4 operator bucketing a confound? | **Open (DEC-028)** — C4 collapses operator identity into ~20 GEN_* tokens. May partly explain the perplexity null. `per_operator` experiment designed but not run. |
+| Can the IR support ATP eval as built? | **No (DEC-029)** — the IR extracts statement types only, not proof terms. ATP/proof-search eval (H7) requires a proof-term extraction mode that does not exist. Retrieval eval (H6) is not blocked. |
 
 ---
 

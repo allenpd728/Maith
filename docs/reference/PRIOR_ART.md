@@ -9,12 +9,19 @@
 
 Recent progress in neural theorem proving has focused on two levers: model scale and data
 quantity (e.g. ReProver's ~99K theorems, LeanNavigator's 4.7M, DeepSeek-Prover's RL
-training). **In formal mathematics / theorem proving, everyone trains on
-source/tactics/state and scales data. Maith is the only project systematically testing
-whether the *representation* (a canonical semantic IR vs. raw source) is the bottleneck.**
-(IRCoder and FAIR test the same hypothesis in the *programming-language* domain — see
-§2 — and find it holds; Maith tests it for formal math and finds it does not hold at this
-scale.) That is the gap this project fills, and the experimental record to date is a
+training). Representation-as-a-variable has been studied in formal math, but along a
+narrower axis: prior work tests **structural-format variants** of a given representation
+(tree-with-names vs. graph-without-names; text-only vs. dependency-graph) on
+retrieval/premise-selection tasks (Wang et al., 2017; Paliwal et al., 2020; the 2025
+textual+structural Lean premise-selection work — see §3). **Maith tests something narrower
+and different: whether a *canonical semantic IR extracted from elaborated Lean `Expr`*** —
+a representation that resolves implicits, canonicalizes ordering, and exposes
+declaration-level semantics — improves *prediction* and *retrieval* over a raw BPE
+baseline, with size-matched controls. The closest analogues test format variants, not
+elaboration-grounded semantic canonicalization, and they do so on retrieval, not
+prediction. (IRCoder and FAIR test the same thesis in the *programming-language* domain —
+see §2 — and find it holds; Maith tests it for formal math and finds it does not hold at
+this scale.) That is the gap this project fills, and the experimental record to date is a
 nuanced negative result. Across the full control grid (DEC-026/027), a
 semantic IR extracted from elaborated Lean terms *encodes* semantics (DEC-025: 75.4%
 linear-probe module-classification accuracy vs. 13.6% for a shape-only ablation, a 62-point
@@ -113,9 +120,43 @@ the representation-research complement to it.
 - **Lean Copilot** (Song et al., 2024). Human-in-the-loop LLM proof assistance.
 - **Lean Workbook** (arXiv:2406.03847, 2024). Synthetic NL↔Lean formalization pipeline.
 
-The pattern across this literature: scale data and models, keep the representation as
-source/tactics/state. Maith is the systematic test of the representation variable that
-this literature leaves unexamined.
+### Representation-as-a-variable in formal math — the closest lineage to Maith
+
+The above systems keep the representation as source/tactics/state. A separate, smaller
+lineage *does* vary the representation and measure the effect — and it is the closest
+prior art to Maith's representation comparison. None of it, however, tests
+elaboration-grounded canonical semantic IR vs. raw BPE, which is Maith's specific
+contribution.
+
+- **Wang et al., "Premise Selection for Theorem Proving by Deep Graph Embedding"
+  (NeurIPS 2017; arXiv:1709.09994).** Builds a graph representation of first-order
+  formulas and runs an ablation comparing representation variants — tree-with-names vs.
+  graph-without-names vs. their full FormulaNet graph — on premise selection. This is a
+  controlled test of representation structuring in formal math, on a retrieval task. It
+  is the same *shape* of experiment as Maith's A/B/C comparison; the differences are
+  domain (first-order ATP, not Lean), representations tested (format variants, not
+  elaboration-grounded semantic IR), and task (retrieval, not prediction). Maith's §1
+  claim is narrowed against this work, not against the source/tactics systems above.
+- **Paliwal et al., "Graph Representations for Higher-Order Logic and Theorem Proving"
+  (AAAI 2020).** Graph neural networks over HOL Light expression graphs for proof
+  search; structure-aware beats non-structured representations, with subexpression
+  sharing. Representation-as-a-variable in higher-order logic, in a different proof
+  assistant.
+- **"Combining Textual and Structural Information for Premise Selection in Lean" (2025;
+  arXiv:2510.23637).** Adds an RGCN over the inter-theorem dependency graph to
+  ReProver's ByT5 text embeddings, comparing text-only vs. text+structure for premise
+  retrieval in Lean 4. The closest Lean-specific representation comparison: it tests
+  *adding* structural edges to text embeddings, where Maith tests *replacing* text with a
+  canonical semantic IR. Also a retrieval task, not a prediction task.
+- **Crouse et al., "Improving GNN Representations of Logical Formulae with Subgraph
+  Pooling" (DLG-KDD 2020).** GNN representations of logical formulae for premise
+  selection; an adjacent representation-design study in the same task family.
+
+The pattern across this literature: representation-as-a-variable *has* been tested in
+formal math, on retrieval/premise-selection, with structural-format variants. What remains
+unexamined by this lineage is elaboration-grounded canonical semantic IR vs. raw BPE,
+under prediction metrics, with size-matched controls — which is the specific corner Maith
+occupies.
 
 ## 4. JEPA and the tokens-vs-representation debate — Maith's results are evidence here
 
@@ -213,9 +254,15 @@ Despite the convergences above, two things are genuinely Maith's own:
 2. **Math-domain IR designed from elaborated terms.** Code-IR work uses existing compiler
    IRs (LLVM). Lean-prover work uses source. Maith designs a *new* semantic IR extracted
    from the elaborator's ground-truth semantics (`MetaExtractor.lean` over elaborated
-   `Expr`) — the "elaborator as oracle" move. No prior art does exactly this for Lean.
-   AMR performs the analogous extraction for natural language, but via manual annotation
-   rather than an oracle.
+   `Expr`) — the "elaborator as oracle" move. The extraction-source move is *shared* with
+   PACT (§3), which extracts self-supervised signal from kernel-level proof terms in Lean;
+   what is Maith's own is the representation design — a canonical semantic IR with
+   normalized entity/relation/operation structure — and the *replacement* of source with
+   that IR, rather than PACT's co-training. The representation-comparison lineage (Wang et
+   al., Paliwal et al., the 2025 Lean graph-retrieval work) varies *format* of a
+   representation; Maith varies the *source* of the representation (elaborated semantics)
+   and canonicalizes it. AMR performs the analogous extraction for natural language, but
+   via manual annotation rather than an oracle.
 
 A note on what is *not* claimed here: the controlled experiments that make Maith's null
 result interpretable (DEC-021 isolating cold-start, DEC-027 isolating model size) are
@@ -236,6 +283,11 @@ not a research contribution, and is not claimed as novelty.
   prediction does not reward it. Whether a masked-reconstruction or proof-completion
   objective would recover an IR advantage is untested and is the most direct next lever
   flagged by the experimental record.
+- **Model architecture.** The IR is a graph; the model is a sequence transformer. The
+  linearization (graph → token stream) is a lossy step that forces the transformer to
+  reconstruct graph structure from positional patterns. A GNN or GraphTransformer would
+  consume the graph directly, with IR edges as message-passing paths. Architecture
+  alignment is an untested dimension — see §9.
 - **Co-training vs. replacement.** PACT co-trains structural signal alongside source and
   gains; Maith replaces source with IR and does not. Whether a co-training design would
   recover IRCoder-style gains for Maith's IR is untested.
@@ -246,8 +298,120 @@ not a research contribution, and is not claimed as novelty.
   and probing. The downstream claim — better theorem prediction, proof search, proof
   completion — requires the theorem-proving evaluation scaffolded in
   [`docs/history/PHASE_7_ROADMAP.md`](../history/PHASE_7_ROADMAP.md) but not yet run.
+- **Retrieval on the canonical semantic IR specifically.** Representation has been tested
+  on retrieval/premise-selection in formal math — but with structural-format variants
+  (Wang et al., 2017; Paliwal et al., 2020; the 2025 Lean graph-retrieval work, §3), not
+  with an elaboration-grounded canonical semantic IR vs. raw BPE. Whether Maith's IR
+  improves *dependency/premise retrieval* over BPE at Maith's scale is the untested cell
+  most aligned with where the field's positive results live (ReProver's wins are on
+  retrieval, not perplexity). This is the [`HYPOTHESIS_GRID`](../experiments/HYPOTHESIS_GRID.md)
+  H6 cell, unrun.
 
-## 8. References
+## 8. Theoretical grounding: algorithmic alignment and disentanglement
+
+Maith's central hypothesis — that a canonical semantic representation improves learning —
+connects to two established research traditions that, taken together, explain both why the
+hypothesis is theoretically sound and why the experimental null (DEC-027) is expected under
+the current conditions.
+
+### Algorithmic alignment (Xu et al., ICML 2021)
+
+Xu et al. proved that a neural network learns a target reasoning task with lower sample
+complexity when its architecture's modules correspond to the target algorithm's subroutines.
+They demonstrated this with GNNs aligning with Bellman-Ford (shortest path): GNN
+message-passing mirrors the dynamic programming update, so the network only has to learn
+simple linear functions, and it extrapolates. The theorem: better alignment ⇒ lower sample
+complexity ⇒ better generalization, including out-of-distribution.
+
+This is the closest formal statement to "a representation isomorphic to the generative
+process makes learning easy" — except it's about the *architecture* mirroring the
+*algorithm*, not the *input representation* mirroring the *generative process*. Same
+principle, applied at a different layer of the stack.
+
+### Disentangled representation learning (Bengio et al., 2013)
+
+Bengio et al. defined a good representation as one that makes the explanatory factors of
+variation in the data explicit and independent. "Factors of variation" *is* the generative
+process — the latent variables that, when combined, produce the observed data. So
+"disentangle the factors of variation" is literally "make the representation isomorphic to
+the generative process."
+
+### The impossibility result (Locatello et al., NeurIPS 2019)
+
+Locatello et al. proved that **without inductive biases, unsupervised disentanglement is
+impossible** — provably, not just hard. Multiple generative processes can produce identical
+observed data, so no representation learned only from data can be guaranteed to recover the
+true factors. They showed empirically that across thousands of models and six benchmark
+datasets, none reliably disentangled without explicit inductive bias.
+
+This is the dark twin of the principle: the generative process is real, but *recovering it
+from data alone is not guaranteed to be possible.*
+
+### Why Maith sidesteps the impossibility result
+
+**Formal mathematics is one of the few domains where the generative process is actually
+known.** The generative process of a Lean theorem is the elaborator's construction of the
+`Expr` tree — typeclass resolution, implicit insertion, binder scoping, notation expansion.
+That's not ambiguous the way "what factors generated this face" is ambiguous. Maith has
+ground-truth access to the generative process via Lean's elaborated environment. It extracts
+from `Expr`, not from surface syntax.
+
+This means the disentanglement impossibility result **doesn't apply** to Maith's domain.
+The impossibility is about *recovering* the process from data — Maith doesn't have to
+recover it; the elaborator provides it for free. What remains is the *other* limitation:
+even with the generative process exposed, the model has to be able to exploit it.
+
+### The alignment-fragility barrier (where Maith's null is predicted by theory)
+
+Follow-up work on algorithmic alignment (Veličković & Dudzik, NeurIPS 2022 — "Graph Neural
+Networks are Dynamic Programmers") found that alignment is fragile: even in the cleanest
+alignment settings, GNNs "overfit to clever hacks and sidestep the actual procedure," and
+OOD generalization requires *additional* careful inductive biases beyond just architecture
+alignment. Alignment is necessary but not sufficient.
+
+**This is exactly the barrier Maith's experimental record shows.** Maith has cleared the
+impossible hurdle (the elaborator provides the generative process) and hit the possible-but-
+hard one (getting a small model under a biased objective to exploit exposed structure).
+The null result (DEC-027: IR doesn't improve prediction at toy scale) is *predicted by the
+theory*: alignment is fragile, especially when:
+
+1. **Architecture is misaligned:** the IR is a graph; the model is a sequence transformer.
+   The linearization forces the model to reconstruct graph structure from positional
+   patterns — an expensive inference the theory says should be fragile.
+2. **Objective is misaligned:** next-token prediction rewards surface predictability, not
+   semantic structure. The objective doesn't reward the isomorphism the IR provides.
+3. **Capacity is insufficient:** at 358M, the model is capacity-bound on structural
+   scaffolding (DEC-024) before it can fully exploit semantic content.
+
+### What the theory predicts would work
+
+The principle predicts that the IR should help under conditions where the alignment
+barriers are addressed:
+
+- **Graph architecture** (GNN/GraphTransformer on the IR's edges) — consumes the graph
+  directly, with edges as message-passing paths. No linearization loss.
+- **Reconstruction objective** mirroring the elaborator's term-building process — rewards
+  understanding the generative structure, not predicting surface tokens.
+- **Sufficient capacity** (1B+) — enough to learn both structural scaffolding and semantic
+  content (addresses DEC-024's capacity-bound finding).
+- **Semantic-task evaluation** (retrieval, ATP) — measures whether the exposed structure
+  translates to task advantage, which is what the isomorphism is designed to provide.
+
+Each of these is an experiment in Maith's open research front (H5, H6, H7, H8). The theory
+predicts they are the conditions under which the principle should hold — and that the
+current null (misaligned conditions) doesn't refute the principle, it confirms the theory's
+prediction about what happens under misalignment.
+
+### Implication for the experiment-scope matrix
+
+The experiment-scope matrix in
+[`HYPOTHESIS_GRID`](../experiments/HYPOTHESIS_GRID.md) is missing a dimension: **model
+architecture** (sequence vs. graph). The current experiments all use sequence transformers,
+which is the misaligned case. A graph-native architecture is the aligned case, and the
+theory predicts it should be where the IR's advantage appears. This dimension should be
+added to the matrix and tracked as an open experimental question.
+
+## 9. References
 
 - Assran, M., Duval, Q., Misra, I., Bojanowski, P., Vincent, P., Rabbat, M., LeCun, Y., &
   Ballas, N. (2023). Self-Supervised Learning from Images with a Joint-Embedding Predictive
@@ -256,6 +420,11 @@ not a research contribution, and is not claimed as novelty.
   *Parsing na Noite da Lua*.
 - Bardes, A., et al. (2024). V-JEPA: Latent Video Prediction for Visual Representation
   Learning. *ICLR 2024*.
+- "Combining Textual and Structural Information for Premise Selection in Lean."
+  arXiv:2510.23637 (2025).
+- Crouse, M., Abdelaziz, I., Cornelio, C., Thost, V., Wu, L., Forbus, K., Fokoue, A.
+  (2020). Improving Graph Neural Network Representations of Logical Formulae with
+  Subgraph Pooling. *DLG-KDD 2020*.
 - Cummins, C., et al. (2024). Meta Large Language Model Compiler.
 - Gong, L., Elhoushi, M., & Cheung, A. (2024). AST-T5: Structure-Aware Pretraining for
   Code Generation and Understanding. arXiv:2401.03003.
@@ -265,6 +434,8 @@ not a research contribution, and is not claimed as novelty.
   Interlingua Representations for Zero-shot Neural Machine Translation. *Multi3Generation*.
 - Niu, Y., et al. (2023). FAIR: Flow Type-Aware Pre-Training of Compiler Intermediate
   Representations. arXiv:2309.04828.
+- Paliwal, A., Loos, S., Rabe, M., Bansal, K., & Szegedy, C. (2020). Graph Representations
+  for Higher-Order Logic and Theorem Proving. *AAAI 2020*.
 - Paul, I., Glavaš, G., & Gurevych, I. (2024). IRCoder: Intermediate Representations Make
   Language Models Robust Multilingual Code Generators. *ACL 2024*. arXiv:2403.03894.
   (SLTrans dataset.)
@@ -275,6 +446,8 @@ not a research contribution, and is not claimed as novelty.
 - Song, P., Yang, K., & Anandkumar, A. (2024). Lean Copilot: Large Language Models as
   Copilots for Theorem Proving in Lean. arXiv:2404.12534.
 - VenkataKeerthy, S., et al. (2020). IR2Vec: LLVM IR Based Program Embeddings.
+- Wang, M., Tang, Y., Wang, J., & Deng, J. (2017). Premise Selection for Theorem Proving by
+  Deep Graph Embedding. *NeurIPS 2017*. arXiv:1709.09994.
 - Xin, H., et al. (2024). DeepSeek-Prover: Advancing Theorem Proving via Large Language
   Models. (V2: arXiv:2504.21801, 2025.)
 - Yang, K., Sui, Y., He, N., & Anandkumar, A. (2023). LeanDojo: Theorem Proving with
@@ -284,3 +457,11 @@ not a research contribution, and is not claimed as novelty.
 - "From Tokens to States: LLMs as a Special Case of World Models and the Continuous Path
   Beyond." arXiv:2606.28127 (2026).
 - Survey of Abstract Meaning Representation: Then, Now, Future. arXiv:2505.03229 (2025).
+- Xu, K., Hu, W., Leskovec, J., & Jegelka, S. (2021). How Neural Networks Extrapolate:
+  From Feedforward to Graph Neural Networks. *ICML 2021*.
+- Bengio, Y., Courville, A., & Vincent, P. (2013). Representation Learning: A Review and
+  New Perspectives. *IEEE TPAMI*.
+- Locatello, F., et al. (2019). Challenging Common Assumptions in the Unsupervised Learning
+  of Disentangled Representations. *NeurIPS 2019*.
+- Veličković, P., & Dudzik, W. (2022). Graph Neural Networks are Dynamic Programmers.
+  *NeurIPS 2022*.

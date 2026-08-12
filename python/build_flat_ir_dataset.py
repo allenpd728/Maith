@@ -88,11 +88,27 @@ def make_labels(ids: list[int]) -> list[int]:
 # ---------------------------------------------------------------------------
 
 def split_examples(examples: list[dict], eval_frac: float = 0.1, seed: int = 42):
+    """Split into (train, eval). Must match build_dataset.py's split order exactly:
+    train = shuffled[:split] (first 90%), eval = shuffled[split:] (last 10%).
+    Previously this was inverted (train=last 90%, eval=first 10%), producing
+    a different split from A/B/C — the root cause of issue 2 in KNOWN_ISSUES.md.
+    """
     rng = random.Random(seed)
-    shuffled = examples[:]
+    # Deduplicate by example_id before splitting — same fix as build_dataset.py
+    seen_ids = set()
+    deduped = []
+    for ex in examples:
+        eid = example_id(ex)
+        if eid in seen_ids:
+            continue
+        seen_ids.add(eid)
+        deduped.append(ex)
+    if len(deduped) < len(examples):
+        print(f"  Deduplication: {len(examples)} -> {len(deduped)} (removed {len(examples) - len(deduped)} duplicates)")
+    shuffled = deduped[:]
     rng.shuffle(shuffled)
-    n_eval = max(1, int(len(shuffled) * eval_frac))
-    return shuffled[n_eval:], shuffled[:n_eval]
+    split = int(len(shuffled) * (1 - eval_frac))
+    return shuffled[:split], shuffled[split:]
 
 
 def example_id(ex: dict) -> str:
@@ -112,6 +128,18 @@ def run(corpus_path: str, out_dir: str, seed: int = 42) -> None:
     with open(corpus_path) as f:
         examples = [json.loads(l) for l in f]
     print(f"  {len(examples)} examples loaded")
+
+    # Filter pathological examples — must match build_dataset.py's filter
+    # exactly so the split is identical across all variants
+    TERM_MANY_THRESHOLD = 50
+    filtered = []
+    for ex in examples:
+        count = ex.get("tokens", []).count("TERM_MANY")
+        if count <= TERM_MANY_THRESHOLD:
+            filtered.append(ex)
+    if len(filtered) < len(examples):
+        print(f"  Filter (TERM_MANY > {TERM_MANY_THRESHOLD}): {len(examples)} -> {len(filtered)}")
+    examples = filtered
 
     train_examples, eval_examples = split_examples(examples, seed=seed)
     print(f"  Split: {len(train_examples)} train / {len(eval_examples)} eval")

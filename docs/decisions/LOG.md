@@ -1579,3 +1579,138 @@ semantic content, 62pp probe gap), the picture is:
   for the B-small cell).
 - `docs/experiments/V2_NEXT_STEPS.md` — merge-to-main checklist.
 - DEC-025 (A encodes semantics), DEC-026 (v2 IR implementation + A/B/C results).
+
+
+---
+
+### DEC-028 — Operator identity collapse: C4 GEN bucketing as a competing explanation for the perplexity null
+
+**Date:** 2026-08-09
+**Status:** Accepted — confound identified, experiment designed, not yet run.
+
+#### Background
+
+C4 (GEN module bucketing, part of v2) collapses all operators within a Mathlib namespace
+into a single `GEN_<area>` token (e.g., `GEN_ALGEBRA` for all algebraic operators). Only
+~12 operators have special-cased distinct tokens (`Eq`, `LT.lt`, `HAdd`, `HMul`, etc.).
+All other operators — `mul_comm`, `mul_left_cancel`, `isUnit`, and dozens of others — map
+to the same token regardless of their semantic identity.
+
+#### The competing explanation
+
+DEC-027 concluded that the IR "is not yet doing measurable work under prediction metrics"
+beyond size-matched BPE. The README and HYPOTHESIS_GRID attribute this to an objective
+mismatch (H5/H11) — next-token prediction rewards predictability, not semantic utility.
+
+C4 bucketing is a competing explanation that is not addressed by the current evidence:
+the IR may underperform BPE on prediction not because canonicalization is inherently less
+predictable, but because C4 specifically *removes operator identity* — a structural detail
+that next-token prediction rewards. BPE at least produces different subword sequences for
+`mul_comm` vs `mul_left_cancel`; the IR produces the identical `GEN_ALGEBRA` token for both.
+
+This means the perplexity null (H2) may be partly a C4 design artifact, not solely a
+prediction-metric limitation. It also affects H11's "contingent" component: the bias isn't
+just "v2 didn't add semantic redundancy" — it's "v2 actively removed operator identity via
+bucketing," which is a more specific and actionable diagnosis.
+
+#### What this does NOT overturn
+
+- H1 (IR encodes semantics) stands — DEC-025's probing gap (62pp) was measured on v2
+  representations *with* bucketing, so the model extracts semantic signal despite it
+  (via graph structure, entity IDs, typeclass attributes, and the ~12 special-cased ops).
+- H2 (IR doesn't improve prediction) stands *for the v2 IR as designed* — the null is
+  real for this specific representation. The open question is whether it generalizes to
+  an un-bucketed IR.
+- H11's fundamental component (canonicalization removes surface variation) stands. The
+  contingent component is now more specific: C4 bucketing is an identified contributor.
+
+#### Experiment to resolve
+
+Add a `bucket_mode` flag to `MetaExtractor` / `encode_ir` with two modes:
+- `module` (current behavior — ~20 GEN buckets)
+- `per_operator` — emit the actual short operator name (`gen:mul_comm`, `gen:isUnit`),
+  assign distinct IDs via the vocab builder with a frequency threshold (`GEN_UNK` for
+  singletons) to bound vocab growth.
+
+Re-run the A-vs-B-small comparison with `per_operator`. This is the decisive test:
+- If A still ties B-small → the objective-mismatch interpretation is strengthened; the
+  null is not a bucketing artifact.
+- If A beats B-small → the prior null was a C4 artifact; the headline result changes.
+
+#### Impact on H11
+
+H11's "contingent" component is updated: the bias is partly attributable to a specific
+design decision (C4 bucketing), not just a general "v2 didn't add semantic redundancy."
+This makes the contingent component more actionable — the fix is specific (per_operator
+mode), not vague ("design better tokens").
+
+#### References
+
+- DEC-026 (C4 implementation), DEC-027 (B-small result), DEC-024 (flat-IR ablation)
+- `docs/experiments/HYPOTHESIS_GRID.md` — H2, H11
+- `docs/experiments/EXPERIMENT_DESIGN.md` — v1→v2 IR optimization assessment
+
+---
+
+### DEC-029 — Code review findings: trivial fixes and doc corrections
+
+**Date:** 2026-08-09
+**Status:** Accepted — six findings from code review; three doc fixes to apply, two trivial
+code fixes to apply, one already addressed.
+
+#### Findings
+
+**1. Operator identity collapse (C4 bucketing) — see DEC-028.**
+The most important finding. Code + experiment needed.
+
+**2. Proof terms skipped — the IR is a statement representation, not a proof representation.**
+`constantValueExpr?` returns `none` for `.thmInfo`, so only statement types are extracted.
+The README's "ATP success rate — ❌ not started" implies ATP eval is just a harness away;
+it actually requires a proof-term extraction mode that does not exist.
+
+**Doc fix:** Make explicit that the current IR is a *statement* representation and that
+ATP/proof-search evaluation (H7) requires a proof-term extraction mode. Retrieval
+evaluation (H6) does not need proof terms and is not blocked.
+
+**3. Vestigial polarity no-ops in Normalizer.**
+`normalizePolarityEntity/Attr/Rel/Op` are dead code from C1 (polarity removal). Pure cruft.
+
+**Code fix:** Delete the four functions and their `.map` calls in `normalizeGraph`. Run
+Lean tests to confirm nothing depended on them. ~15 min.
+
+**4. Device priority bug in train.py.**
+`mps` is checked before `cuda`, so on a machine with both, the slower MPS is selected.
+
+**Code fix:** Reorder to `cuda → mps → cpu`. One line.
+
+**5. Asymmetric init + MPS non-determinism framing — mostly addressed.**
+The A-vs-B/C gap conflates representation, params, init, and run-to-run noise. The clean
+test (A-vs-B-small, DEC-027) already exists and is presented as the primary result in the
+README banner and HYPOTHESIS_GRID. The MPS non-determinism (DEC-013) is real but the
+perplexity gap (1.2361 vs 1.1294) is large enough that it's unlikely to be noise.
+
+**Status:** Already addressed in the current doc framing. A deterministic rerun is worth
+doing before publishing any positive result, but not for the current null.
+
+**6. B/C special-token inconsistency.**
+Variant B adds BOS/EOS by default; C uses `add_special_tokens=False` per AST piece.
+Undocumented difference, minor confound.
+
+**Doc fix:** Add one line to variant definitions noting the special-token difference.
+
+#### Summary
+
+| # | Finding | Type | Effort | Status |
+|---|---|---|---|---|
+| 1 | C4 bucketing | code + experiment | medium | DEC-028 — experiment designed |
+| 2 | Proof terms skipped | doc | small | Apply doc fix |
+| 3 | Polarity no-ops | code | trivial | Apply code fix |
+| 4 | Device priority | code | trivial | Apply code fix |
+| 5 | Asymmetric init framing | doc | small | Already addressed |
+| 6 | B/C special tokens | doc | trivial | Apply doc fix |
+
+#### References
+
+- DEC-028 (bucketing confound — the primary finding)
+- `docs/experiments/HYPOTHESIS_GRID.md` — H2, H7, H11
+- `docs/experiments/EXPERIMENT_DESIGN.md` — variant definitions, evaluation framework

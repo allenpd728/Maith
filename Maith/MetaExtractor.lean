@@ -16,10 +16,18 @@ structure ExtractedDeclaration where
   module : String
   info : ConstantInfo
 
+/-- Controls how generic (non-core) operators are represented in the IR.
+   module       — v2 behaviour: collapse to GEN_<namespace> buckets (~20 tokens).
+   per_operator — emit op:<shortName> per distinct operator head constant. -/
+inductive BucketMode
+  | module
+  | per_operator
+
 private structure ExtractionState where
   nextTerm   : Nat            := 0
   declName   : String         := ""
   declModule : String         := ""
+  bucketMode : BucketMode     := .module
   binderCtx  : List EntityId  := []   -- head = innermost binder (De Bruijn 0)
   entities   : List Entity    := []
   attributes : List Attribute := []
@@ -173,6 +181,23 @@ private def bucketFromModule (st : ExtractionState) : String :=
     | _      => "GEN_MATHLIB"
   | [] => "GEN_MATHLIB"
 
+
+
+-- Produce the generic-op token string for a constant-headed application.
+--   module mode:       "GEN_ALGEBRA" (etc.) — bucket by declaration module
+--   per_operator mode: "op:<shortName>"    — per-operator identity
+private def genericOpToken (mode : BucketMode) (st : ExtractionState)
+                          (headName : String) : String :=
+  match mode with
+  | .module       => bucketFromModule st
+  | .per_operator => s!"op:{headName}"
+
+-- Extract the short (unqualified) name from a Lean Name.
+private def shortNameFromLeanName (n : Name) : String :=
+  match n.components.getLast? with
+  | some part => part.toString
+  | none => n.toString
+
 -- Push `id` as the innermost binder for the duration of `action`, then pop it.
 private def withBinder {α : Type} (id : EntityId) (action : ExtractM α) : ExtractM α := do
   modify (fun st => { st with binderCtx := id :: st.binderCtx })
@@ -280,8 +305,9 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
           -- Unexpected arity: treat as a generic operation to avoid extraction failure.
           let argIds ← args.mapM extractExprEntityId
           let outputId ← freshTerm
-          let bucket ← bucketFromModule <$> get
-          addOperation argIds outputId (.generic bucket)
+          let st ← get
+          let opTok := genericOpToken st.bucketMode st (shortNameFromLeanName fnName)
+          addOperation argIds outputId (.generic opTok)
           pure outputId
         else do
           let srcId ← extractExprEntityId relationArgs[0]!
@@ -307,8 +333,9 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
         -- representation which is a separate IR extension.
         let argIds ← args.mapM extractExprEntityId
         let outputId ← freshTerm
-        let bucket ← bucketFromModule <$> get
-        addOperation argIds outputId (.generic bucket)
+        let st ← get
+        let opTok := genericOpToken st.bucketMode st (shortNameFromLeanName fnName)
+        addOperation argIds outputId (.generic opTok)
         pure outputId
     | _ =>
       -- HOF application: the function head is a bvar, fvar, or other non-constant
@@ -400,8 +427,13 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
     -- stable: "proj:Semigroup.toMul/0" is a distinct, deterministic op token.
     let structId  ← extractExprEntityId struct
     let outputId  ← freshTerm
-    let bucket ← bucketFromModule <$> get
-    let opLabel   := s!"proj:{bucket}/{idx}"
+    let st ← get
+    let opLabel :=
+      match st.bucketMode with
+      | .module       =>
+        let bucket := bucketFromModule st
+        s!"proj:{bucket}/{idx}"
+      | .per_operator => s!"proj:{typeName}/{idx}"
     addOperation [structId] outputId (.generic opLabel)
     pure outputId
   | .mdata _ body => extractExprEntityId body
@@ -410,9 +442,10 @@ end
 
 -- Extract a Graph from a single Expr, scoped to `declName`.
 -- Exposed (non-private) so tests can call it directly.
-def graphFromExpr (declName : String) (expr : Lean.Expr) : ProcessingResult Graph :=
+def graphFromExpr (declName : String) (expr : Lean.Expr)
+    (bucketMode : BucketMode := .module) : ProcessingResult Graph :=
   let canonName := canonicaliseDeclName declName
-  let initState : ExtractionState := { declName := canonName }
+  let initState : ExtractionState := { declName := canonName, bucketMode }
   match (extractExprEntityId expr).run initState with
   | .ok (_, state) => .ok state.toGraph
   | .error msg => .fail msg
@@ -439,9 +472,10 @@ private def constantValueExpr? : ConstantInfo → Option Expr
   -- and produces cleaner signal: the statement is what should be learned.
   | _ => none
 
-def extractGraphFromConstantInfo (info : ConstantInfo) (module : String) : ProcessingResult Graph :=
+def extractGraphFromConstantInfo (info : ConstantInfo) (module : String)
+    (bucketMode : BucketMode := .module) : ProcessingResult Graph :=
   let declName := canonicaliseDeclName info.name.toString
-  let initState : ExtractionState := { declName, declModule := module }
+  let initState : ExtractionState := { declName, declModule := module, bucketMode }
   -- Extract the type first.
   match (extractExprEntityId info.type).run initState with
   | .error msg => .fail s!"type extraction failed: {msg}"
@@ -452,13 +486,14 @@ def extractGraphFromConstantInfo (info : ConstantInfo) (module : String) : Proce
     | some valueExpr =>
       -- Continue nextTerm from where type extraction left off so that
       -- EntityId.term indices are monotonically increasing and never collide.
-      let valueInitState : ExtractionState := { declName, declModule := module, nextTerm := typeState.nextTerm }
+      let valueInitState : ExtractionState := { declName, declModule := module, bucketMode, nextTerm := typeState.nextTerm }
       match (extractExprEntityId valueExpr).run valueInitState with
       | .error msg => .fail s!"value extraction failed: {msg}"
       | .ok (_, valState) => .ok (mergeGraphs typeGraph valState.toGraph)
 
-def extractGraphFromDeclaration (decl : ExtractedDeclaration) : ProcessingResult Graph :=
-  extractGraphFromConstantInfo decl.info decl.module
+def extractGraphFromDeclaration (decl : ExtractedDeclaration)
+    (bucketMode : BucketMode := .module) : ProcessingResult Graph :=
+  extractGraphFromConstantInfo decl.info decl.module bucketMode
 
 def loadEnvironment (moduleNames : List String) : IO Environment := do
   let sysroot ← Lean.findSysroot

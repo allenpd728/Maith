@@ -28,12 +28,17 @@ from collections import Counter
 from pathlib import Path
 
 DATASETS = Path("datasets")
-TARGET_VOCAB = 601
+target_vocab = 601
 SPECIALS = {"<PAD>": 0, "<BOS>": 1, "<EOS>": 2, "<UNK>": 3}
 UNK_ID = SPECIALS["<UNK>"]
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--target-vocab', type=int, default=601)
+    args = parser.parse_args()
+    target_vocab = args.target_vocab
     # 1. Count BPE token-id frequency across the TRAINING split (vocab built from train only,
     #    matching how build_dataset.py builds vocab_A from train_A).
     counts = Counter()
@@ -46,8 +51,8 @@ def main():
     n_unique = len(counts)
     print(f"train_B: {n_tok} tokens, {n_unique} unique BPE ids")
 
-    # 2. Take the top (TARGET_VOCAB - len(SPECIALS)) most frequent ids; assign compact ids.
-    keep_n = TARGET_VOCAB - len(SPECIALS)
+    # 2. Take the top (target_vocab - len(SPECIALS)) most frequent ids; assign compact ids.
+    keep_n = target_vocab - len(SPECIALS)
     top = counts.most_common(keep_n)
     # build remapping: old BPE id (int) -> new compact id (4..600)
     remap = {old_id: (i + len(SPECIALS)) for i, (old_id, _) in enumerate(top)}
@@ -56,7 +61,7 @@ def main():
     vocab = dict(SPECIALS)  # 0..3
     for old_id, new_id in remap.items():
         vocab[str(old_id)] = new_id
-    assert len(vocab) == TARGET_VOCAB, f"vocab size {len(vocab)} != {TARGET_VOCAB}"
+    assert len(vocab) == target_vocab, f"vocab size {len(vocab)} != {target_vocab}"
     with open(DATASETS / "vocab_B_small.json", "w") as f:
         json.dump(vocab, f, indent=2)
     print(f"Wrote datasets/vocab_B_small.json ({len(vocab)} tokens)")
@@ -84,7 +89,7 @@ def main():
                 row["input_ids"] = new_ids
                 row["labels"] = list(new_ids)
                 row["source"] = "B_small"
-                row["representation_id"] = "bpe_small_601"
+                row["representation_id"] = f"bpe_small_{target_vocab}"
                 # keep name/module/example_id/seq_len; recompute seq_len
                 row["seq_len"] = len(new_ids)
                 fout.write(json.dumps(row) + "\n")

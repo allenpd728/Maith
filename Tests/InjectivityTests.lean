@@ -114,17 +114,18 @@ def testOperationOpDistinct : TestResult :=
   runTest "Operations with different operators are distinct" (t1 ≠ t2)
     "OperationOp.add and OperationOp.mul must have different tokens"
 
-/-- Test that different polarities are distinct -/
-def testPolarityDistinct : TestResult :=
+/-- Test that polarity does NOT affect token output (C1 removed polarity from tokens) -/
+def testPolarityDoesNotAffectTokens : TestResult :=
   let e1 := { id := EntityId.var "x", polarity := Polarity.pos }
   let e2 := { id := EntityId.var "x", polarity := Polarity.neut }
   let g1 := { entities := [e1], attributes := [], relations := [], operations := [] }
   let g2 := { entities := [e2], attributes := [], relations := [], operations := [] }
   let t1 := encodeGraph (normalizeGraph g1)
   let t2 := encodeGraph (normalizeGraph g2)
-  -- Different polarities should produce different tokens
-  runTest "Different polarities are distinct" (t1 ≠ t2)
-    "Entities with different polarities must have different tokens"
+  -- Polarity was removed from token stream in C1; entities with same id but
+  -- different polarity must produce identical tokens.
+  runTest "Polarity does not affect token output" (t1 = t2)
+    "Entities with same id but different polarity must produce identical tokens (C1 removed polarity)"
 
 /-- Test mixed graph with multiple components -/
 def testComplexGraphDistinct : TestResult :=
@@ -183,7 +184,7 @@ def injectivityTests : List TestResult := [
   testAttributeKeyValueDistinct,
   testRelationOpDistinct,
   testOperationOpDistinct,
-  testPolarityDistinct,
+  testPolarityDoesNotAffectTokens,
   testComplexGraphDistinct,
   testBatchInjectivity
 ]

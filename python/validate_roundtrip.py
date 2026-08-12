@@ -264,6 +264,96 @@ def reencode_graph_v130(graph: dict) -> list[str]:
     return out
 
 
+
+
+# ---------------------------------------------------------------------------
+# v1.4.0 decoder/encoder (IN_N / OUT_N tokens, no polarity)
+# ---------------------------------------------------------------------------
+
+def decode_tokens_v140(tokens: list[str]) -> Optional[dict]:
+    """Decode v1.4.0 token list (IN_N/OUT_N format, no polarity)."""
+    if not tokens or tokens[0] != "GRAPH_BEGIN":
+        return None
+    if tokens[-1] != "GRAPH_END":
+        return None
+
+    graph = {"entities": [], "attributes": [], "relations": [], "operations": []}
+    i = 1
+    while i < len(tokens) - 1:
+        tok = tokens[i]
+        if tok == "E":
+            if i + 1 >= len(tokens) - 1:
+                return None
+            graph["entities"].append({"id": tokens[i + 1]})
+            i += 2
+        elif tok == "A":
+            if i + 3 >= len(tokens) - 1:
+                return None
+            graph["attributes"].append({
+                "target": tokens[i + 1],
+                "key": tokens[i + 2],
+                "value": tokens[i + 3],
+            })
+            i += 4
+        elif tok == "R":
+            if i + 3 >= len(tokens) - 1:
+                return None
+            graph["relations"].append({
+                "src": tokens[i + 1],
+                "tgt": tokens[i + 2],
+                "op": tokens[i + 3],
+            })
+            i += 4
+        elif tok == "O":
+            if i + 3 >= len(tokens) - 1:
+                return None
+            arity_tok = tokens[i + 1]
+            output_tok = tokens[i + 2]
+            op_str = tokens[i + 3]
+            # v1.4.0: IN_N = arity count, OUT_N = output position
+            if arity_tok.startswith("IN_"):
+                if arity_tok == "IN_MANY":
+                    n = 10  # IN_MANY means 10+ inputs
+                elif arity_tok[3:].isdigit():
+                    n = int(arity_tok[3:])
+                else:
+                    n = 0
+                inputs = [f"TERM_{j}" for j in range(n)]
+            else:
+                inputs = []
+            graph["operations"].append({
+                "inputs": inputs,
+                "output": output_tok,
+                "op": op_str,
+            })
+            i += 4
+        else:
+            i += 1
+    return graph
+
+
+def reencode_graph_v140(graph: dict) -> list[str]:
+    """Re-encode graph to v1.4.0 token list (IN_N/OUT_N format)."""
+    out = ["GRAPH_BEGIN"]
+    for e in graph.get("entities", []):
+        out += ["E", e["id"]]
+    for a in graph.get("attributes", []):
+        out += ["A", a["target"], a["key"], a["value"]]
+    for r in graph.get("relations", []):
+        out += ["R", r["src"], r["tgt"], r["op"]]
+    for o in graph.get("operations", []):
+        n = len(o.get("inputs", []))
+        if n >= 10:
+            arity_tok = "IN_MANY"
+        elif n == 0:
+            arity_tok = "IN_0"
+        else:
+            arity_tok = f"IN_{n}"
+        output_tok = o["output"]
+        out += ["O", arity_tok, output_tok, o["op"]]
+    out.append("GRAPH_END")
+    return out
+
 # ---------------------------------------------------------------------------
 # Version-dispatched validate
 # ---------------------------------------------------------------------------
@@ -280,6 +370,9 @@ def validate_example(ex: dict, encoder_version: str) -> tuple[bool, Optional[str
     if encoder_version.startswith("1.2"):
         graph = decode_tokens_v120(tokens)
         reencoded = reencode_graph_v120(graph) if graph is not None else None
+    elif encoder_version.startswith("1.4"):
+        graph = decode_tokens_v140(tokens)
+        reencoded = reencode_graph_v140(graph) if graph is not None else None
     else:
         graph = decode_tokens_v130(tokens)
         reencoded = reencode_graph_v130(graph) if graph is not None else None

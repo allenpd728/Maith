@@ -8,6 +8,13 @@ def main (args : List String) : IO Unit := do
     match args with
     | ["--trace", name] => some name
     | _ => none
+  -- Parse --per-operator flag
+  let usePerOperator : Bool := args.foldl (fun acc a => acc || a == "--per-operator") false
+  let bucketMode : Lean.DSL.BucketMode :=
+    if usePerOperator then Lean.DSL.BucketMode.per_operator else Lean.DSL.BucketMode.module
+  if usePerOperator then IO.println "[CORPUS] Bucket mode: per_operator (op:<shortName>)"
+  else IO.println "[CORPUS] Bucket mode: module (GEN_* buckets)"
+
   buildMathlibIRCorpusCustomModules
     [ "Mathlib.Algebra.Group.Defs"
     , "Mathlib.Algebra.Group.Basic"
@@ -25,4 +32,4 @@ def main (args : List String) : IO Unit := do
     , "Mathlib.Topology.Basic"
     ]
     (encoder := Lean.DSL.defaultEncoder)
-    (traceDecl := traceDecl)
+    (traceDecl := traceDecl) (bucketMode := bucketMode)
