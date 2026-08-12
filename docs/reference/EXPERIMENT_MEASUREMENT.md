@@ -487,6 +487,30 @@ patterns) but not "this declaration depends on that one" (no direct training sig
 
 ---
 
+## Automated Prevention: Pipeline Quality Gates
+
+The validity gaps identified above (split leakage, epoch confounds, missing config fields)
+are not just documented — they are being automated. The
+[`PIPELINE_QUALITY_GATES`](PIPELINE_QUALITY_GATES.md) design defines a five-station
+production line where each station has a gate that checks specific properties before
+output is accepted downstream. The key gates for the measurement concerns in this
+document:
+
+| Measurement concern | Quality gate that catches it |
+|---|---|
+| Split leakage (eval in train) | **G3-1** (split disjoint by example_id) |
+| Epoch confound (A 3ep vs B_small 2ep) | **G5-4** (comparison validity: match epochs, seed, train_examples) — currently unwired |
+| Missing config in results.json | **G4-2** (results complete: perplexity, epochs, params, lr, batch, max_seq_len) |
+| B_small trained on leaky data | **G3-4** (provenance hash: all variants from same corpus commit) |
+| Embedding-checkpoint mismatch | **G5-1** (embedding variant/epoch/vocab match checkpoint) |
+
+Gate 5-G5-4 (comparison validity) is the single most important unwired check — it
+would have caught the epoch confound that invalidated the original H6 run. Wiring it
+into `check_invariants.py` is P0 priority in the
+[`QUALITY_GATES_SCOPE`](../experiments/QUALITY_GATES_SCOPE.md) implementation plan.
+
+---
+
 ## Provenance Reference
 
 | Measurement | Script | Input files | Output |
@@ -514,8 +538,9 @@ patterns) but not "this declaration depends on that one" (no direct training sig
 
 Maith's results — positive on probing, null on perplexity, null on retrieval — are
 not unexpected. Every result falls exactly where the prior art predicts it should for
-this specific combination of conditions: toy-scale model (358M, below IRCoder's 1.1B
-threshold), next-token objective (the wrong objective per JEPA), replacement design
+this specific combination of conditions: toy-scale model (358M, below the scale regime
+where IRCoder's task-dependent gains appear), next-token objective (the wrong objective
+per JEPA), replacement design
 (not co-training, per PACT), sequence transformer on a graph IR (misaligned
 architecture per algorithmic-alignment theory), and ~3.5K examples (1,000× smaller
 than IRCoder's 4M). If the apparatus were broken, we would expect noise. Instead,
@@ -526,11 +551,11 @@ available evidence that the measurement is correct.
 
 | Maith result | Prior-art source | Prediction | Aligned? |
 |---|---|---|---|
-| **H2 null** — IR doesn't improve perplexity at 358M/3.5K | IRCoder (Paul et al., ACL 2024) | IR-grounding gains appear at 1.1B+ params on ~4M examples. Toy tier (358M/3.5K) is below the regime. | ✅ Null predicted by scale |
+| **H2 null** — IR doesn't improve perplexity at 358M/3.5K | IRCoder (Paul et al., ACL 2024) | IR-grounding gains are task-dependent and non-monotonic across 1.1B–7.3B (several 7.3B cells negative); no clean threshold. Toy tier (358M/3.5K) is below the regime where gains appear. | ✅ Null predicted by scale |
 | **H1/H2 dissociation** — encoding ✅, prediction ❌ | LeCun (2022); I-JEPA (Assran et al., CVPR 2023); "From Tokens to States" (2026) | Token-prediction quality ≠ representation quality. Semantic structure lives in latent space, not in token predictions. The model can encode structure without it helping prediction. | ✅ The exact dissociation JEPA predicts |
 | **H1 positive** — 75.4% linear-probe accuracy, 62pp over flat | OthelloGPT / chess-model literature cited in "From Tokens to States" (2026) | World-state structure is encoded linearly in hidden activations, even when the model's token predictions don't reflect it. A linear probe recovers it. | ✅ Same pattern in a new domain |
 | **Replacement null** — IR replaces source, no gains | PACT (Han et al., ICLR 2022) | Co-training structural signal alongside source recovered gains (32%→48%). Replacing source with IR loses the surface signal that co-training preserves. | ✅ The co-training vs. replacement distinction predicts the null |
-| **H6 null** — retrieval doesn't work for any variant at this scale | Veličković & Dudzik (NeurIPS 2022) — alignment fragility | Next-token loss rewards structural patterns ("what does this look like"), not dependency structure ("what does this depend on"). The `Group.noConfusion` spot-check confirms: all `noConfusion` lemmas cluster at 0.9997 cosine similarity, true deps ranked 181+/3375. | ✅ Structural clustering is the predicted failure mode |
+| **H6 null** — retrieval doesn't work for any variant at this scale | Veličković & Dudzik (NeurIPS 2022) — alignment fragility | Next-token loss rewards structural patterns ("what does this look like"), not dependency structure ("what does this depend on"). The DEC-030 clean comparison confirms: A_v3_2ep Recall@10 = 0.0052 vs B_small 0.0064 (CIs overlap), structural clustering dominates for all variants. | ✅ Structural clustering is the predicted failure mode |
 | **H3 null** — cold-start embedding init was not the cause | Good experimental practice (confound isolation) | Embed-project should have helped if cold-start was the bottleneck. It didn't (1.2978, within noise). | ✅ Rules out a confound, confirming the null is about representation/objective, not init |
 | **Maith sidesteps the impossibility result** — elaborator provides ground truth | Locatello et al. (NeurIPS 2019) | Unsupervised disentanglement is impossible without inductive bias. Maith doesn't recover the generative process from data — the elaborator provides it. The impossibility doesn't apply. | ✅ The approach is consistent with the theory's escape hatch |
 
@@ -548,8 +573,9 @@ If the measurement apparatus were broken, we would expect:
 - **Perplexity favoring the IR** — which would contradict JEPA theory. Instead, the
   IR is *penalized* for canonicalization (removes redundancy → harder to predict),
   exactly as the structural-bias argument predicts.
-- **Gains at 358M** — which would contradict IRCoder's scale threshold. Instead, null
-  at toy tier, consistent with gains appearing only at small tier (1.1B+).
+- **Gains at 358M** — which would contradict IRCoder's scale results. Instead, null
+  at toy tier, consistent with gains appearing only at small tier (1.1B+), though
+  IRCoder's gains are non-monotonic and task-dependent, not a clean threshold.
 
 None of these surprises occur. Every result is at its predicted coordinate.
 
@@ -572,7 +598,7 @@ which are exactly Maith's open experiments:
 |---|---|---|
 | **H5** (contrastive/reconstruction objective) | JEPA: predict in latent space, not token space | Rewards semantic structure directly, not surface predictability |
 | **H6** (retrieval at scale) | Wang et al. / Paliwal et al.: structure-aware retrieval helps, but at larger scale with graph-native architectures | Larger pool + more signal may separate variants |
-| **H8** (1B+ model) | IRCoder: gains appear at 1.1B+ | Above the scale threshold where IR grounding pays off |
+| **H8** (1B+ model) | IRCoder: task-dependent, non-monotonic gains across 1.1B–7.3B | Above the scale regime where IR grounding shows gains (though non-monotonic, not a clean threshold) |
 | **§9 architecture** (GNN/GraphTransformer) | Xu et al. / Veličković: alignment is fragile but *sufficient* with the right architecture | Graph-native model consumes IR edges directly, no linearization loss |
 | **H9** (co-training) | PACT: 32%→48% with joint structural + source loss | Recovers the surface signal replacement loses |
 
@@ -581,10 +607,13 @@ which are exactly Maith's open experiments:
 The convergence between Maith's results and prior-art predictions is strong evidence
 the measurement is correct, but it is not *proof*. Two limitations:
 
-1. **The scale confound is still open.** The A_v3_2ep vs B_small comparison mixes clean
-   and leaky splits (3,375 vs 3,491). The P0-1 retrain (both on clean 3,375/376) will
-   produce the first fully controlled comparison. If the numbers shift, the alignment
-   may need re-reading.
+1. **The B_small training-data confound is still open.** In the DEC-030 comparison,
+   A_v3_2ep was trained on the clean split (3375/376) while B_small's checkpoint was
+   trained on the old leaky split (3491/388 — ~116 more examples). Both embeddings
+   were extracted from the clean split (3375/376), so the eval data is matched, but
+   B_small saw slightly more training data. The B_small retrain on clean 3375/376 has
+   not been done — until it is, the comparison is not fully controlled. If the numbers
+   shift after retrain, the alignment may need re-reading.
 2. **Confirmation risk.** Finding that results align with predictions could be
    post-hoc rationalization. The mitigation is that the predictions were stated *before*
    the experiments in [`PRIOR_ART.md`](PRIOR_ART.md) (drafted alongside the experiment
