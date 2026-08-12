@@ -6,6 +6,8 @@
 >
 > **Read first:**
 > - [`docs/reference/PIPELINE_QUALITY_GATES.md`](../reference/PIPELINE_QUALITY_GATES.md) — the full design
+> - [`docs/reference/EXPERIMENT_MEASUREMENT.md`](../reference/EXPERIMENT_MEASUREMENT.md) — the measurement
+>   validity gaps each gate is designed to catch (see the "Automated Prevention" section)
 > - [`docs/experiments/PIPELINE_HARDENING_SCOPE.md`](PIPELINE_HARDENING_SCOPE.md) — prior hardening work this builds on
 > - [`python/check_invariants.py`](../../python/check_invariants.py) — the existing invariant checker to extend, not replace
 
@@ -48,21 +50,26 @@ have caught the epoch confound that invalidated the original H6 run.
 
 ```python
 # Check A_v3_2ep vs B_small (the H6 clean comparison) if both exist
-A_v3_key = next((k for k in results_by_variant if 'v3' in k.lower()), None)
-if A_v3_key and "B_small" in results_by_variant:
-    manifests = [results_by_variant[A_v3_key], results_by_variant["B_small"]]
+# Note: results.json has "variant": "A" (not "A_v3_2ep"), so we must match
+# by run directory name, not by the variant field. Scan runs/ for directories
+# containing "v3" in the name.
+import glob
+a_v3_dirs = glob.glob(os.path.join(str(runs_dir), "variant_A_v3*"))
+if a_v3_dirs and "variant_B_small" in [str(p) for p in runs_dir.iterdir()]:
+    a_v3_results = json.load(open(Path(a_v3_dirs[0]) / "results.json"))
+    b_small_results = json.load(open(runs_dir / "variant_B_small" / "results.json"))
+    manifests = [a_v3_results, b_small_results]
     all_results.extend(check_comparison_validity(
         manifests, "representation_at_matched_size"
     ))
 ```
 
-Note: the existing `results_by_variant` dict uses the `variant` field from
-`results.json`, not the directory name. `A_v3_2ep`'s `results.json` has
-`"variant": "A"`, so the lookup key is `"A"`, not `"A_v3_2ep"`. Verify this
-before changing the lookup.
+This matches by run *directory name* (`variant_A_v3*`), not by the `variant` field in
+`results.json` (which is `"A"` for A_v3_2ep, not `"A_v3_2ep"`). This is more robust than
+scanning `results_by_variant` keys.
 
 **Acceptance:** `python3 python/check_invariants.py` includes a comparison_validity
-result in its output when both A and B_small runs exist in `runs/`.
+result in its output when both A_v3 and B_small runs exist in `runs/`.
 
 ---
 
@@ -167,8 +174,10 @@ def _validate_training_output(run_dir: Path, variant: str) -> list[str]:
         if len(train) >= 2:
             initial = train[0]["loss"]
             final = train[-1]["loss"]
-            if final >= initial * 0.9:  # less than 10% reduction = no progress
-                errors.append(f"G4-3: loss did not descend: {initial:.3f} → {final:.3f}")
+            # Design spec: ≥50% reduction (PIPELINE_QUALITY_GATES.md G4-3)
+            if final >= initial * 0.5:  # less than 50% reduction = no meaningful progress
+                errors.append(f"G4-3: loss did not descend sufficiently: {initial:.3f} → {final:.3f} "
+                               f"({(1 - final/initial)*100:.0f}% reduction, need ≥50%)")
     else:
         errors.append("G4-3: loss_curve.json not written — cannot verify loss descent")
 
@@ -186,13 +195,50 @@ Currently Gate 3 (the invariant checker) runs at `launch_run.py train` time, bef
 training. It should also run immediately after `build_dataset.py` writes the datasets,
 so a corrupt dataset is caught before it is ever used.
 
-**Change:** In `launch_run.py`, add a `build-dataset` subcommand (or wire the check
-into an existing dataset-build path) that:
+**Current `build_dataset.py` invocation:** `build_dataset.py` is a standalone script
+that reads `Corpus/corpus.per_operator.jsonl` (or `corpus.jsonl`) and writes to a
+dataset directory (e.g., `datasets_perop/` or `datasets/`). It takes `--corpus`,
+`--out-dir`, and variant-specific flags. It is not currently wired through
+`launch_run.py` — it is run directly.
 
-1. Runs `build_dataset.py` (or `python/build_dataset.py`)
-2. Immediately after, calls `check_invariants.py --check split` and `--check vocab`
-   against the newly written datasets
-3. Exits non-zero if either fails, with a message pointing back to the corpus
+**Change:** In `launch_run.py`, add a `build-dataset` subcommand that:
+
+1. Calls `build_dataset.py` with the appropriate flags (passing `--corpus`,
+   `--out-dir`, and any variant-specific flags like `--per-operator`)
+2. Immediately after `build_dataset.py` exits 0, calls `check_invariants.py` with:
+   - `--datasets <out-dir>` (the newly written directory)
+   - `--runs runs/` (for cross-checks against existing checkpoints)
+3. Exits non-zero if any invariant fails, with a message pointing back to the corpus
+
+```python
+# In launch_run.py, add:
+def cmd_build_dataset(args):
+    """Build datasets and run Gate 3 immediately after."""
+    script = REPO / "python" / "build_dataset.py"
+    cmd = [sys.executable, str(script),
+           "--corpus", str(args.corpus),
+           "--out-dir", str(args.dataset_dir)]
+    # ... (pass through any variant/flags)
+
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        print("Dataset build failed.")
+        return 1
+
+    # Gate 3: run invariant checker on the freshly built datasets
+    print("Running Gate 3 — Dataset Quality Check ...")
+    inv_result = subprocess.run(
+        [sys.executable, str(REPO / "python" / "check_invariants.py"),
+         "--datasets", str(args.dataset_dir), "--runs", str(RUNS_DIR)],
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    print(inv_result.stdout)
+    if inv_result.returncode != 0:
+        print("GATE 3 FAILED — datasets may be corrupt. Do not proceed to training.")
+        return 1
+    print("Gate 3 passed — datasets are valid.")
+    return 0
+```
 
 This ensures the production line is: corpus passes Gate 1+2 → dataset built → Gate 3
 passes → training may proceed.

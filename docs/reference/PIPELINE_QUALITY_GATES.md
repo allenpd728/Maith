@@ -2,6 +2,10 @@
 
 > **STATUS: PROPOSAL — drafted by Kit 2026-08-12, not yet reviewed or implemented.**
 > This document defines the design. Implementation is a separate step.
+>
+> **Companion:** [`EXPERIMENT_MEASUREMENT.md`](EXPERIMENT_MEASUREMENT.md) documents the
+> validity gaps these gates are designed to catch. Each gate traces to a specific
+> measurement concern documented there.
 
 ---
 
@@ -155,7 +159,7 @@ training split and writes `runs/variant_*/checkpoint-final/` and `results.json`.
 | Check | Pass condition | Failure means |
 |---|---|---|
 | **G4-1 Checkpoint exists** | `checkpoint-final/` present and non-empty | Training crashed without a checkpoint |
-| **G4-2 Results complete** | `results.json` has `eval_perplexity`, `epochs`, `train_examples`, `n_params_M`, `vocab_size` | Incomplete run — metrics can't be compared |
+| **G4-2 Results complete** | `results.json` has `eval_perplexity`, `epochs`, `train_examples`, `n_params_M`, `vocab_size`, `learning_rate`, `effective_batch_size`, `max_seq_len` | Incomplete run — metrics can't be compared. **Note:** pre-2026-08-11 checkpoints (B_small, B, C, flat) lack `learning_rate`/`effective_batch_size`/`max_seq_len`. The gate should grandfather these legacy checkpoints or warn, not fail. |
 | **G4-3 Loss descended** | `loss_curve.json` final train loss < initial train loss by ≥50% | Training diverged or made no progress |
 | **G4-4 Perplexity plausible** | `eval_perplexity` in `(1.0, vocab_size)` — not NaN, not >100 | Training collapse or eval bug |
 | **G4-5 Checkpoint-results consistency** | `results.json` mtime within 7 days of checkpoint mtime | Invariant 2 — stale results.json from a previous run |
@@ -193,7 +197,7 @@ G4-2, G4-3, G4-4, G4-6 are new additions.
 | **G5-1 Embedding-checkpoint match** | Embedding files were extracted from the checkpoint they claim (variant, epoch, vocab_size match) | Invariant 3 (extraction bug) — embeddings from wrong model |
 | **G5-2 Ground truth coverage** | ≥50% of eval queries have ≥1 dep in train pool | Ground truth is too sparse to be meaningful |
 | **G5-3 Retrieval CI non-degenerate** | Bootstrap CIs are finite and `ci_hi - ci_lo > 0` | Degenerate eval — all scores identical |
-| **G5-4 Comparison validity** | Compared variants match on `epochs`, `seed`, `train_examples` | Invariant 5 — epoch confound (the DEC-030 issue) |
+| **G5-4 Comparison validity** | Compared variants match on `epochs`, `seed`, `train_examples` | Invariant 5 — epoch confound (the DEC-030 issue). **This is the single most important unwired check** — it would have caught the epoch confound that invalidated the original H6 run. Wiring it is P0 priority (see [`QUALITY_GATES_SCOPE`](../experiments/QUALITY_GATES_SCOPE.md) Task 1). |
 | **G5-5 Probe accuracy above baseline** | Linear probe accuracy > 1/n_classes (random baseline) | Probe is not learning anything; representations are random |
 
 **Current status:**
@@ -286,7 +290,7 @@ Gate 1 — IR Build
   PASS  G1-1 round_trip: 4029/4029 declarations pass
   PASS  G1-2 yield: 4029 successful, 0 failures
   PASS  G1-3 format: per_operator (gen:FullName=1247, GEN_=0 in 100 samples)
-  FAIL  G1-4 seq_len: 3 sequences exceed max_len=1024 (max=12188)
+  FAIL  G1-4 seq_len: 3 sequences exceed max_len=512 (max=12188)
   → BLOCKED: resolve G1-4 before dataset build proceeds
 
 $ python3 python/launch_run.py train --variant A --epochs 2 --dataset-dir datasets_perop
