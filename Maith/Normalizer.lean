@@ -15,22 +15,6 @@ import Maith.EntityId
 
 namespace Lean.DSL
 
-/--
-
-Canonical ordering for EntityId.
-
-Variables come before terms; alphabetical / numeric inside each class.
-
--/
-
-def normalizeEntityId : EntityId → Int
-
-| EntityId.var _   => 0
-
-| EntityId.bound _ => 1
-
-| EntityId.term _  => 2
-
 /-- Canonical ordering for Entity. -/
 
 def normalizeEntity (e : Entity) : Int :=

@@ -39,4 +39,4 @@ import Maith.MathlibCorpusBuilder
 -- Examples and curriculum
 import Maith.Examples
 import Maith.TokenSpec
-import Maith.Cirriculum
+import Maith.Curriculum
