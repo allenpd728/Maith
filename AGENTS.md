@@ -31,23 +31,28 @@ rather than raw source syntax — improves performance on formal-math tasks.
 
 | Term | Meaning |
 |---|---|
-| **A** | IR tokens (semantic graph), 601-vocab, 358M params |
+| **A** | IR tokens (semantic graph) — per-operator mode uses gen:FullName, 2254-vocab |
 | **B** | Raw leanExpr via Qwen BPE, 151K-vocab, 494M params |
 | **C** | AST-split leanExpr via Qwen BPE, 151K-vocab, 494M params |
 | **B-small** | BPE truncated to 601 tokens, 358M params (size-matched control for A) |
 | **IR** | Intermediate Representation — semantic graph from elaborated Lean `Expr` |
 | **Flat-IR** | DEC-024 ablation: IR with all semantic content replaced by SLOT |
-| **per_operator** | DEC-028: un-bucketed operator identity (op:<shortName> instead of GEN_*) |
+| **per_operator** | DEC-028: un-bucketed operator identity (gen:FullName instead of GEN_*) |
 | **DEC-0XX** | Decision-log entry in `docs/decisions/LOG.md` |
+| **Pretrained** | Qwen2.5-Coder-0.5B before fine-tuning — has existing retrieval signal (S1 finding) |
+| **Fine-tuned** | Pretrained model + Maith training on IR/BPE data |
 
-## Results table
-
-| Variant | Representation | Vocab | Params | Epochs | Perplexity | Top-1 Acc | Era |
-|---|---|---|---|---|---|---|---|
-| A | Semantic IR graph | 601 | 358M | 2 | 1.2361 | 90.0% | v2 (authoritative) |
-| B-small | BPE truncated to 601 | 601 | 358M | 2 | 1.1294 | 90.5% | v2 (authoritative) |
-| B | Raw BPE | 151,643 | 494M | 3 | 1.107 | 91.7% | v1-era (epoch confound) |
-| C | AST-split BPE | 151,643 | 494M | 3 | 1.098 | 93.0% | v1-era (epoch confound) |
+> **⚠ All prior experimental results invalidated (2026-08-12, DEC-031/032).**
+> The results table below has been removed. Previous numbers were from runs with
+> split leakage, epoch confounds, and dataset contamination. Clean retrains are
+> complete (A_v3_2ep, B_small_clean, flat_clean — all 3375/376, 2 epochs) but
+> hypothesis tests have not been re-run under verified quality gates.
+>
+> **For current status, see:**
+> - [`docs/experiments/HYPOTHESIS_GRID.md`](docs/experiments/HYPOTHESIS_GRID.md) — per-claim status (all ⬜ reset)
+> - [`docs/decisions/LOG.md`](docs/decisions/LOG.md) — DEC-031 (invalidation), DEC-032 (retrains + sanity checks)
+> - [`docs/reference/EXPERIMENT_MEASUREMENT.md`](docs/reference/EXPERIMENT_MEASUREMENT.md) — how each metric is measured + validity gaps
+> - [`docs/reference/PIPELINE_QUALITY_GATES.md`](docs/reference/PIPELINE_QUALITY_GATES.md) — gate design + status
 
 ## Model-size taxonomy (see `docs/experiments/EXPERIMENT_DESIGN.md` for full table)
 

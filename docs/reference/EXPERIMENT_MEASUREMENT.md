@@ -15,6 +15,25 @@
 > **Companion to** [`EXAMPLE_ROUNDTRIP.md`](EXAMPLE_ROUNDTRIP.md), which covers how
 > a Lean declaration becomes training data. This document starts where that one ends.
 
+> **⚠ TERMINOLOGY — "untrained" vs "pretrained" vs "fine-tuned" (S1 finding, 2026-08-12):**
+> The S1 sanity check exposed a naming problem. Qwen2.5-Coder-0.5B is a **pretrained**
+> model — it was trained on a large code/text corpus before Maith touches it. Maith
+> **fine-tunes** it on the IR/BPE datasets. The "random" baseline (S1) used the pretrained
+> model *without* fine-tuning, but it is NOT a random model — its embeddings already
+> encode semantic similarity from pretraining.
+>
+> **Impact on the project:** Every retrieval number must be read against the **pretrained
+> baseline** (Recall@10 ≈ 0.072 on a 500-pool subset), not against pure chance (0.020).
+> The comparison is:
+> - **Pretrained Qwen** (no fine-tuning) — the true baseline
+> - **B_small_clean** (fine-tuned on BPE) — does fine-tuning help beyond pretraining?
+> - **A_v3_2ep** (fine-tuned on IR) — does IR fine-tuning beat BPE fine-tuning?
+>
+> If neither fine-tuned variant beats the pretrained baseline, fine-tuning isn't helping
+> retrieval at all. If both beat it by similar amounts, fine-tuning helps but the
+> representation doesn't matter. The H6 hypothesis test must include the pretrained
+> baseline as a variant in the results.
+
 ---
 
 ## Part 1 — Next-Token Prediction
