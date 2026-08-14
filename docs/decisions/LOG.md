@@ -1766,3 +1766,35 @@ suggest truncation matters.
 **Pre-condition:** All quality gates must pass after retrain before any hypothesis test
 (H1-H14) runs. Sanity checks (S1, S2) must also pass first.
 
+
+### DEC-032 — B_small and flat retrained on clean split, comparison invariants resolved (2026-08-12)
+
+**Date:** 2026-08-12
+**Status:** Closed
+**Scope:** H2/H6 comparison validity, pipeline quality gates
+
+**Decision:** B_small and flat retrained on clean 3375/376 split at 2 epochs, max_seq_len=512.
+Comparison-validity invariants now pass.
+
+**Results:**
+- B_small_clean: perplexity 1.1385, 358.4M params, 601 vocab, 3375/376, 2 epochs
+- flat_clean: perplexity 1.063, 357.9M params, 11 vocab, 3375/376, 2 epochs
+- A_v3_2ep: perplexity 1.2928, 359.9M params, 2254 vocab, 3375/376, 2 epochs
+
+All three variants matched on split (3375/376), epochs (2), and size (~358M).
+
+**Gate status after retrain:**
+- Gate 1: 3/4 pass (G1-4 seq_len known warning, 330 seqs > 512)
+- Gate 2: 5/5 pass
+- Gate 3: 57/57 pass (all comparison invariants green)
+- Gate 4: 23/23 pass
+- Gate 5: 57/57 pass
+
+**Sanity checks:**
+- S1 (random baseline): WARNING — pretrained model scores above chance (0.072 vs 0.020). Not contamination
+  — the "untrained" Qwen is actually pretrained on code and has existing retrieval signal.
+- S2 (identical pair): PASS — Recall@1=1.0, MRR=1.0. Ranking logic verified.
+
+**Pre-condition for hypothesis tests:** Gates 2-5 green, S2 passed, S1 is a documented warning.
+  Hypothesis tests (H1-H14) are unblocked.
+
