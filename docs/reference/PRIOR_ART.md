@@ -28,7 +28,13 @@ linear-probe module-classification accuracy vs. 13.6% for a shape-only ablation,
 gap) but does *not* improve next-token prediction or completion accuracy over a
 size-matched BPE baseline — even after the cold-start embedding confound is ruled out
 (DEC-021) and the model-size confound is controlled (DEC-027: B-small at matched 358M /
-601-vocab achieves 90.5% top-1 vs. A's 90.0%). The interpretation: the IR encodes real
+601-vocab achieves 90.5% top-1 vs. A's 90.0%).
+
+> **⚠ These numbers are from invalidated runs (DEC-031, 2026-08-12).** They are
+> retained as the historical record of the finding's logic but are NOT current evidence.
+> Clean retrains are complete; hypothesis tests pending under verified quality gates.
+
+The interpretation: the IR encodes real
 semantic structure, but that structure is not rewarded by the next-token objective at this
 scale. This dissociation lands inside an active, contested debate in the broader ML
 literature, mapped below.

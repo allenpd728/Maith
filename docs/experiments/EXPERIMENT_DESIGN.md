@@ -103,6 +103,35 @@ the corpus changed — re-run everything.
 | Seed | 42 | Fixed across all variants and IR candidates |
 | Eval metric | Perplexity on eval split (primary); top-1 completion (secondary) | |
 
+> **Base model scope condition (2026-08-12).** Qwen2.5-Coder-0.5B is a **fixed condition**
+> of the current experiment, not a variable being tested. All variants (A, B_small, flat)
+> share the same base model — the only thing that differs is the input representation.
+> This controls for base model quality while isolating representation.
+>
+> **Why Qwen2.5-Coder-0.5B:**
+> - **Code pretraining is the right prior.** Lean is a programming language; formal math
+>   has code-like structure. The S1 sanity check confirmed the pretrained model has
+>   retrieval signal (Recall@10 ≈ 0.072) specifically from code pretraining.
+> - **Size is intentional (toy tier).** The question is "does the IR encode semantics?"
+>   (H1) and "does IR fine-tuning beat BPE fine-tuning?" (H6), not "does a bigger model
+>   do better?" Scale is tested separately in H4/H8.
+> - **Consistent with prior art.** IRCoder (the closest positive result) also fine-tuned
+>   a code-pretrained model (CodeLlama) on IR.
+> - **Supports custom vocab resizing.** IR variants need custom vocabularies (601, 2254
+>   tokens). Qwen2.5-Coder supports embedding table resizing cleanly.
+>
+> **When a different model would be appropriate:**
+>
+> | Hypothesis | Model to use | Why |
+> |---|---|---|
+> | H4/H8 (scale) | Qwen2.5-Coder-1.5B or 3B | Same family, next tier up. Tests whether IR gains appear at larger scale. |
+> | H12 (architecture) | GNN / GraphTransformer | Different architecture class. The IR is a graph; a sequence transformer is misaligned. |
+> | H7 (ATP) | Lean-specific prover (DeepSeek-Prover, Kimina) | Different task (proof search). Not a representation comparison. |
+>
+> Results do not generalize beyond "Qwen2.5-Coder-0.5B fine-tuned on Maith's IR" without
+> re-testing. The within-model comparison (A vs B_small) is valid regardless of base model
+> choice.
+
 ### What a valid result looks like (unchanged)
 - **IR < B and IR < C**: IR tokens improve sample efficiency — representation hypothesis has preliminary support.
 - **IR ≈ B**: IR tokens are no better than raw Lean source at this scale.
@@ -191,7 +220,7 @@ scale without accounting for the gap.
 | Tier | Parameter range | Examples | Maith's position |
 |---|---|---|---|
 | Toy / micro | <1B | Qwen2.5-Coder-0.5B, Pythia-160M | **All Maith variants** (358M–494M; same 0.5B base) ¹ |
-| Small | 1B–8B | Qwen2.5-1.5B, Llama-3-8B, Phi-3-mini | Not tested — IRCoder's positive results start here (1.1B) |
+| Small | 1B–8B | Qwen2.5-1.5B, Llama-3-8B, Phi-3-mini | Not tested — IRCoder's gains are task-dependent and non-monotonic here (1.1B–7.3B); no clean threshold |
 | Medium | 8B–30B | CodeLlama-13B, Qwen2.5-14B | Not tested |
 | Large | 30B–100B | Llama-3-70B, Qwen2.5-72B | Not tested |
 | Frontier | 100B+ (often 500B+ with MoE) | GPT-4-class, Claude-class, Gemini-class | Not tested |

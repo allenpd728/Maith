@@ -1,5 +1,12 @@
 # V2 IR Comparison Matrix
 
+> **⚠ RESET NOTICE (2026-08-12):** All numbers in this matrix are from invalidated
+> runs (split leakage, epoch confounds, dataset contamination — see DEC-031/032).
+> They are retained as a historical record but are NOT valid evidence. Clean retrains
+> are complete (A_v3_2ep, B_small_clean, flat_clean — all 3375/376, 2 epochs) but
+> hypothesis tests have not been re-run under verified quality gates. See
+> [`HYPOTHESIS_GRID`](HYPOTHESIS_GRID.md) for current status.
+
 > Tracks all controlled experiments comparing IR representations and model sizes.
 > Update this document whenever a new cell is filled in. Each row is a single
 > training run; the grid below is the target structure for a fair comparison.
