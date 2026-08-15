@@ -177,7 +177,7 @@ candidate pool C:
 | A vs B | Representation + size (A 358M vs B 494M) | Secondary; size confound present |
 | A vs C | Representation (semantic IR vs AST-split BPE) | Secondary |
 | A vs flat | A vs shape-only IR ablation | Confirms semantics (not structure) drives any A win |
-| A vs random | Trained vs untrained baseline | Sanity: random should be near chance |
+| A vs pretrained | Fine-tuned vs pretrained (un-fine-tuned) baseline | Sanity: pretrained should be near chance |
 
 **Primary gate: A vs B-small on Recall@10, Mode 1.** This is the size-controlled
 representation test, mirroring the DEC-027 B-small control that made H2's null
