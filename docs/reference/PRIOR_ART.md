@@ -425,7 +425,7 @@ theory*: alignment is fragile, especially when:
    structural ones, giving semantic parameters low GSNR by construction. This predicts an
    asymmetry the current specs under-weight: rebalancing the token distribution (DEC-028
    `per_operator`) raises retrievable information but need not improve prediction — more
-   rare tokens worsens per-token GSNR — whereas up-weighting conclusion/type tokens (H5)
+   rare tokens may worsen per-token GSNR (a theoretical prediction pending empirical check) — whereas up-weighting conclusion/type tokens (H5)
    raises GSNR directly.
 3. **Capacity is insufficient:** at 358M, the model is capacity-bound on structural
    scaffolding (DEC-024) before it can fully exploit semantic content.
