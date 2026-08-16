@@ -192,6 +192,52 @@ existing runs where the values are known from commit history.
 
 ---
 
+## Issue 9: manage.py invokes Python 3.9 (system) instead of 3.14 (ML env) — all subcommands crash
+
+**Status:** OPEN — discovered 2026-08-16 during live gate verification
+**Severity:** MEDIUM — breaks the self-service layer (`manage.py`); experiments blocked unless run manually
+**Invariant:** No — environment/tooling issue, not a data invariant
+
+`manage.py` (and every script it imports, including `manifest.py`) uses the shebang
+`#!/usr/bin/env python3`, which resolves to `/usr/bin/python3` (Python 3.9.6, the system
+Python with no ML packages) instead of `/usr/local/bin/python3` (Python 3.14.5, the
+environment with torch, numpy, sklearn, tensorboard). Per `AGENTS_LOCAL.md`, the correct
+interpreter is `/usr/local/bin/python3`.
+
+**Symptom:** any `manage.py` subcommand that imports `manifest.py` crashes with:
+`TypeError: unsupported operand type(s) for |: 'type' and 'type'` at `manifest.py:98`
+(`def _file_content_hash(path: str | Path, ...)`). The `str | Path` union syntax requires
+Python 3.10+, which 3.9.6 does not support.
+
+**Affected:** `manage.py invariants`, `manage.py gate` (all gates), and any other
+subcommand that transitively imports `manifest.py`. Running the scripts directly with
+`/usr/local/bin/python3 python/<script>.py` works fine — only the `manage.py` entry point
+is broken.
+
+**Repro:**
+```
+$ cd /Users/openhands-demo/maith-repo && python3 python/manage.py invariants
+TypeError: unsupported operand type(s) for |: 'type' and 'type'
+INVARIANT CHECK FAILED — experiment blocked.
+
+$ /usr/local/bin/python3 python/manage.py invariants   # works
+```
+
+**Impact:** the self-service control layer (`manage.py status`, `invariants`, `gate`,
+`run-alias`, etc.) is non-functional under the default invocation. An agent following the
+AGENTS.md guidance ("use `launch_run.py` / `manage.py`") will hit this immediately. The
+underlying scripts and invariants are fine — only the shebang resolution is wrong.
+
+**Fix needed:** Either (a) change the shebang in `manage.py` and all imported scripts to
+`#!/usr/local/bin/python3` (hardcoded to the ML env), or (b) adjust PATH so
+`/usr/local/bin` precedes `/usr/bin` in the agent's shell (e.g., in the SSH login profile
+or the AGENTS_LOCAL.md documented command prefix), or (c) vendor a `python3` symlink.
+Option (a) is the most robust since it doesn't depend on PATH ordering. The
+`AGENTS_LOCAL.md` note already says "Do NOT use /usr/bin/python3" but the shebang
+contradicts this.
+
+---
+
 ## Summary table
 
 | # | Issue | Status | Severity | Invariant? |
@@ -204,6 +250,7 @@ existing runs where the values are known from commit history.
 | 6 | AGENTS.md not merged | OPEN | LOW | No — git process |
 | 7 | GLOSSARY readability fixes not merged | OPEN | LOW | No — git process |
 | 8 | Hparam overrides not in results.json | OPEN | MEDIUM | Yes — invariant 5 |
+| 9 | manage.py uses Python 3.9 not 3.14 | OPEN | MEDIUM | No — tooling |
 
 ---
 
