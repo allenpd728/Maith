@@ -416,7 +416,17 @@ theory*: alignment is fragile, especially when:
    The linearization forces the model to reconstruct graph structure from positional
    patterns — an expensive inference the theory says should be fragile.
 2. **Objective is misaligned:** next-token prediction rewards surface predictability, not
-   semantic structure. The objective doesn't reward the isomorphism the IR provides.
+   semantic structure — formally a gradient-signal-to-noise (GSNR) problem. GSNR, the ratio
+   of squared mean to variance of per-sample gradients (Michalkiewicz et al., 2023), is low
+   for parameters tied to rare, high-information tokens: their mean gradient is small
+   relative to the variance from frequent structural tokens, so they underlearn even when
+   the information is present (as DEC-025's probe shows it is). A canonical IR spreads
+   semantic content across many rare tokens while concentrating frequency in a few
+   structural ones, giving semantic parameters low GSNR by construction. This predicts an
+   asymmetry the current specs under-weight: rebalancing the token distribution (DEC-028
+   `per_operator`) raises retrievable information but need not improve prediction — more
+   rare tokens worsens per-token GSNR — whereas up-weighting conclusion/type tokens (H5)
+   raises GSNR directly.
 3. **Capacity is insufficient:** at 358M, the model is capacity-bound on structural
    scaffolding (DEC-024) before it can fully exploit semantic content.
 
@@ -469,6 +479,9 @@ added to the matrix and tracked as an open experimental question.
   paper. https://openreview.net/forum?id=BZ5a1r-kVsf
 - Mao, Z., Song, H., Dabre, R., Chu, C., & Kurohashi, S. (2023). Variable-length Neural
   Interlingua Representations for Zero-shot Neural Machine Translation. *Multi3Generation*.
+- Michalkiewicz, M., et al. (2023). Domain Generalization Guided by Gradient Signal to
+  Noise Ratio of Networks. *ICCV 2023*. arXiv:2310.07361. (Formal GSNR definition and its
+  tie to the generalization gap; grounds the objective-misalignment mechanism in §8.)
 - Niu, Y., et al. (2023). FAIR: Flow Type-Aware Pre-Training of Compiler Intermediate
   Representations. arXiv:2309.04828.
 - Paliwal, A., Loos, S., Rabe, M., Bansal, K., & Szegedy, C. (2020). Graph Representations
