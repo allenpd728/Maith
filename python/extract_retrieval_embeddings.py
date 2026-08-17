@@ -53,16 +53,20 @@ _DATASETS_DIR = Path(os.environ.get(
 CHECKPOINTS = {
     "A":       _RUNS_DIR / "variant_A_v2_full" / "checkpoint-final",
     "A_v3_2ep": _RUNS_DIR / "variant_A_v3_2ep" / "checkpoint-final",
-    "B_small": _RUNS_DIR / "variant_B_small" / "checkpoint-final",
+    "B_small":      _RUNS_DIR / "variant_B_small" / "checkpoint-final",       # DIRTY: 3491/388 leaky split — do not use for clean experiments
+    "B_small_clean":_RUNS_DIR / "variant_B_small_clean" / "checkpoint-final",   # CLEAN: 3375/376, 2ep
     "B":       _RUNS_DIR / "variant_B_phase6" / "checkpoint-final",
     "C":       _RUNS_DIR / "variant_C_v2" / "checkpoint-final",
-    "flat":    _RUNS_DIR / "variant_flat" / "checkpoint-final",
+    "flat":     _RUNS_DIR / "variant_flat" / "checkpoint-final",                # DIRTY: 3627/402 old split — do not use for clean experiments
+    "flat_clean":_RUNS_DIR / "variant_flat_clean" / "checkpoint-final",         # CLEAN: 3375/376, 2ep
     "random":  None,  # Loaded from HuggingFace cache, no fine-tuning
 }
 
 # Map checkpoint variant names to dataset file names (e.g., A_v3_2ep uses train_A.jsonl)
 VARIANT_FILE_MAP = {
     "A_v3_2ep": "A",
+    "B_small_clean": "B_small",
+    "flat_clean": "flat",
 }
 
 BASE_MODEL = "Qwen/Qwen2.5-Coder-0.5B"
