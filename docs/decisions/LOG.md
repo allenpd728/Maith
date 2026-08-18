@@ -1826,3 +1826,41 @@ All three variants matched on split (3375/376), epochs (2), and size (~358M).
 **Pre-condition for hypothesis tests:** Gates 2-5 green, S2 passed, S1 is a documented warning.
   Hypothesis tests (H1-H14) are unblocked.
 
+### DEC-034 — H6 retest: ambiguous result, closes neither direction (2026-08-18)
+
+**Date:** 2026-08-18
+**Status:** Closed
+**Scope:** H6 retrieval hypothesis, HYPOTHESIS_GRID
+
+**Decision:** H6 is marked partial/ambiguous in the hypothesis grid. The retest under
+verified quality gates produced conflicting results across evaluation modes. H6 is not
+worth re-running at toy scale; the next informative step is H5 or H4/H8.
+
+**Evidence:**
+
+Mode 1 (eval to train, n=287):
+- A_v3_2ep Recall@10: 0.0052 [0.0006, 0.0090]
+- B_small_clean Recall@10: 0.0049 [0.0009, 0.0101]
+- A numerically ahead; CIs fully overlap — not statistically meaningful.
+
+Mode 2 (train to train, n=2641):
+- A_v3_2ep Recall@10: 0.0012 [0.0005, 0.0028]
+- B_small_clean Recall@10: 0.0028 [0.0016, 0.0042]
+- B_small_clean ahead; CIs do not overlap — statistically meaningful, leans negative.
+
+**Interpretation:** The two modes disagree. Mode 2 has 9x more queries and its CIs do
+not overlap — it is the more reliable signal. Under Mode 2, H6 leans negative at toy
+scale. The direction is consistent with the original (invalid) DEC-030 finding after
+correcting for the dataset confound.
+
+**What this does not close:** H6 at scale (H4/H8), H6 under a contrastive objective
+(H5), H6 under a graph-native architecture (H12). The negative result is specific to
+next-token-prediction-trained embeddings at 358-360M parameters on 3375 examples.
+
+**Gate status at time of test:** 57/57 pass (verified clean embeddings, correct split).
+Results: runs/h6_retrieval/results_clean.json (Mode 1), results_mode2.json (Mode 2).
+Full analysis: docs/experiments/H6_RESULTS.md.
+
+**Next:** DEC-033 (H5 infrastructure) is the active front. H5 smoke test and full run
+in progress as of 2026-08-18.
+
