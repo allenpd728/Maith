@@ -44,17 +44,36 @@ large to call.
 
 ---
 
-## Mode 2 (train → train) — pending
+## Results — Mode 2 (train → train)
 
-Not yet run against clean embeddings. `results_v3_2ep_mode2.json` used old leaky B_small
-and is invalid. Must run before H6 can close in either direction.
+| Variant | Recall@1 | Recall@5 | Recall@10 | Recall@20 | MRR |
+|---|---|---|---|---|---|
+| A_v3_2ep | 0.0001 [0, 0.0004] | 0.0008 [0.0003, 0.0014] | 0.0012 [0.0005, 0.0019] | 0.0034 [0.0020, 0.0049] | 0.0051 [0.0041, 0.0065] |
+| B_small_clean | 0.0001 [0, 0.0004] | 0.0011 [0.0005, 0.0019] | 0.0028 [0.0016, 0.0041] | 0.0041 [0.0026, 0.0056] | 0.0061 [0.0050, 0.0075] |
+| flat_clean | 0.0005 [0.0001, 0.0010] | 0.0011 [0.0005, 0.0019] | 0.0024 [0.0013, 0.0035] | 0.0048 [0.0031, 0.0067] | 0.0068 [0.0052, 0.0086] |
+
+n_queryable=2641, pool_size=3375, 1000 bootstrap resamples.
+
+**Mode 2 verdict:** B_small_clean beats A on Recall@10 (0.0028 vs 0.0012), CIs do not
+overlap. This **disagrees with Mode 1** where A was numerically ahead. The two modes
+point in opposite directions — result is ambiguous.
 
 ---
 
 ## Verdict
 
-H6 cannot be closed yet. Mode 2 must be run against clean embeddings. If both modes
-agree A ≥ B_small_clean, close as weak positive. If they disagree, result is ambiguous.
+**H6 is ambiguous — cannot close in either direction.** Mode 1 shows A numerically ahead
+(0.0052 vs 0.0049, CIs overlap). Mode 2 shows B_small_clean clearly ahead (0.0028 vs
+0.0012, CIs do not overlap). The two modes disagree, which the retest plan defined as
+neither trustworthy. H6 stays ⬜ in the hypothesis grid.
+
+The disagreement likely reflects the difference in query pool size (287 eval queries in
+Mode 1 vs 2,641 train queries in Mode 2) — Mode 2 has more statistical power and is
+probably the more reliable signal. Under that reading, H6 leans negative at toy scale,
+consistent with the original DEC-030 direction.
+
+**Next step:** H6 is not worth re-running at this scale. The more informative path is
+H5 (contrastive objective) or scale (H4/H8).
 
 ---
 
