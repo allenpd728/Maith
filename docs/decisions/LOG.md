@@ -1715,6 +1715,34 @@ Undocumented difference, minor confound.
 - `docs/experiments/HYPOTHESIS_GRID.md` — H2, H7, H11
 - `docs/experiments/EXPERIMENT_DESIGN.md` — variant definitions, evaluation framework
 
+### DEC-033 — H5 contrastive objective experiment: infrastructure built, ready to run (2026-08-18)
+
+**Date:** 2026-08-18
+**Status:** Active — infrastructure complete, training not yet run
+**Scope:** H5 hypothesis, contrastive objective
+
+**Decision:** Implement H5 (contrastive training objective) using NT-Xent / SimCSE
+in-batch negatives, building on the A_v3_2ep checkpoint. Motivated by H6's ambiguous
+result — the most credible explanation at toy scale is that next-token prediction does
+not optimize for semantic similarity, not that the IR is wrong.
+
+**Infrastructure built:**
+- `python/build_h5_pairs.py` — positive pair construction from dependency groundtruth
+- `python/train_h5_contrastive.py` — NT-Xent training loop with pre-flight gates
+- `python/test_h5_pairs.py` — 15 unit tests (15/15 pass)
+- `python/test_h5_contrastive.py` — 20 unit tests (20/20 pass)
+- `datasets/h5_pairs_train.json` — 12,460 pairs from 3,375 declarations
+- manage.py aliases: `build-h5-pairs`, `train-h5`, `extract-h5`, `eval-h5`, `eval-h5-mode2`
+- `docs/experiments/H5_SCOPE.md` — full gate sequence and acceptance criteria
+
+**Gate sequence:** see `H5_SCOPE.md`. Run `python test_h5_pairs.py` and
+`python test_h5_contrastive.py` before any training run.
+
+**What would close H5 positive:** A_h5 Recall@10 > A_v3_2ep with non-overlapping CIs
+in both Mode 1 and Mode 2.
+
+---
+
 ### DEC-030 — H6 retrieval retest: IR does not improve retrieval over BPE at toy scale (2026-08-12)
 
 **Date:** 2026-08-12
