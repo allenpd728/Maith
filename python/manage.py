@@ -76,6 +76,48 @@ EXPERIMENTS = {
         "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
         "out": "runs/h6_retrieval/results_clean_mode2.json",
     },
+    # --- H5: contrastive objective ---
+    "build-h5-pairs": {
+        "command": "build-pairs",
+        "dataset": "datasets/train_A.jsonl",
+        "groundtruth": "datasets/dependency_groundtruth.json",
+        "out": "datasets/h5_pairs_train.json",
+        "min_shared": 1,
+        "max_pairs_per_anchor": 5,
+    },
+    "train-h5": {
+        "command": "train-contrastive",
+        "pairs": "datasets/h5_pairs_train.json",
+        "dataset": "datasets/train_A.jsonl",
+        "checkpoint": "runs/variant_A_v3_2ep/checkpoint-final",
+        "out": "runs/variant_A_h5",
+        "epochs": 3,
+        "batch_size": 32,
+        "temperature": 0.07,
+        "lr": 2e-5,
+    },
+    "extract-h5": {
+        "command": "extract",
+        "variants": "A_h5",
+        "checkpoint_dir": "runs/variant_A_h5/checkpoint-final",
+        "embeddings_dir": "runs/retrieval_embeddings_h5",
+    },
+    "eval-h5": {
+        "command": "eval",
+        "variants": "A_h5,A_v3_2ep,B_small_clean",
+        "mode": "eval_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_h5",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out": "runs/h5_retrieval/results.json",
+    },
+    "eval-h5-mode2": {
+        "command": "eval",
+        "variants": "A_h5,A_v3_2ep,B_small_clean",
+        "mode": "train_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_h5",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out": "runs/h5_retrieval/results_mode2.json",
+    },
 }
 
 # Audit preconditions: which audit items must be resolved before an alias
