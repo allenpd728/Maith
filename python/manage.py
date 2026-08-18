@@ -51,20 +51,30 @@ EXPERIMENTS = {
         "command": "train",
         "variant": "A",
         "epochs": 2,
-        "dataset_dir": "datasets_perop",
+        "dataset_dir": "datasets",  # clean 3375/376 split (post-DEC-032)
         "config_tag": "v3_2ep",
         "base_script": "train_v2_resume.py",
     },
-    "extract-all": {
+    "extract-clean": {
         "command": "extract",
-        "variants": "A,B_small,B,C,flat",
-        "embeddings_dir": "runs/retrieval_embeddings_v3",
+        "variants": "A_v3_2ep,B_small_clean,flat_clean",
+        "embeddings_dir": "runs/retrieval_embeddings_clean",
     },
     "eval-h6": {
         "command": "eval",
-        "variants": "A_v3_2ep,B_small",
+        "variants": "A_v3_2ep,B_small_clean,flat_clean",
         "mode": "eval_to_train",
-        "out": "runs/h6_retrieval/results_v3.json",
+        "embeddings_dir": "runs/retrieval_embeddings_clean",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out": "runs/h6_retrieval/results_clean.json",
+    },
+    "eval-h6-mode2": {
+        "command": "eval",
+        "variants": "A_v3_2ep,B_small_clean,flat_clean",
+        "mode": "train_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_clean",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out": "runs/h6_retrieval/results_clean_mode2.json",
     },
 }
 
