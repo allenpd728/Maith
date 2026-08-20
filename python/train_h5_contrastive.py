@@ -282,21 +282,34 @@ def train(
     max_seq_len: int = 512,
     seed: int = 42,
     smoke_test: bool = False,
+    device_override: str = None,
+    log_every: int = 10,
+    checkpoint_every: int = 500,
+    gradient_checkpointing: bool = False,
 ):
     hf_set_seed(seed)
     random.seed(seed)
     torch.manual_seed(seed)
 
-    device = (
-        torch.device("mps") if torch.backends.mps.is_available()
-        else torch.device("cuda") if torch.cuda.is_available()
-        else torch.device("cpu")
-    )
+    if device_override:
+        device = torch.device(device_override)
+    else:
+        device = (
+            torch.device("mps") if torch.backends.mps.is_available()
+            else torch.device("cuda") if torch.cuda.is_available()
+            else torch.device("cpu")
+        )
     print(f"Device: {device}")
 
     # Load model (encoder only — we use hidden states, not logits)
-    print(f"Loading model from {checkpoint_path}...")
-    model = AutoModel.from_pretrained(str(checkpoint_path))
+    print(f"Loading model from {checkpoint_path}...", flush=True)
+    # bfloat16 everywhere: halves memory vs float32, numerically stable (no grad scaling needed)
+    # CPU supports bfloat16 in PyTorch and it roughly halves step time at this model size
+    load_dtype = torch.bfloat16
+    model = AutoModel.from_pretrained(str(checkpoint_path), dtype=load_dtype)
+    if gradient_checkpointing and hasattr(model, "gradient_checkpointing_enable"):
+        model.gradient_checkpointing_enable()
+        print("Gradient checkpointing enabled.", flush=True)
     model = model.to(device)
     model.train()
 
@@ -312,6 +325,7 @@ def train(
         shuffle=True,
         collate_fn=contrastive_collate,
         drop_last=True,  # NT-Xent requires consistent batch sizes
+        num_workers=0,   # MPS + forked workers = deadlock; keep in main process
     )
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
@@ -329,9 +343,10 @@ def train(
     global_step = 0
     t0 = time.time()
 
-    print(f"Training: {len(dataset)} pairs, {len(loader)} steps/epoch, {epochs} epochs")
-    print(f"Batch size: {batch_size}, LR: {lr}, Temperature: {temperature}")
+    print(f"Training: {len(dataset)} pairs, {len(loader)} steps/epoch, {epochs} epochs", flush=True)
+    print(f"Batch size: {batch_size}, LR: {lr}, Temperature: {temperature}", flush=True)
 
+    print("Starting training loop — warming up MPS (first batch may be slow)...", flush=True)
     for epoch in range(1, epochs + 1):
         epoch_loss = 0.0
         n_batches = 0
@@ -339,6 +354,9 @@ def train(
         for a_ids, a_mask, p_ids, p_mask in loader:
             a_ids, a_mask = a_ids.to(device), a_mask.to(device)
             p_ids, p_mask = p_ids.to(device), p_mask.to(device)
+
+            if global_step == 0:
+                print("First batch on device — running forward pass...", flush=True)
 
             # Forward pass
             a_out = model(input_ids=a_ids, attention_mask=a_mask)
@@ -371,13 +389,21 @@ def train(
                 writer.add_scalar("train/nt_xent_loss", loss_val, global_step)
                 writer.add_scalar("train/lr", scheduler.get_last_lr()[0], global_step)
 
-            if global_step % 50 == 0:
+            if global_step % log_every == 0:
                 elapsed = time.time() - t0
+                remaining = (elapsed / global_step) * (total_steps - global_step) if global_step > 0 else 0
                 print(f"  step {global_step}/{total_steps} "
-                      f"loss={loss_val:.4f} elapsed={elapsed:.0f}s")
+                      f"loss={loss_val:.4f} elapsed={elapsed:.0f}s eta={remaining:.0f}s",
+                      flush=True)
+
+            if checkpoint_every > 0 and global_step % checkpoint_every == 0:
+                mid_ckpt = out_dir / f"checkpoint-step{global_step}"
+                mid_ckpt.mkdir(parents=True, exist_ok=True)
+                model.save_pretrained(str(mid_ckpt))
+                print(f"  [mid-run checkpoint saved: {mid_ckpt}]", flush=True)
 
         avg_loss = epoch_loss / max(n_batches, 1)
-        print(f"Epoch {epoch}/{epochs} — avg loss: {avg_loss:.4f}")
+        print(f"Epoch {epoch}/{epochs} — avg loss: {avg_loss:.4f}", flush=True)
 
     if writer:
         writer.close()
@@ -450,6 +476,14 @@ def main():
                         help="Quick run with 64 pairs, no GPU needed")
     parser.add_argument("--skip-gate", action="store_true",
                         help="Skip pre-flight gate (not recommended)")
+    parser.add_argument("--device", type=str, default=None,
+                        help="Force device: cpu, mps, cuda (default: auto)")
+    parser.add_argument("--log-every", type=int, default=10,
+                        help="Print heartbeat every N steps (default: 10)")
+    parser.add_argument("--checkpoint-every", type=int, default=500,
+                        help="Save mid-run checkpoint every N steps (0=off, default: 500)")
+    parser.add_argument("--gradient-checkpointing", action="store_true",
+                        help="Enable gradient checkpointing to reduce MPS/GPU memory")
     args = parser.parse_args()
 
     pairs_path = Path(args.pairs)
@@ -481,6 +515,10 @@ def main():
         max_seq_len=args.max_seq_len,
         seed=args.seed,
         smoke_test=args.smoke_test,
+        device_override=args.device,
+        log_every=args.log_every,
+        checkpoint_every=args.checkpoint_every,
+        gradient_checkpointing=args.gradient_checkpointing,
     )
 
     print(f"\nH5 training complete.")

@@ -92,9 +92,24 @@ EXPERIMENTS = {
         "checkpoint": "runs/variant_A_v3_2ep/checkpoint-final",
         "out": "runs/variant_A_h5",
         "epochs": 3,
+        "batch_size": 8,
+        "temperature": 0.07,
+        "lr": 2e-5,
+    },
+    # H5 end-to-end: 1 epoch, batch=32, gradient checkpointing, MPS overnight run
+    "train-h5-e2e": {
+        "command": "train-contrastive",
+        "pairs": "datasets/h5_pairs_train.json",
+        "dataset": "datasets/train_A.jsonl",
+        "checkpoint": "runs/variant_A_v3_2ep/checkpoint-final",
+        "out": "runs/variant_A_h5_e2e",
+        "epochs": 1,
         "batch_size": 32,
         "temperature": 0.07,
         "lr": 2e-5,
+        "gradient_checkpointing": True,
+        "log_every": 50,
+        "checkpoint_every": 200,
     },
     "extract-h5": {
         "command": "extract",
@@ -117,6 +132,80 @@ EXPERIMENTS = {
         "embeddings_dir": "runs/retrieval_embeddings_h5",
         "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
         "out": "runs/h5_retrieval/results_mode2.json",
+    },
+    # --- H5 end-to-end eval aliases ---
+    "extract-h5-e2e": {
+        "command": "extract",
+        "variants": "A_h5_e2e",
+        "checkpoint_dir": "runs/variant_A_h5_e2e/checkpoint-final",
+        "embeddings_dir": "runs/retrieval_embeddings_h5_e2e",
+    },
+    "eval-h5-e2e": {
+        "command": "eval",
+        "variants": "A_h5_e2e,A_h5_proj,A_v3_2ep,B_small_clean",
+        "mode": "eval_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_h5_e2e",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out": "runs/h5_retrieval/results_e2e.json",
+    },
+    "eval-h5-e2e-mode2": {
+        "command": "eval",
+        "variants": "A_h5_e2e,A_h5_proj,A_v3_2ep,B_small_clean",
+        "mode": "train_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_h5_e2e",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out": "runs/h5_retrieval/results_e2e_mode2.json",
+    },
+    # --- H9 co-training aliases ---
+    "train-h9": {
+        "command": "train-h9",
+        "dataset":      "datasets/train_A.jsonl",
+        "eval_dataset": "datasets/eval_A.jsonl",
+        "vocab":        "datasets/vocab_A.json",
+        "pairs":        "datasets/h5_pairs_train.json",
+        "out":          "runs/variant_A_h9",
+    },
+    "extract-h9": {
+        "command": "extract",
+        "variants":      "A_h9",
+        "checkpoint_dir": "runs/variant_A_h9/checkpoint-final",
+        "embeddings_dir": "runs/retrieval_embeddings_h9",
+    },
+    "eval-h9": {
+        "command": "eval",
+        "variants":    "A_h9,A_h5_e2e,A_v3_2ep,B_small_clean",
+        "mode":        "eval_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_h9",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out":         "runs/h9_retrieval/results.json",
+    },
+    "eval-h9-mode2": {
+        "command": "eval",
+        "variants":    "A_h9,A_h5_e2e,A_v3_2ep,B_small_clean",
+        "mode":        "train_to_train",
+        "embeddings_dir": "runs/retrieval_embeddings_h9",
+        "groundtruth": "datasets/dependency_groundtruth_eval_to_train.json",
+        "out":         "runs/h9_retrieval/results_mode2.json",
+    },
+    # --- H5 two-stage (projection head approach) ---
+    "extract-h5-embeddings": {
+        "command": "extract-h5-embeddings",
+        "dataset": "datasets/train_A.jsonl",
+        "checkpoint": "runs/variant_A_v3_2ep/checkpoint-final",
+        "out": "runs/h5_embeddings/train_A_embeddings.npy",
+        "batch_size": 8,
+        "max_seq_len": 512,
+    },
+    "train-h5-proj": {
+        "command": "train-h5-proj",
+        "embeddings": "runs/h5_embeddings/train_A_embeddings.npy",
+        "pairs": "datasets/h5_pairs_train.json",
+        "out": "runs/variant_A_h5_proj",
+        "epochs": 5,
+        "batch_size": 64,
+        "temperature": 0.07,
+        "proj_dim": 256,
+        "lr": 1e-3,
     },
 }
 
@@ -616,6 +705,66 @@ def _launch_alias(alias_name, alias_config, extra_args):
                "--variants", variants,
                "--mode", mode,
                "--out", out]
+    elif cmd_kind == "train-contrastive":
+        # H5 contrastive fine-tuning — calls train_h5_contrastive.py directly
+        script = REPO / "python" / "train_h5_contrastive.py"
+        cmd = [py_executable(), str(script),
+               "--pairs", alias_config["pairs"],
+               "--dataset", alias_config["dataset"],
+               "--checkpoint", alias_config["checkpoint"],
+               "--out", alias_config["out"],
+               "--epochs", str(alias_config["epochs"]),
+               "--batch-size", str(alias_config["batch_size"]),
+               "--temperature", str(alias_config["temperature"])]
+        if alias_config.get("lr"):
+            cmd += ["--lr", str(alias_config["lr"])]
+        if alias_config.get("gradient_checkpointing"):
+            cmd += ["--gradient-checkpointing"]
+        if alias_config.get("log_every"):
+            cmd += ["--log-every", str(alias_config["log_every"])]
+        if alias_config.get("checkpoint_every") is not None:
+            cmd += ["--checkpoint-every", str(alias_config["checkpoint_every"])]
+    elif cmd_kind == "build-pairs":
+        # H5 pair construction — calls build_h5_pairs.py directly
+        script = REPO / "python" / "build_h5_pairs.py"
+        cmd = [py_executable(), str(script),
+               "--dataset", alias_config["dataset"],
+               "--groundtruth", alias_config["groundtruth"],
+               "--out", alias_config["out"],
+               "--min-shared", str(alias_config["min_shared"]),
+               "--max-pairs-per-anchor", str(alias_config["max_pairs_per_anchor"])]
+    elif cmd_kind == "extract-h5-embeddings":
+        # H5 Stage 1 — extract frozen embeddings from checkpoint
+        script = REPO / "python" / "extract_h5_embeddings.py"
+        cmd = [py_executable(), str(script),
+               "--dataset", alias_config["dataset"],
+               "--checkpoint", alias_config["checkpoint"],
+               "--out", alias_config["out"],
+               "--batch-size", str(alias_config["batch_size"]),
+               "--max-seq-len", str(alias_config["max_seq_len"])]
+    elif cmd_kind == "train-h5-proj":
+        # H5 Stage 2 — train projection head on pre-extracted embeddings
+        script = REPO / "python" / "train_h5_projection.py"
+        cmd = [py_executable(), str(script),
+               "--embeddings", alias_config["embeddings"],
+               "--pairs", alias_config["pairs"],
+               "--out", alias_config["out"],
+               "--epochs", str(alias_config["epochs"]),
+               "--batch-size", str(alias_config["batch_size"]),
+               "--temperature", str(alias_config["temperature"]),
+               "--proj-dim", str(alias_config["proj_dim"]),
+               "--lr", str(alias_config["lr"])]
+    elif cmd_kind == "train-h9":
+        # H9 — joint NTP + NT-Xent co-training from pretrained base
+        script = REPO / "python" / "train_h9_cotrain.py"
+        cmd = [py_executable(), str(script),
+               "--dataset",      alias_config["dataset"],
+               "--eval-dataset", alias_config["eval_dataset"],
+               "--vocab",        alias_config["vocab"],
+               "--pairs",        alias_config["pairs"],
+               "--out",          alias_config["out"]]
+        if extra_args.get("smoke_test") or extra_args.get("smoke-test"):
+            cmd.append("--smoke-test")
     else:
         print(f"ERROR: unknown alias command type: {cmd_kind}")
         return 1
@@ -659,6 +808,21 @@ def cmd_alias(args):
         return 1
     print("  Invariants OK.")
     print()
+
+    # Guard 4 (H9 only): explicit dataset gate — same check as other train aliases
+    if alias_config["command"] == "train-h9":
+        print("Running dataset gate (Gate 3) ...")
+        py = sys.executable
+        repo = str(REPO)
+        gate_cmd = [py, f"{repo}/python/check_invariants.py",
+                    "--datasets", str(REPO / "datasets"),
+                    "--runs", str(RUNS_DIR)]
+        gate_result = subprocess.run(gate_cmd)
+        if gate_result.returncode != 0:
+            print("  Dataset gate FAILED — fix invariants before training H9.")
+            return 1
+        print("  Dataset gate OK.")
+        print()
 
     # Build extra args from positional arguments
     extra = {}
