@@ -1826,6 +1826,70 @@ All three variants matched on split (3375/376), epochs (2), and size (~358M).
 **Pre-condition for hypothesis tests:** Gates 2-5 green, S2 passed, S1 is a documented warning.
   Hypothesis tests (H1-H14) are unblocked.
 
+### DEC-035 — H5 end-to-end contrastive fine-tune complete; retrieval eval pending (2026-08-19)
+
+**Date:** 2026-08-19
+**Status:** Closed — ambiguous positive
+**Scope:** H5 hypothesis, end-to-end contrastive fine-tune
+
+**Decision:** Run the full end-to-end contrastive fine-tune (fine-tune the entire
+A_v3_2ep encoder, not just a projection head) to test whether the H5 projection-head
+effect grows with full model adaptation.
+
+**Motivation:** DEC-033 established the projection-head result (Mode 2 statistically
+positive, effect small). The projection head compresses 896→256 dims and freezes the
+encoder; full e2e removes both constraints and is the cleaner test of whether the
+contrastive signal can reshape the representation layer itself.
+
+**Training run:**
+- Base checkpoint: `runs/variant_A_v3_2ep/checkpoint-final`
+- Objective: NT-Xent (in-batch negatives, temp=0.07)
+- Dataset: 12,443 dependency pairs from `datasets/h5_pairs_train.json`
+- Config: 1 epoch, batch=32, lr=2e-5, max_seq_len=512, device=MPS
+- Total steps: 388
+- Initial loss: 3.9335
+- Final loss: 2.6762 (loss_descended=True)
+- Duration: ~5.9 hours (21,344s)
+- Checkpoint: `runs/variant_A_h5_e2e/checkpoint-final`
+- Mid-run checkpoint: `runs/variant_A_h5_e2e/checkpoint-step200`
+- Results: `runs/variant_A_h5_e2e/results.json`
+
+**Gate status:** All gates verified clean at time of training (inherited from DEC-032/DEC-034).
+
+**Retrieval eval results (2026-08-19):**
+
+Mode 1 (eval→train, n=287):
+- A_h5_e2e  Recall@10: 0.0042 [0.0009, 0.0082]  MRR: 0.0144 [0.0059, 0.0255]
+- A_h5_proj Recall@10: 0.0057 [0.0013, 0.0118]  MRR: 0.0100 [0.0049, 0.0184]
+- A_v3_2ep  Recall@10: 0.0052 [0.0009, 0.0113]  MRR: 0.0095 [0.0046, 0.0171]
+- B_small   Recall@10: 0.0049 [0.0009, 0.0101]  MRR: 0.0140 [0.0062, 0.0256]
+All CIs overlap — no statistically significant separation.
+
+Mode 2 (train→train, n=2641):
+- A_h5_e2e  Recall@10: 0.0027 [0.0016, 0.0040]  MRR: 0.0066 [0.0055, 0.0082]
+- A_h5_proj Recall@10: 0.0029 [0.0014, 0.0048]  MRR: 0.0058 [0.0048, 0.0072]
+- A_v3_2ep  Recall@10: 0.0012 [0.0005, 0.0019]  MRR: 0.0051 [0.0041, 0.0065]
+- B_small   Recall@10: 0.0028 [0.0016, 0.0042]  MRR: 0.0061 [0.0051, 0.0075]
+
+Mode 2 key finding: A_h5_e2e (0.0027) and A_h5_proj (0.0029) both statistically ahead
+of A_v3_2ep (0.0012) — CIs non-overlapping. A_h5_e2e matches B_small_clean (0.0028),
+CIs overlapping. Both contrastive variants improve over the next-token baseline; e2e
+and projection-head are statistically indistinguishable from each other.
+
+**Results files:**
+- Mode 1: `runs/h5_retrieval/results_e2e.json`
+- Mode 2: `runs/h5_retrieval/results_e2e_mode2.json`
+
+**Interpretation:** H5 is an ambiguous positive. Contrastive objective (both e2e and
+projection-head) reliably beats the next-token baseline in Mode 2. Full e2e fine-tune
+does not further improve over the projection-head. The effect is real but small — well
+below the pretrained baseline (Recall@10≈0.072). H5 cannot be closed positive at this
+scale. Most informative next steps: H4/H8 (scale) or H9 (co-training).
+
+**Status:** Closed — ambiguous positive. See HYPOTHESIS_GRID H5 row.
+
+---
+
 ### DEC-034 — H6 retest: ambiguous result, closes neither direction (2026-08-18)
 
 **Date:** 2026-08-18

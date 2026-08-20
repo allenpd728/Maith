@@ -53,6 +53,8 @@ _DATASETS_DIR = Path(os.environ.get(
 CHECKPOINTS = {
     "A":       _RUNS_DIR / "variant_A_v2_full" / "checkpoint-final",
     "A_v3_2ep": _RUNS_DIR / "variant_A_v3_2ep" / "checkpoint-final",
+    "A_h5_e2e": _RUNS_DIR / "variant_A_h5_e2e" / "checkpoint-final",  # H5 end-to-end contrastive
+    "A_h9":     _RUNS_DIR / "variant_A_h9"     / "checkpoint-final",  # H9 co-training
     "B_small":      _RUNS_DIR / "variant_B_small" / "checkpoint-final",       # DIRTY: 3491/388 leaky split — do not use for clean experiments
     "B_small_clean":_RUNS_DIR / "variant_B_small_clean" / "checkpoint-final",   # CLEAN: 3375/376, 2ep
     "B":       _RUNS_DIR / "variant_B_phase6" / "checkpoint-final",
@@ -65,6 +67,8 @@ CHECKPOINTS = {
 # Map checkpoint variant names to dataset file names (e.g., A_v3_2ep uses train_A.jsonl)
 VARIANT_FILE_MAP = {
     "A_v3_2ep": "A",
+    "A_h5_e2e": "A",  # trained on same IR tokens as A_v3_2ep
+    "A_h9":     "A",  # co-trained on same IR tokens as A_v3_2ep
     "B_small_clean": "B_small",
     "flat_clean": "flat",
 }
