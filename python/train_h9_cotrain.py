@@ -515,27 +515,30 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
             out = model(**batch)
             ntp_loss = out.loss
 
-            # --- Contrastive forward pass ---
             pair_batch = pair_sampler.sample_batch(contrastive_batch)
+
+            # NTP backward — do this first so gradient checkpointing recomputation
+            # is clean before any contrastive forward passes touch the model.
+            ntp_scaled = (1.0 - lam) * ntp_loss / GRAD_ACCUM
+            ntp_scaled.backward()
+
             if pair_batch is not None:
                 a_ids, a_mask, p_ids, p_mask = [t.to(device) for t in pair_batch]
 
-                with model.no_sync() if hasattr(model, "no_sync") else _null_ctx():
-                    a_out = model(input_ids=a_ids, attention_mask=a_mask,
-                                  output_hidden_states=True)
-                    p_out = model(input_ids=p_ids, attention_mask=p_mask,
-                                  output_hidden_states=True)
-
+                # Contrastive forward + backward — separate from NTP graph.
+                # Gradient checkpointing recomputation no longer races with a
+                # live NTP graph, eliminating the NaN observed in the smoke test.
+                a_out = model(input_ids=a_ids, attention_mask=a_mask,
+                              output_hidden_states=True)
+                p_out = model(input_ids=p_ids, attention_mask=p_mask,
+                              output_hidden_states=True)
                 a_emb = mean_pool(a_out.hidden_states[-1], a_mask)
                 p_emb = mean_pool(p_out.hidden_states[-1], p_mask)
                 con_loss = nt_xent_loss(a_emb, p_emb, temperature)
+                con_scaled = lam * con_loss / GRAD_ACCUM
+                con_scaled.backward()
             else:
                 con_loss = torch.tensor(0.0, device=device)
-
-            # Combined loss
-            loss = (1.0 - lam) * ntp_loss + lam * con_loss
-            loss = loss / GRAD_ACCUM
-            loss.backward()
 
             accum_ntp += ntp_loss.item()
             accum_con += con_loss.item()
