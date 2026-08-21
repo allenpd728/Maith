@@ -395,7 +395,8 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
         pairs_path: Path, out_dir: Path, smoke_test: bool,
         lam: float = CONTRASTIVE_LAMBDA,
         temperature: float = CONTRASTIVE_TEMPERATURE,
-        contrastive_batch: int = CONTRASTIVE_BATCH_SIZE) -> None:
+        contrastive_batch: int = CONTRASTIVE_BATCH_SIZE,
+        grad_accum: int = GRAD_ACCUM) -> None:
 
     hf_set_seed(SEED)
     random.seed(SEED)
@@ -411,7 +412,7 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
     print(f"  Device:              {device}")
     print(f"  Base model:          {BASE_MODEL}")
     print(f"  Epochs:              {epochs}")
-    print(f"  Batch:               {BATCH_SIZE} (grad_accum={GRAD_ACCUM}, effective={BATCH_SIZE * GRAD_ACCUM})")
+    print(f"  Batch:               {BATCH_SIZE} (grad_accum={grad_accum}, effective={BATCH_SIZE * grad_accum})")
     print(f"  LR:                  {LEARNING_RATE}")
     print(f"  Lambda (contrastive):{lam}")
     print(f"  Temperature:         {temperature}")
@@ -471,7 +472,7 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY)
 
-    total_steps   = max(1, len(train_loader) * epochs // GRAD_ACCUM)
+    total_steps   = max(1, len(train_loader) * epochs // grad_accum)
     warmup_steps  = max(1, int(WARMUP_RATIO * total_steps))
 
     def lr_lambda(step):
@@ -519,7 +520,7 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
 
             # NTP backward — do this first so gradient checkpointing recomputation
             # is clean before any contrastive forward passes touch the model.
-            ntp_scaled = (1.0 - lam) * ntp_loss / GRAD_ACCUM
+            ntp_scaled = (1.0 - lam) * ntp_loss / grad_accum
             ntp_scaled.backward()
 
             if pair_batch is not None:
@@ -535,7 +536,7 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
                 a_emb = mean_pool(a_out.hidden_states[-1], a_mask)
                 p_emb = mean_pool(p_out.hidden_states[-1], p_mask)
                 con_loss = nt_xent_loss(a_emb, p_emb, temperature)
-                con_scaled = lam * con_loss / GRAD_ACCUM
+                con_scaled = lam * con_loss / grad_accum
                 con_scaled.backward()
             else:
                 con_loss = torch.tensor(0.0, device=device)
@@ -544,14 +545,14 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
             accum_con += con_loss.item()
             accum_step += 1
 
-            if accum_step >= GRAD_ACCUM:
+            if accum_step >= grad_accum:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
 
-                avg_ntp = accum_ntp / GRAD_ACCUM
-                avg_con = accum_con / GRAD_ACCUM
+                avg_ntp = accum_ntp / grad_accum
+                avg_con = accum_con / grad_accum
                 avg_tot = (1.0 - lam) * avg_ntp + lam * avg_con
 
                 if initial_ntp_loss is None:
@@ -644,8 +645,8 @@ def run(dataset_path: Path, eval_dataset_path: Path, vocab_path: Path,
         "epochs":              epochs,
         "seed":                SEED,
         "batch_size":          BATCH_SIZE,
-        "grad_accum":          GRAD_ACCUM,
-        "effective_batch_size": BATCH_SIZE * GRAD_ACCUM,
+        "grad_accum":          grad_accum,
+        "effective_batch_size": BATCH_SIZE * grad_accum,
         "learning_rate":       LEARNING_RATE,
         "max_seq_len":         MAX_SEQ_LEN,
         "lambda_contrastive":  lam,
@@ -715,6 +716,7 @@ if __name__ == "__main__":
                         dest="lam", metavar="LAMBDA")
     parser.add_argument("--temperature",  type=float, default=CONTRASTIVE_TEMPERATURE)
     parser.add_argument("--contrastive-batch", type=int, default=CONTRASTIVE_BATCH_SIZE)
+    parser.add_argument("--grad-accum",        type=int, default=GRAD_ACCUM)
     args = parser.parse_args()
 
     run(
@@ -727,4 +729,5 @@ if __name__ == "__main__":
         lam               = args.lam,
         temperature       = args.temperature,
         contrastive_batch = args.contrastive_batch,
+        grad_accum        = args.grad_accum,
     )
