@@ -114,7 +114,8 @@ C3 (attribute sparsity) was deferred. See: ENCODER_FORMAT.md v2.0.0
 The DEC-024 ablation: replace every content token (entity IDs, gen ops, relation
 types, attribute values) with a single SLOT token. Vocab: 11 tokens. Tests whether
 graph shape alone (without semantic content) is learnable. Result: Flat-IR achieves
-0.077 bits/token (highly predictable shape), but a linear probe gets only 13.6%
+0.077 bits/token (a vocabulary-normalized predictability measure; lower means more
+predictable — the shape is highly regular), but a linear probe gets only 13.6%
 module classification (no semantic content encoded).
 See: DEC-024 in LOG.md
 
@@ -123,9 +124,10 @@ See: DEC-024 in LOG.md
 ## Lean and Mathlib context
 
 **Lean 4**
-A proof assistant and programming language based on dependent type theory. Maith
-runs inside Lean to extract IR from the elaborated environment — it does not parse
-Lean source strings.
+A proof assistant and programming language based on dependent type theory (a formal
+logic where types can depend on values — enabling mathematical proofs to be checked
+by the compiler). Maith runs inside Lean to extract IR from the elaborated
+environment — it does not parse Lean source strings.
 
 **Mathlib**
 The Lean 4 mathematics library — a large formalized math corpus. Maith's training
@@ -158,16 +160,18 @@ Merges frequent byte pairs into tokens. Variant B uses raw BPE on leanExpr; Vari
 uses BPE on AST-split pieces; B-small uses BPE truncated to 601 tokens.
 
 **Embedding table**
-The model's lookup matrix mapping token IDs to dense vectors (Qwen2.5-Coder-0.5B:
-896-dimensional). The size difference between A (601 rows) and B/C (151,643 rows)
+The model's lookup matrix mapping token IDs to dense vectors (arrays of real numbers;
+Qwen2.5-Coder-0.5B uses 896-dimensional vectors — the width of the model's internal
+representations). The size difference between A (601 rows) and B/C (151,643 rows)
 is the ~136M parameter gap — entirely in the embedding table, not the transformer
 body (attention/FFN layers are identical).
 
 **Qwen2.5-Coder-0.5B**
-The base model for all variants. 0.5B parameters (including its 151k embedding
+The base model for all variants. "0.5B" is the model name, not the parameter count
+after resize — the base ships with ~494M params (including its 151k embedding
 table). After resizing to 601 tokens, A/B-small have 358M params; at full 151k, B/C
-have 494M. Same transformer architecture (24 layers, 14 attention heads, 896 hidden
-dim) in all cases.
+have 494M. Same transformer architecture (layers, attention, internal dimensions)
+in all cases — only the embedding table changes size.
 
 **MPS (Metal Performance Shaders)**
 Apple's GPU compute framework. All training runs on a consumer M4 Mac with 16GB
@@ -179,17 +183,21 @@ unified memory via MPS. This constrains model size to the toy tier (<1B params).
 
 **Perplexity**
 The primary evaluation metric. Measures how surprised the model is by the next token:
-exp(average cross-entropy loss). Lower = better. A: 1.2361 (v2, authoritative). B: 1.107, C: 1.098 (v1-era, 3-epoch; v2 2-epoch re-run in progress).
+exp(average cross-entropy loss — a measure of how wrong the model's predictions were,
+in bits). Lower = better. A: 1.2361 (v2, authoritative). B: 1.107, C: 1.098 (v1-era, 3-epoch; v2 2-epoch re-run in progress).
 See: EXPERIMENT_DESIGN.md eval protocol
 
 **Completion accuracy (top-1)**
-The secondary evaluation metric. Given a prefix, does the model's argmax prediction
-match the ground-truth next token? Measured with teacher forcing on the last 10
-tokens of 200 eval examples. A: 90.0%, B-small: 90.5% (v2, authoritative). B: 91.7%, C: 93.0% (v1-era, 3-epoch; v2 2-epoch re-run in progress).
+The secondary evaluation metric. Given a prefix, does the model's top-ranked prediction
+(the token it considers most likely; also called argmax) match the ground-truth next
+token? Measured by checking the model's prediction on the last 10 tokens of each of 200
+evaluation examples, using teacher forcing. A: 90.0%, B-small: 90.5% (v2, authoritative). B: 91.7%, C: 93.0% (v1-era, 3-epoch; v2 2-epoch re-run in progress).
 
 **Teacher forcing**
 The evaluation method: feed the ground-truth token (not the model's prediction) at
-each step, so errors don't compound. Measures per-position accuracy independently.
+each step, so errors don't compound — so-called because the "teacher" (ground truth)
+forces the "student" (the model) along the correct path at each step. Measures
+per-position accuracy independently.
 
 **Probing (linear probe)**
 The DEC-025 experiment: freeze the trained model, extract its final hidden-layer
