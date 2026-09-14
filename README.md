@@ -16,7 +16,15 @@
 > [`PRIOR_ART`](docs/reference/PRIOR_ART.md) (related work) ·
 > [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-026/027).
 
-Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
+## At a glance
+
+- **Fully implemented pipeline**: extract → normalize → encode → train → decode → decompile, validated end-to-end (**2,554/2,554 declarations** round-trip cleanly).
+- **Structured experiments, honest results**: controlled grids (perplexity **1.236** / top-1 **90.0%**) with a size-matched BPE control and a documented 62-pp probe gap showing the IR encodes real semantics.
+- **Open research practice**: hypothesis grid with per-claim status, experiment design, decision log (DEC-0xx), and prior-art review — so results are legible, not just reported.
+
+> Read the full background below, or jump to [hypotheses](docs/experiments/HYPOTHESIS_GRID.md) and [experiment design](docs/experiments/EXPERIMENT_DESIGN.md).
+
+ a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
 ## 1) Research Question
 
