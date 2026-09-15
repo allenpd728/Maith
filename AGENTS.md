@@ -15,6 +15,9 @@ rather than raw source syntax — improves performance on formal-math tasks.
 - **Base model:** Qwen2.5-Coder-0.5B (all variants share this transformer base)
 - **Central hypothesis:** a canonical semantic representation improves formal math
   tooling. Decomposed into 11 testable sub-claims (H1–H11); see hypothesis grid below.
+- **Active track (2026-09-15):** axiom discovery — searching for a kernel-checked
+  structure-preserving map φ that transfers existing theorems into new proofs
+  (`docs/experiments/AXIOM_DISCOVERY.md`). Toy-model training is shelved, not deleted.
 
 ## Current state (v2 era, 2026-08-09)
 
@@ -26,6 +29,10 @@ rather than raw source syntax — improves performance on formal-math tasks.
   or completion accuracy over size-matched BPE at toy scale (DEC-027). Prediction metrics
   are structurally biased against the IR's canonicalization goal (H11 ◐). Whether it helps
   under non-prediction metrics (retrieval, ATP) or at larger scale is open.
+- **Direction (DEC-036, 2026-09-15):** the active track is now axiom discovery on a
+  circuit-complexity benchmark, guarded by the ported PleaNP integrity gates
+  (`tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`). All development is on the single
+  `dev` branch.
 
 ## Key terms (see `docs/reference/GLOSSARY.md` for full definitions)
 
@@ -80,7 +87,11 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | Path | Contents |
 |---|---|
 | `README.md` | Human-readable project introduction, results, roadmap |
-| `docs/decisions/LOG.md` | Chronological experiment record (DEC-001 through DEC-029) |
+| `docs/decisions/LOG.md` | Chronological experiment record (DEC-001 through DEC-036) |
+| `docs/experiments/AXIOM_DISCOVERY.md` | **Active research track** — search for a kernel-checked structure-preserving map φ (supersedes toy-model training) |
+| `docs/experiments/BENCHMARK_CORPUS_PLAN.md` | Companion: how the circuit-complexity benchmark corpus (transfer targets + conservativity corpus) is built and signed off |
+| `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-`dev`-branch protocol (ported from PleaNP) |
+| `tooling/gates/README.md` | Integrity scanners (hygiene/vacuity/lethality) + fixtures |
 | `docs/experiments/HYPOTHESIS_GRID.md` | Sub-claims H1–H11 with status, evidence, experiment-scope matrix |
 | `docs/experiments/V2_NEXT_STEPS.md` | Active specs, gate tracking, pre-existing test failures, next steps |
 | `docs/experiments/H6_RETRIEVAL_SCOPE.md` | H6 retrieval experiment spec (the decisive test) |
@@ -95,10 +106,21 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 
 ## Build and test commands
 
-**Lean:**
+**Lean (bootstrap — any sandbox or CI runner, no bespoke machine):**
 ```bash
+curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+  | sh -s -- -y --default-toolchain none
+export PATH="$HOME/.elan/bin:$PATH"
+lake exe cache get          # restore precompiled Mathlib oleans (community Azure cache)
 lake build tests
 ./.lake/build/bin/tests
+```
+
+**Integrity gates (Tier 1 — run before citing any Lean claim as evidence):**
+```bash
+python3 tooling/gates/hygiene_scan.py --prove-stage Maith Tests Scripts   # no sorry/admit/axiom
+python3 tooling/gates/vacuity_scan.py Maith Tests Scripts                 # no dishonest placeholders
+python3 tooling/gates/binder_usage_scan.py Maith Tests Scripts            # every binder load-bearing
 ```
 
 **Python:**
@@ -128,24 +150,37 @@ lake exe buildCorpus --per-operator  # per_operator mode (op:<shortName>)
 
 ## Git workflow
 
+**Single dev branch (2026-09-15 consolidation).** All work lands on `dev`; `main`
+is the reviewed branch. Nothing is pushed to `main` unreviewed — the agent that
+writes a change is not the agent that approves it (see `docs/TOOLCHAIN_AND_CI.md`
+§5). All historical per-task branches were consolidated into `dev` (DEC-036).
+
 ```bash
 # Commit (identifies as AI agent)
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
 
-# Push to kit/dev (NOT main)
-git push origin your-branch:kit/dev
+# Work on dev; push to dev for review (NOT main)
+git fetch origin
+git checkout dev && git pull origin dev --ff-only
+git push origin dev
+
+# A different agent/human reviews dev, then merges to main:
+#   git checkout main && git merge --no-ff dev && git push origin main
 ```
 
-If kit/dev has diverged, use merge (not rebase) to avoid working-tree conflicts:
+If `dev` has diverged, use merge (not rebase) to avoid working-tree conflicts:
 ```bash
-git fetch origin kit/dev
-git merge origin/kit/dev --no-edit
-git push origin your-branch:kit/dev
+git fetch origin dev
+git merge origin/dev --no-edit
+git push origin dev
 ```
 
 ## Conventions
 
 - **Decision log:** Append-only; format `### DEC-0XX` with Date, Status, Scope, Decision, Rationale
+- **Gate discipline:** No Lean claim is cited as evidence before the Tier-1 integrity gates pass (`tooling/gates/`); `--prove-stage` for claimed-complete proofs. See `docs/TOOLCHAIN_AND_CI.md`.
+- **Load-bearing claims:** Before calling a definition "load-bearing" or a flaw "fixed", run `binder_usage_scan.py` — the header is not evidence, the body is.
+- **Axiom-discovery claims:** candidates follow the gate pipeline in `docs/experiments/AXIOM_DISCOVERY.md` (homomorphism → faithfulness → transfer → compression → breadth); compression/entropy numbers are recorded only for candidates already at the kernel-checked transfer gate.
 - **Audit resolution:** When resolving an audit item in `docs/experiments/AUDIT_2026_08_10.md`, mark it `[RESOLVED <commit-sha>]` next to the heading (e.g., `### P0-2. ... [RESOLVED 73dfc18]`). Use the commit SHA, not a date — it's unique, orderable, and traces directly to the diff. The `manage.py` alias system checks for this marker before allowing experiments that depend on the audit item to launch.
 - **Negative-claim scoping:** Every "not a representation deficit" must carry "under prediction-family metrics at this scale"
 - **Grid axes:** Use "narrow-vocab" / "full-vocab" (not "small model" / "large model")
@@ -153,6 +188,10 @@ git push origin your-branch:kit/dev
 
 ## Pitfalls to avoid
 
+- Don't cite a Lean claim as evidence without the Tier-1 gates passing — "it compiles" is not "it means what we intended" (see `docs/TOOLCHAIN_AND_CI.md`)
+- Don't call a definition load-bearing from its header — run `binder_usage_scan.py`; the body is the evidence
+- Don't record compression/entropy numbers for candidates that failed the transfer gate — they are bookkeeping on an existing result, never validation (`AXIOM_DISCOVERY.md`)
+- Don't treat AXIOM_DISCOVERY.md's target as resolving P vs NP — that is a possible downstream consequence of a real result, never a search target
 - Don't state the hypothesis is disproven — only H2's prediction-metric null at toy scale is closed
 - Don't use "small model" / "large model" for grid axes — both are toy-scale
 - Don't cite B/C numbers without the epoch-confound caveat

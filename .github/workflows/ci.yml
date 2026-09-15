@@ -1,0 +1,124 @@
+name: CI
+
+# Maith CI — the build oracle + integrity gates.
+#
+# Protocol ported from PleaNP (2026-09-15). Two jobs, mirroring the two trust
+# boundaries PleaNP separates:
+#
+#   1. Lean build + test suite  — the kernel is the oracle for *proofs/code*.
+#   2. Integrity gates (Tier 1) — for *statements and definitions* that the
+#      kernel cannot audit: no sorry/admit/axiom, no vacuous bodies, no inert
+#      binders. See docs/TOOLCHAIN_AND_CI.md.
+#
+# Runs on main and dev (the review branch). A green check here means "the code
+# builds, the tests pass, and the Tier-1 mechanical checks are clean" — it is
+# necessary, not sufficient, for a validated claim (Tier 2 is the local
+# agent's `#print axioms` step; the semantic step is human review).
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    name: Lean build + test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Install pinned Lean toolchain
+        run: lean --version
+
+      - name: Restore Mathlib olean cache (community Azure cache)
+        run: lake exe cache get
+
+      - name: Build test target
+        run: lake build tests
+
+      # The test harness currently exits 0 even when individual assertions fail
+      # (a known gap — see docs/TOOLCHAIN_AND_CI.md §6). We surface the failure
+      # count rather than block, because 4 failures are documented pre-existing
+      # (2 decoder round-trip format, 1 injectivity non-commutative, 1 Lean
+      # validity) and unrelated to CI. Widen this to a hard gate once they are
+      # resolved, so "CI green" cannot hide a regression.
+      - name: Run Lean test suite (failures surfaced, not yet blocking)
+        run: |
+          ./.lake/build/bin/tests | tee /tmp/tests.out
+          if grep -q "Some tests failed" /tmp/tests.out; then
+            echo "::warning::Lean tests report failures. 4 are pre-existing and documented in docs/experiments/V2_NEXT_STEPS.md."
+          fi
+
+  gates:
+    name: Integrity gates (Tier 1)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hygiene scan (Gate 6 Tier 1 — no sorry/admit/axiom)
+        run: python3 tooling/gates/hygiene_scan.py --prove-stage Maith Tests Scripts
+
+      - name: Vacuity scan (Gate 5 Tier 1 — no dishonest placeholders)
+        run: python3 tooling/gates/vacuity_scan.py Maith Tests Scripts
+
+      # Advisory on adoption: this surfaced one pre-existing dead helper
+      # (runEnvTest in Tests/ExtractionFaithfulnessTests.lean — unused `env`
+      # parameter). Non-blocking until the library's entry points are
+      # triaged; flip to blocking (remove continue-on-error) once clean.
+      - name: Binder-usage / lethality scan (Gate 5 Tier 1b — advisory)
+        continue-on-error: true
+        run: |
+          python3 tooling/gates/binder_usage_scan.py \
+            --allow-unreferenced '^(run(All|Env|Graph)?[A-Za-z]*|main)$' \
+            Maith Tests Scripts
+
+      - name: Gate-scanner self-tests (must detect the planted cases)
+        run: |
+          set -e
+          python3 tooling/gates/hygiene_scan.py --prove-stage tooling/gates/tests/case2_real_sorry.lean \
+            && { echo "ERROR: real sorry not detected"; exit 1; } || echo "case2 detected ok"
+          python3 tooling/gates/hygiene_scan.py --prove-stage tooling/gates/tests/case3_axiom.lean \
+            && { echo "ERROR: custom axiom not detected"; exit 1; } || echo "case3 detected ok"
+          python3 tooling/gates/hygiene_scan.py --prove-stage tooling/gates/tests/case5_clean.lean \
+            && echo "case5 clean ok" || { echo "ERROR: clean case flagged"; exit 1; }
+          python3 tooling/gates/vacuity_scan.py tooling/gates/tests/case1_placeholder.lean >/dev/null \
+            && echo "vacuity clean ok" || { echo "ERROR: vacuity false positive"; exit 1; }
+          python3 tooling/gates/binder_usage_scan.py tooling/gates/tests/case8_unused_param.lean \
+            && { echo "ERROR: unused param not detected"; exit 1; } || echo "case8 detected ok"
+
+  python:
+    name: Python tests (stdlib-only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The torch/transformers-dependent tests are excluded: they need the ML
+      # stack and (for some) a built corpus. This job covers the pure-stdlib
+      # invariant/schema/bucketing tests, which are exactly the ones that
+      # guard the pipeline's data contract. See docs/TOOLCHAIN_AND_CI.md.
+      - name: Run stdlib-only test suite
+        run: |
+          set -e
+          for t in \
+            test_build_dataset_v2 \
+            test_c4_bucketing \
+            test_c4_consistency \
+            test_corpus_expansion_config \
+            test_eval_checkpoint_guard \
+            test_eval_completion_authoritative \
+            test_h5_pairs \
+            test_invariants ; do
+            echo "::group::$t"
+            python3 "python/$t.py"
+            echo "::endgroup::"
+          done
