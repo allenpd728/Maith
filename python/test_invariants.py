@@ -250,6 +250,151 @@ def test_comparison_validity_catches_epoch_mismatch():
     print("PASS: test_comparison_validity_catches_epoch_mismatch")
 
 
+# ---------------------------------------------------------------------------
+# Invariant 5 fixtures — one per declared comparison constraint
+# ---------------------------------------------------------------------------
+#
+# Issue #22: the checker declares five `must_match` fields but only the `epochs`
+# axis had a failing fixture, so four constraints (and both `must_differ`
+# directions) were asserted by code nobody had proven *can* fail. These fixtures
+# close that.
+#
+# _MISMATCH holds a differing value per field. The per-claim test mutates one
+# field at a time and asserts the checker fires AND names the field — with an
+# unmutated control so a fixture cannot pass vacuously.
+
+_MISMATCH = {
+    "representation_id": "semantic_graph_ir_v9_9_9",
+    "seed": 7,
+    "train_examples": 3000,
+    "eval_examples": 100,
+    "epochs": 3,
+}
+
+
+def _base_result(variant, source_input, **overrides):
+    """A results manifest with the project's real values (datasets/representation_manifest.json)."""
+    m = {
+        "artifact_type": "results", "variant": variant,
+        "representation_id": "semantic_graph_ir_v2_1_1",
+        "source_input": source_input, "seed": 42, "epochs": 2,
+        "train_examples": 3375, "eval_examples": 376,
+    }
+    m.update(overrides)
+    return m
+
+
+def _valid_pair(claim):
+    """Two manifests that satisfy `claim` — the control pair for mutation."""
+    spec = COMPARISON_CLAIMS[claim]
+    a = _base_result("A", "ir_tokens")
+    b_source = "bpe_601" if "source_input" in spec["must_differ"] else "ir_tokens"
+    b = _base_result("B_small", b_source)
+    return a, b
+
+
+def test_comparison_validity_catches_each_must_match_field():
+    """One fixture per must_match field, per claim — and the control passes."""
+    for claim in COMPARISON_CLAIMS:
+        a, b = _valid_pair(claim)
+        control = [r for r in check_comparison_validity([a, b], claim) if r["passed"] is False]
+        assert not control, f"{claim}: control pair should PASS, got {control}"
+
+        for field in COMPARISON_CLAIMS[claim]["must_match"]:
+            am, bm = _valid_pair(claim)
+            bm[field] = _MISMATCH[field]
+            failures = [r for r in check_comparison_validity([am, bm], claim)
+                        if r["passed"] is False]
+            assert failures, f"{claim}: {field} mismatch was NOT caught"
+            assert any(field in r["detail"] for r in failures), \
+                f"{claim}: {field} mismatch caught but not named: {failures}"
+    print("PASS: test_comparison_validity_catches_each_must_match_field")
+
+
+def test_comparison_validity_catches_must_differ_violation():
+    """`must_differ` must fire when the field is identical across manifests."""
+    checked = 0
+    for claim in COMPARISON_CLAIMS:
+        for field in COMPARISON_CLAIMS[claim]["must_differ"]:
+            a, b = _valid_pair(claim)
+            b[field] = a[field]  # collapse the required difference
+            failures = [r for r in check_comparison_validity([a, b], claim)
+                        if r["passed"] is False]
+            assert failures, f"{claim}: identical {field} was NOT caught"
+            checked += 1
+    assert checked, "no must_differ fields to check — fixture is vacuous"
+    print("PASS: test_comparison_validity_catches_must_differ_violation")
+
+
+def test_comparison_validity_missing_field_is_lenient():
+    """A field absent from one manifest is ignored (deliberate leniency for older
+    results.json files). Pinned so the leniency is not 'fixed' away."""
+    a, b = _valid_pair("representation_at_matched_size")
+    b["seed"] = None
+    res = check_comparison_validity([a, b], "representation_at_matched_size")
+    failures = [r for r in res if r["passed"] is False]
+    assert not failures, f"one-sided None should be lenient, got {failures}"
+    print("PASS: test_comparison_validity_missing_field_is_lenient")
+
+
+def test_comparison_validity_catches_heterogeneous_mismatch():
+    """[42, 7, None]: None present AND >=2 distinct non-None values -> fail."""
+    a, b = _valid_pair("representation_at_matched_size")
+    b["seed"] = 7
+    c = _base_result("C", "ast_split", seed=None)
+    failures = [r for r in check_comparison_validity([a, b, c], "representation_at_matched_size")
+                if r["passed"] is False]
+    assert failures, "heterogeneous [42, 7, None] seed was NOT caught"
+    print("PASS: test_comparison_validity_catches_heterogeneous_mismatch")
+
+
+def test_comparison_claims_all_constraints_exercised():
+    """Every declared constraint has a fixture, pinned PER CLAIM in both directions.
+
+    Mutation-tested: pinning only the *union* of constraints lets a field be
+    silently dropped from one claim while surviving in another. The per-claim pin
+    below catches that. It fails if a constraint is added (no fixture) or removed
+    (fixture orphaned) for any claim — so the contract cannot change silently.
+
+    This matters because COMPARISON_CLAIMS is exactly what someone would edit to
+    make a failing comparison "pass". Weakening an invariant now fails loudly here
+    instead of silently accepting a confounded comparison.
+    """
+    expected = {
+        "representation_at_matched_size": (
+            ["representation_id", "seed", "train_examples", "eval_examples", "epochs"],
+            ["source_input"],
+        ),
+        "representation_vs_full_bpe": (
+            ["representation_id", "seed", "train_examples", "eval_examples"],
+            ["source_input"],
+        ),
+        "ir_vs_flat_ablation": (
+            ["representation_id", "seed", "train_examples", "eval_examples", "epochs"],
+            [],
+        ),
+    }
+
+    got = {k: (v["must_match"], v["must_differ"]) for k, v in COMPARISON_CLAIMS.items()}
+    assert got == expected, (
+        "COMPARISON_CLAIMS changed. If intentional, update this pin AND add the "
+        f"matching fixture in _MISMATCH.\n  expected: {expected}\n  got:      {got}"
+    )
+
+    # Every pinned must_match field needs a mutation value in _MISMATCH.
+    # (must_differ fields are exercised by collapsing them, not by a value table,
+    # so they are covered by test_comparison_validity_catches_must_differ_violation.)
+    needed = {f for mm, _md in got.values() for f in mm}
+    missing = needed - set(_MISMATCH)
+    assert not missing, f"pinned must_match constraints with no fixture value: {sorted(missing)}"
+
+    # And every must_differ field must actually be declared somewhere, so the
+    # collapse fixture is not vacuous.
+    differ_fields = {f for _mm, md in got.values() for f in md}
+    assert differ_fields, "no must_differ constraints declared — collapse fixture is vacuous"
+    print("PASS: test_comparison_claims_all_constraints_exercised")
+
+
 def test_manifest_verify_catches_missing_fields():
     bad_manifest = {"artifact_type": "results", "variant": "A"}
     errors = verify_manifest(bad_manifest)
@@ -295,6 +440,11 @@ def main():
         test_vocab_range_catches_out_of_range,
         test_comparison_validity_matched_size,
         test_comparison_validity_catches_epoch_mismatch,
+        test_comparison_validity_catches_each_must_match_field,
+        test_comparison_validity_catches_must_differ_violation,
+        test_comparison_validity_missing_field_is_lenient,
+        test_comparison_validity_catches_heterogeneous_mismatch,
+        test_comparison_claims_all_constraints_exercised,
         test_manifest_verify_catches_missing_fields,
         test_manifest_verify_catches_invalid_values,
         test_expected_source_mapping,
