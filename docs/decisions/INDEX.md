@@ -99,6 +99,7 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | **DEC-036** | ✅ Active (2026-09-15) — Adopt PleaNP CI/toolchain + integrity-gate protocol (`.github/workflows/ci.yml`, `.devcontainer/`, `tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`); add the axiom-discovery direction (`AXIOM_DISCOVERY.md`, `BENCHMARK_CORPUS_PLAN.md`); consolidate all branches onto a single `dev` branch. |
 | **DEC-037** | ✅ Active (2026-09-15) — Port the multi-agent task protocol (`docs/MULTI_AGENT_WORKFLOW.md` + status labels + `blockers/`), reconcile the axiom-discovery docs against reality (corpus source is `PleaNP.Circuits`, not `complexitylib`; structural-similarity search absent; HOF/proj already done), and record four gate-model gaps rather than paper over them. |
 | **DEC-038** | ✅ Active (2026-09-15) — Name the axiom-discovery pipeline + its taxonomy in GLOSSARY (§Axiom discovery: the transfer pipeline); flag the "candidate" overload (candidate φ vs IR candidate); restore the glossary §Terminology: family, candidate, structure, lost in DEC-036's consolidation (regression: the readability branch predated `966c49a`). |
+| **DEC-039** | ✅ Active (2026-09-15) — Axiom-discovery: name the two substrates (IR for propose, metaprogramming for validate; φ itself is ordinary Lean); define the track's output object (*promoted structure*, schema only, tooling deliberately unbuilt); and record the verified IR-mode constraint (default `module` bucketing collapses operator identity → #28 must use `--per-operator`). |
 
 ---
 

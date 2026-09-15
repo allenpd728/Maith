@@ -306,6 +306,28 @@ statement's dependence graph and reports whether the proof relativizes. A **DEAD
 verdict means the claim cannot resolve P vs NP. Maith runs a transferred
 circuit-complexity theorem through it before treating the result as interesting.
 
+**Promoted structure**
+The track's actual **output** — what gate 5 produces when a φ (or generating
+pattern) transfers *and* replicates across a second, unrelated sub-domain. A small
+generator that reproduces structure at multiple scales (GCT's shape). It is *not*
+the φ (φ maps into an existing structure) and *not* a candidate (candidates are
+disposable probes). Its record schema is defined in `AXIOM_DISCOVERY.md` §"The
+output: promoted structure"; the tooling around it is deliberately unbuilt until a
+candidate actually survives gate 3.
+
+**Two substrates (propose vs validate)**
+The track's two jobs use different substrates, and conflating them is the most
+likely implementation error: **proposal** consumes **the IR** (fingerprinting /
+subgraph matching over `corpus.jsonl`); **validation** uses **metaprogramming**
+(`infer_instance`, elaboration, `#print axioms`). A candidate's φ itself is
+**ordinary Lean** — a homomorphism is a type-theoretic statement, so it cannot be
+expressed as an IR token sequence. φ is written normally but discharged by
+instance search, the mechanism `#barrier_check` already uses. ⚠ For proposal,
+structural search must run on **`--per-operator`** extraction: the default
+`module` mode buckets operators by declaration module, so distinct operators
+become one token (`GEN_ALGEBRA`) and similarity would match shape but not which
+operation. See DEC-028.
+
 **Not-A-target: the non-goals.** P vs NP is never a search target or success
 criterion — only a possible downstream observation. Tiny entropy/compression
 numbers are never validation; they are bookkeeping recorded *after* a
