@@ -2061,11 +2061,19 @@ duplicate.
 importing `complexitylib`/`descriptive-complexity` "once PleaNP issue #70 lands."
 Issue #70 closed 2026-09-13 **rejecting** that import (complexitylib's head pins
 `v4.34.0-rc2` + a `cslib` dependency vs PleaNP's stable `v4.31.0`) and chose a
-local `PleaNP.Circuits`. Consequence: the corpus source is `PleaNP.Circuits`,
-which currently exists only as an early stub (validation suite landed per PleaNP
-#71; lower-bound library still open, e.g. #72). **Part 1 of the corpus plan
-(conservativity corpus) is therefore blocked** on that library growing; Part 2
-(transfer targets) can proceed now. Both documents updated to say so.
+local `PleaNP.Circuits`. Consequence: the corpus source is
+`PleaNP.Circuits`, which on PleaNP's `dev` branch holds five type-checking
+modules (`Basic`, `AC0` — including the unproved `parity_notin_AC0` statement —
+`Monotone`, `MonotoneApprox`, `MustRefute`). It is **concentrated in one area**
+(circuit complexity), so **Part 1 of the corpus plan (conservativity corpus) is
+blocked on breadth**, not on existence (issue #31); Part 2 (transfer targets) is
+unblocked and should go first. Both documents updated to say so.
+
+An earlier draft of this entry, and of both documents, described
+`PleaNP.Circuits` as an "early stub" — that was read off PleaNP's `main` branch,
+where only a 17-line placeholder exists. The real modules are on `dev`, which is
+212 commits ahead. Corrected here; the lesson (check the work branch, not the
+default branch, when assessing a sibling repo) is worth keeping.
 
 **(3) Claimed-but-absent infrastructure corrected.** Verified on 2026-09-15:
 
