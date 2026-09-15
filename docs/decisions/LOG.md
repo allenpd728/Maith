@@ -2029,3 +2029,86 @@ Gate 5 Tier 1b (lethality) 1 violation / 47 reviews (entry-point noise, allow-li
 steps 3–4); the transfer gate's Tier-2 `#print axioms` check
 (`tooling/gates/axiom_check.py`) activates with the first kernel-checked
 transferred theorem.
+
+---
+
+### DEC-037 — Port the multi-agent task protocol; reconcile the axiom-discovery docs against reality (2026-09-15)
+
+**Date:** 2026-09-15
+**Status:** Active
+**Scope:** Multi-agent workflow, research-direction docs, gate-model honesty
+
+**Decision:** Complete the PleaNP protocol port begun in DEC-036 by adding the
+*task-coordination* half (DEC-036 added the CI, toolchain, and branch halves), and
+reconcile the two research-direction documents against verified ground truth
+before any pipeline is built on them.
+
+**(1) Multi-agent task protocol.** Added `docs/MULTI_AGENT_WORKFLOW.md` (adapted
+from PleaNP): run-ids, one-claim-per-agent, stale-claim/protocol/docs sweeps,
+`blocked by` dependency lineages, done-with-gate-evidence, `Tests:` follow-ups,
+blockers in `blockers/`, and an end-of-session report. Created the seven status
+labels on the repo (`status:available|claimed|done|blocked-needs-input`,
+`priority:high`, `community-ready`, `needs-gate`) and a `blockers/` directory.
+
+Maith previously had **no** task protocol — only per-task docs
+(`TASK_AGENT_A_MANAGE_PY.md`, `TASK_AGENT_B_TENSORBOARD.md`) and an *artifact*
+gate system (`manage.py gate`, 5 stations). The protocol names the artifact gates
+as the done-evidence for experiment tasks, so the two systems compose rather than
+duplicate.
+
+**(2) Corpus premise corrected.** `AXIOM_DISCOVERY.md` and
+`BENCHMARK_CORPUS_PLAN.md` both assumed the benchmark corpus would come from
+importing `complexitylib`/`descriptive-complexity` "once PleaNP issue #70 lands."
+Issue #70 closed 2026-09-13 **rejecting** that import (complexitylib's head pins
+`v4.34.0-rc2` + a `cslib` dependency vs PleaNP's stable `v4.31.0`) and chose a
+local `PleaNP.Circuits`. Consequence: the corpus source is `PleaNP.Circuits`,
+which currently exists only as an early stub (validation suite landed per PleaNP
+#71; lower-bound library still open, e.g. #72). **Part 1 of the corpus plan
+(conservativity corpus) is therefore blocked** on that library growing; Part 2
+(transfer targets) can proceed now. Both documents updated to say so.
+
+**(3) Claimed-but-absent infrastructure corrected.** Verified on 2026-09-15:
+
+| Claim | Reality |
+|---|---|
+| Structural similarity search (subgraph isomorphism / graph edit distance / fingerprinting) exists, "originally built as a proof-candidate generator" | **Absent.** `Maith/GraphEquivalence.lean` is exact structural/normalized/rewrite *equality* (a test helper referenced only by `Init.lean`), not similarity. This is the search mechanism itself — real work, not reuse. |
+| HOF application + projection parsing are "the highest-priority extraction gaps... the actual blocking dependency" | **Done.** `MetaExtractor.lean` handles both; `testHOFApplicationExtracts` / `testProjectionExtracts` pass. (The stale inline comment in `MetaExtractor.lean` claiming otherwise was corrected in this change.) |
+| Toy-model loop "moved to `archive/`" | **No `archive/` exists.** The scripts remain in place and wired into `manage.py`; shelving is a research-direction decision (README §9), not a filesystem move. |
+| `DIRECTION.md` (3 references) | **Does not exist** in Maith, PleaNP, muse, or philharmonic. |
+
+Both documents gained a reconciliation table recording the above; the actual
+blocking dependency is re-stated as the circuit-complexity substrate, and
+`AXIOM_DISCOVERY.md`'s "Immediate next steps" were reordered to build the
+nonexistent pieces in dependency order (transfer-target list → ledger/coverage
+map → similarity search → harness → first batch).
+
+**(4) Gate-model gaps recorded, not papered over.** The workflow doc's §"Known
+gaps" lists four places where a green check is weaker than it looks, to be filed
+as `priority:high` tasks: (i) `check_invariants.py` declares five `must_match`
+fields but `test_invariants.py` has a failing fixture for only the **epoch** axis,
+so the `seed`/`train_examples`/`eval_examples`/`representation_id` constraints are
+unproven; (ii) no invariant guards the losslessly-verifiable representation
+claims in `ENCODER_FORMAT.md`; (iii) `manage.py gate`'s `--datasets` scoping;
+(iv) the Lean test harness exits 0 on failure (also DEC-036 §6).
+
+**Rationale (the OpenAI Navier–Stokes lesson, applied to process):** the same
+discipline that motivates the integrity gates — a check that cannot fail is not a
+check — applies to the protocol itself. Adopting a task protocol whose
+done-evidence is a tautology would reproduce the failure it exists to prevent.
+Hence the explicit "known gaps" section rather than a clean-looking port.
+
+**Verification:** labels created via the GitHub API (7, all 201); `docs/`
+cross-references updated (README, AGENTS.md, docs/README.md, decisions/INDEX.md);
+`lake build tests` still succeeds after the `MetaExtractor.lean` comment fix;
+Tier-1 hygiene/vacuity gates still clean.
+
+**Next:** file the four §Known-gaps items as `priority:high` issues, then the
+axiom-discovery build-out as a `blocked by` lineage per the new protocol.
+
+**Filed (this session, exercising the new protocol):** #22–#25 (the four
+gate-model gaps, `priority:high` + `needs-gate`) and #26–#31 (the axiom-discovery
+build-out as a `blocked by` lineage: #26 targets, #27 ledger, #28 search ← #27,
+#29 harness ← #28, #30 first batch ← #26/#27/#29, #31 conservativity corpus
+blocked on upstream `PleaNP.Circuits`). Dependency edges were set via the GitHub
+issue-dependencies API (which requires the internal `issue_id`, not the issue
+number).
