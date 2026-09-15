@@ -2181,3 +2181,69 @@ UTF-8 clean; anchor target now resolves.
 **Next:** the taxonomy is now written down but the overload remains in prose —
 `AXIOM_DISCOVERY.md`'s ~35 unqualified uses were left as-is (qualifying them all
 would churn the doc). Cleared up as each section is next edited.
+
+---
+
+### DEC-039 — Axiom-discovery: substrates, output object, and the IR-mode constraint for #28 (2026-09-15)
+
+**Date:** 2026-09-15
+**Status:** Active
+**Scope:** Axiom-discovery pipeline design; issue #28 Definition of Done
+
+**Decision:** Make three previously-implicit things explicit in
+`AXIOM_DISCOVERY.md`, and record the verification behind the one that changes an
+open issue.
+
+**(1) Two jobs, two substrates.** The track has been read as "candidates are
+written in the IR" and as "candidates are written via metaprogramming"; both are
+wrong, and the doc invited the confusion by titling a section "Candidate
+representation". The actual split:
+
+- **Propose** (find candidate phi's) consumes **the IR** — similarity search needs
+  an indexable, comparable object.
+- **Validate** (run the five gates) uses **metaprogramming** — the gates are Lean
+  obligations, dischargeable only by elaborating terms.
+- The candidate's **phi itself is ordinary Lean**. It is neither IR (a token
+  sequence cannot state a homomorphism) nor metaprogrammed. The pattern is that
+  phi is written normally but discharged by instance search — the mechanism
+  `#barrier_check` already uses.
+
+The section was renamed `## Candidate spec (record shape)`, with the table added.
+
+**(2) The output object was undefined.** Gate 5 promotes a surviving phi to
+"reusable" and nothing defined the record that promotion produces. Following the
+document's own definitions, the track's product is neither the phi (phi maps into
+an *existing* structure) nor a candidate (disposable probes) but the **promoted
+structure** — the small generator that transfers and replicates across unrelated
+sub-domains, i.e. GCT's shape. A record **schema** is now defined; the tooling is
+deliberately **not** built (no candidate has survived gate 3, so building it would
+repeat the very failure the reconciliation note corrects — describing
+infrastructure before there is anything to put in it).
+
+**(3) IR-mode constraint on structural search (verified, not asserted).** The
+default extraction mode collapses operator identity, so structural similarity over
+it would match *shape* but not *which operation*. Verified at source and by
+execution:
+
+- `Maith/MetaExtractor.lean:137-141` — `genericOpToken` returns `bucketFromModule st`
+  for `BucketMode.module` (the default, `:30`), vs `s!"op:{headName}"` for `.per_operator`.
+- `Maith/MetaExtractor.lean:111` — `bucketFromModule` maps by *declaration module*.
+- Executed: `python3 python/test_c4_bucketing.py` ->
+  `all gen:* -> GEN_ALGEBRA (29); got [29, 29, 29]` — three distinct operators
+  (`gen:Foo`, `gen:Bar.Baz`, `gen:Quux`) collapse to one token.
+- Corroborated: `Tests/CorpusPipelineTests.lean:236-249` asserts both modes
+  (`proj:GEN_MATHLIB/0` vs `proj:Semigroup/0`).
+
+**Issue #28 updated** with this evidence and a DoD addition: the search must consume
+`--per-operator` extraction, and the done comment must state the corpus mode and the
+distinct-operator count it produced, so shape-only matching cannot pass unnoticed.
+
+**Method note.** (3) was initially stated by reading a doc description (AGENTS.md's
+DEC-028 summary). On request it was re-derived from the extractor lines and an
+executed test before being written into #28's DoD — the project's own discipline
+(no claim accepted against a description of an artifact rather than the artifact).
+Recorded because the first pass was one step shy of the standard this repo holds
+itself to.
+
+**Verification:** mermaid balanced (4/4); Tier-1 hygiene/vacuity clean; both files
+UTF-8 clean; #28 body confirmed to carry the addendum.

@@ -93,10 +93,11 @@ move.** No `archive/` directory exists or is being created. The toy-model script
 remain in place and wired into `manage.py`; they are simply no longer the active
 track (README §9, DEC-036).
 
-## Candidate representation
+## Candidate spec (record shape)
 
-A candidate is a small, structured spec, not a bespoke language
-implementation:
+A candidate is a small, structured **spec** — data, not code, and not encoded in
+the IR. (The heading here is "spec", not "representation": a candidate is not a
+representation, and the word carries a specific meaning elsewhere — see below.)
 
 - **Target structure**: an existing Mathlib type/structure (group, lattice,
   category, module, etc.), or a novel self-referential structure (see
@@ -108,6 +109,40 @@ implementation:
 - **Provenance**: how the candidate was proposed (search heuristic used,
   seed, or model prompt) — logged for reproducibility and later analysis
   of which proposal strategies are actually productive.
+
+### Two jobs, two substrates
+
+The track uses two different substrates for two different jobs. Conflating them is
+the most likely source of a wrong implementation of #28/#29:
+
+| Job | Substrate | Why |
+|---|---|---|
+| **Propose** — find candidate φ's | **The IR** (structural fingerprinting / subgraph matching over `corpus.jsonl`) | Similarity search needs an indexable, comparable object. That is what the IR is for. |
+| **Validate** — run the five gates | **Metaprogramming** (`infer_instance`, elaboration, `#print axioms`) | The gates are Lean obligations; they can only be discharged by elaborating real terms. |
+
+So: a candidate's **φ is ordinary Lean**, not IR and not metaprogrammed — a
+homomorphism is a type-theoretic statement, and an IR token sequence cannot state
+one. The **search consumes the IR** to *find* candidates; the **harness uses
+metaprogramming** to *validate* them. The design pattern that makes this work is
+that φ is written normally but discharged by instance search — the same mechanism
+`#barrier_check` already uses (`infer_instance` walking the `Relativizing` graph).
+
+> **IR-mode caveat for structural search (#28).** The default extraction mode
+> (`BucketMode.module`) collapses operator identity: `genericOpToken` returns
+> `bucketFromModule st` (`Maith/MetaExtractor.lean:137–141`), and
+> `bucketFromModule` (`:111`) maps by *declaration module*, so distinct operators in
+> one module become the same token. `python/test_c4_bucketing.py::test_gen_tokens_share_bucket`
+> asserts exactly this: `gen:Foo`, `gen:Bar.Baz`, `gen:Quux` under `Mathlib.Algebra.Ring.Defs`
+> all encode to `GEN_ALGEBRA`.
+>
+> Consequence: **structural similarity over the default IR matches shape but not
+> which operation.** For candidate discovery that is a silent quality loss — two
+> graphs differing only in operator identity look identical. The search (and any
+> corpus prepared for it) must use `--per-operator`
+> (`genericOpToken ... .per_operator => s!"op:{headName}"`, `:140`), which preserves
+> per-operator identity (DEC-028). Note also that `FVAR_N`/`BVAR_N`/`TERM_N` indices
+> are local per graph (`GLOSSARY.md`), so they support shape matching but cannot
+> establish cross-graph identity.
 
 One shared metaprogramming harness (in a new `axiom-rewrite/` directory — **not**
 a long-lived branch; Maith works on the single `dev` branch per DEC-036) consumes
@@ -217,6 +252,50 @@ integration into the shared corpus.
   anything informative about the search process itself (a proposal
   strategy that's consistently unproductive is as worth recording as one
   that works).
+
+## The output: promoted structure (schema only — do not build yet)
+
+The track's actual product is not a candidate. Chasing the definitions in this
+document to their end:
+
+- It is **not the φ** — φ is a map, and it maps into an *existing* structure.
+- It is **not a candidate** — candidates are disposable probes; the ledger keeps
+  them "so the search history itself becomes data."
+- It **is the promoted structure**: the object gate 5 produces when a φ (or
+  generating pattern) transfers *and* replicates across a second, unrelated
+  sub-domain. The document's own word for the surviving signal is "reusable …
+  fractal: a small generator paying off at multiple scales" — a *generated
+  structure*. That is the new representation, and it is GCT's shape.
+
+**This is a real gap in the current design:** gate 5 says a survivor is "promoted
+to reusable," but nothing defines the record that promotion produces. The
+candidate ledger stores per-candidate outcomes; nothing stores the *pattern
+across* candidates — which is the thing that is the representation. Candidate
+discovery can proceed without it, but #30's first successful candidate would have
+nowhere to go.
+
+**Schema (definition only).** A promoted-structure record should carry:
+
+| Field | Meaning |
+|---|---|
+| `promoted_id` | Stable identifier for this promoted structure |
+| `derived_from` | The candidate-φ ids that exhibited the pattern |
+| `generator` | The small generating rule that reproduces structure across scales |
+| `target_structure` | What it maps into |
+| `domains_replicated` | The ≥2 unrelated sub-domains gate 5 required (the evidence for "reusable") |
+| `transfer_results` | The kernel-checked transferred theorems produced (the results it rests on) |
+| `barrier_verdicts` | `#barrier_check` outcome(s) for those results |
+| `compression` | Recorded only if gate 3 passed (bookkeeping, never validation) |
+
+Where it lives is deliberately left open: an extension of the candidate ledger, or
+a sibling `axiom-rewrite/promoted.jsonl`. Both work; pick one when there is
+something to put in it.
+
+> **Scope discipline (deliberate).** **Define the schema; do not build tooling
+> around it.** No candidate has survived even gate 3 yet, so a promoted-structure
+> subsystem would be exactly the failure this document's reconciliation note
+> corrects — describing infrastructure before anything exists to put in it. Build
+> it when #30 actually produces a survivor that needs a home.
 
 ## Targeting domains: circuit complexity first, and why
 
