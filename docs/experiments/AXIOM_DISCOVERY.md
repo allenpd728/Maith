@@ -2,10 +2,34 @@
 
 ## Status
 
-Active track, superseding the toy-model training path described in DIRECTION.md's
-"shelved" section. Toy-model training remains shelved. This document promotes
-the "Speculative Track: AI-Authored Axiom Systems via Metaprogrammed DSLs" from
-speculative to active, and narrows and operationalizes it.
+Active track, superseding the toy-model training path. (The original text
+attributed the "shelved" decision to a `DIRECTION.md`; no such file exists in
+this or any sibling repo — see "Reconciliation note" below. The shelving is
+recorded in `README.md` §9 and DEC-036.) Toy-model training remains shelved.
+This document promotes a speculative "AI-authored axiom systems via a
+metaprogrammed DSL" idea to an active, narrowed, operationalized track.
+
+## Reconciliation note (2026-09-15)
+
+This document was written against infrastructure that does not all exist. Before
+acting on any step below, note what was verified on 2026-09-15:
+
+| Claim in this document | Verified reality |
+|---|---|
+| "Structural similarity search (subgraph isomorphism / graph edit distance / structural fingerprinting) — originally built as a proof-candidate generator (DIRECTION.md). Reused here..." | **Does not exist.** `Maith/GraphEquivalence.lean` is exact structural/normalized/rewrite *equality* (a test helper, referenced only by `Init.lean`), not a similarity search. There is no subgraph-isomorphism, graph-edit-distance, or fingerprinting code anywhere in the repo. **This must be built**, so the "nothing here is being rebuilt" framing is wrong for this item. |
+| "HOF application support / projection expression parsing — still the highest-priority extraction gaps... remains the actual blocking dependency." | **Implemented and passing.** `Maith/MetaExtractor.lean` handles variable-headed application (`hof`) and `.proj`; `Tests/CorpusPipelineTests.lean::testHOFApplicationExtracts` / `testProjectionExtracts` pass. (The inline code comment in `MetaExtractor.lean` saying they are "NOT covered" is itself stale — a branch immediately below covers them.) This is **not** the blocking dependency; see the actual one below. |
+| "complexitylib / descriptive-complexity (external, once toolchain reconciliation in PleaNP issue #70 lands) — source of the circuit complexity benchmark corpus." | **Superseded.** PleaNP #70 closed 2026-09-13 **rejecting** the `complexitylib` import (it pins `v4.34.0-rc2` + `cslib` vs PleaNP's stable `v4.31.0`), and chose a local `PleaNP.Circuits`. That module now exists but is an **early stub**. See `BENCHMARK_CORPUS_PLAN.md` §Dependencies. |
+| "the toy-model training loop and harness (moved to `archive/`, not deleted)" | **No `archive/` directory exists.** The toy-model scripts (`train.py`, `train_h5_*`, `train_h9_*`, `train_v2_resume.py`) are still live and referenced by `python/manage.py` and `python/launch_run.py`. The shelving is a *research-direction* decision, not a filesystem move. |
+| "DIRECTION.md" (3 references) | No `DIRECTION.md` in Maith, PleaNP, muse, or philharmonic. |
+| "Decision log (DEC-001 through DEC-024+)" | The log now runs to DEC-036. |
+| PleaNP's `#barrier_check` elaborator | **Exists and is real** — `lean/PleaNP/Calculus/BarrierCalculus.lean` (Rung 5). This integration point is valid. |
+
+**Actual blocking dependency:** the circuit-complexity *substrate* for the
+benchmark corpus. `PleaNP.Circuits` is a stub listing planned coverage; the
+lower-bound library is still being built upstream (e.g. PleaNP #72, parity ∉
+AC⁰). Per `BENCHMARK_CORPUS_PLAN.md`, Part 2 (transfer targets) can start now;
+Part 1 (conservativity corpus) is blocked until that library is broad enough to
+pass its own breadth check.
 
 ## What we're actually testing
 
@@ -31,36 +55,41 @@ never the stated target of a search step. See "Non-goals" below.
   declarations into the semantic IR graph. This is the substrate for
   everything below; no changes needed to reuse it for a narrower domain
   (circuit complexity declarations instead of arbitrary Mathlib).
-- **Structural similarity search** (subgraph isomorphism / graph edit
-  distance / structural fingerprinting over the IR graph) — originally
-  built as a proof-candidate generator (DIRECTION.md). Reused here as the
-  literal search mechanism over candidate target structures and candidate
-  φ mappings: same tool, redirected at a narrower, chosen domain.
-- **HOF application support / projection expression parsing** — still the
-  highest-priority extraction gaps (per DIRECTION.md); required before
-  structural search over anything involving higher-order definitions
-  (which most algebraic structures need) is reliable. Not new work, just
-  not yet finished — remains the actual blocking dependency for this track.
-- **Decision log** (DEC-001 through DEC-024+) — continue in the same
-  format. Every candidate structure gets a DEC entry, pass or fail;
-  negative results are logged with the same weight as positive ones, per
-  the project's existing norm.
+- **Structural similarity search** (subgraph isomorphism / graph edit distance /
+  structural fingerprinting over the IR graph) — **not present; must be built.**
+  This is the literal search mechanism over candidate target structures and
+  candidate φ mappings. The original text described it as already existing as a
+  proof-candidate generator; it does not (see the reconciliation note above).
+  Note the distinction from `Maith/GraphEquivalence.lean`, which is exact
+  *equality* for testing, not similarity ranking.
+- **HOF application support / projection expression parsing** — **done** (not a
+  gap). `MetaExtractor.lean` covers both; `Tests/CorpusPipelineTests.lean`
+  passes `testHOFApplicationExtracts` / `testProjectionExtracts`. The load-bearing
+  open question is *coverage* over real circuit-complexity declarations, which the
+  coverage map (below) is designed to answer.
+- **Decision log** (now DEC-036) — continue in the same format. Every candidate
+  structure gets a DEC entry, pass or fail; negative results are logged with the
+  same weight as positive ones, per the project's existing norm.
 - **`lake build` as sole oracle** — unchanged, non-negotiable, carried over
   from every prior document. No claim is accepted on model confidence,
   similarity score, or human intuition alone.
 - **PleaNP's `#barrier_check` elaborator** (external repo, same author) —
-  once a candidate φ produces a transferred theorem in circuit complexity,
-  run it through `#barrier_check` before treating it as interesting. This
-  is the concrete integration point between the two projects: Maith
-  generates candidate techniques, PleaNP screens them for relativization.
-- **complexitylib / descriptive-complexity** (external, once toolchain
-  reconciliation in PleaNP issue #70 lands) — source of the circuit
-  complexity benchmark corpus itself. We are not re-deriving Cook-Levin,
-  circuit lower bound infrastructure, or machine models; we import them.
+  verified to exist at `lean/PleaNP/Calculus/BarrierCalculus.lean`. Once a
+  candidate φ produces a transferred theorem in circuit complexity, run it
+  through `#barrier_check` before treating it as interesting. This is the
+  concrete integration point between the two projects: Maith generates candidate
+  techniques, PleaNP screens them for relativization.
+- **`PleaNP.Circuits`** (external, PleaNP) — source of the circuit-complexity
+  benchmark corpus. Currently an **early stub**: the validation suite for the
+  natural-property/largeness definitions has landed, but the lower-bound library
+  is still being built (e.g. PleaNP #72, parity ∉ AC⁰). The benchmark corpus
+  plan is blocked on that library growing; see `BENCHMARK_CORPUS_PLAN.md`
+  §Dependencies. We are not re-deriving circuit infrastructure ourselves.
 
-What's being retired: the toy-model training loop and harness (moved to
-`archive/`, not deleted — decision log entry to record why, per prior
-practice of shelving rather than discarding).
+**Retiring the toy-model loop is a research-direction decision, not a filesystem
+move.** No `archive/` directory exists or is being created. The toy-model scripts
+remain in place and wired into `manage.py`; they are simply no longer the active
+track (README §9, DEC-036).
 
 ## Candidate representation
 
@@ -78,9 +107,10 @@ implementation:
   seed, or model prompt) — logged for reproducibility and later analysis
   of which proposal strategies are actually productive.
 
-One shared metaprogramming harness (in a new `axiom-rewrite/` branch or
-directory) consumes these specs uniformly. Do not write a new elaborator or
-DSL implementation per candidate — only the spec changes.
+One shared metaprogramming harness (in a new `axiom-rewrite/` directory — **not**
+a long-lived branch; Maith works on the single `dev` branch per DEC-036) consumes
+these specs uniformly. Do not write a new elaborator or DSL implementation per
+candidate — only the spec changes.
 
 ## Validation pipeline (gates, in order — each is a real Lean obligation)
 
@@ -186,12 +216,36 @@ Two proposal heuristics, used to bias search rather than replace the gates:
 
 ## Immediate next steps
 
-1. Finish HOF application support and projection expressions (existing
-   DIRECTION.md priority — blocking dependency, not new scope).
-2. Stand up the circuit-complexity benchmark corpus, pending PleaNP issue
-   #70 (complexitylib toolchain reconciliation).
-3. Build the candidate ledger and coverage map tooling.
-4. Implement the shared metaprogramming harness (spec-in, gates-out).
-5. Run the first candidate batch, biased toward homomorphic-first and
-   recursive-structure proposals, against the circuit-complexity
-   benchmark; log all outcomes regardless of result.
+Ordering reflects the reconciliation note above (what actually exists vs not),
+and the dependency in `BENCHMARK_CORPUS_PLAN.md` §Dependencies.
+
+1. **Build the circuit-complexity "transfer targets" list (Part 2 of the corpus
+   plan).** This is not blocked: the research and plain-English filtering passes
+   need no Lean, and target-statement formalization needs only the circuit-model
+   definitions that already exist. Do this first.
+2. **Stand up the candidate ledger and coverage-map tooling** (`axiom-rewrite/`
+   directory). Plain data plumbing; gates the *proposal* step, and must not
+   depend on the metaprogramming harness existing.
+3. **Build the structural similarity search.** This was claimed as existing
+   infrastructure and is not — it is the search mechanism itself, so it is real
+   work, not reuse.
+4. **Implement the shared metaprogramming harness** (spec-in, gates-out). The
+   expensive piece; genuinely worth deferring until steps 1–3 land, since it
+   consumes their outputs.
+5. **Run the first candidate batch**, biased toward homomorphic-first and
+   recursive-structure proposals, against whatever benchmark subset exists;
+   log all outcomes regardless of result.
+
+**Tracked as issues, not prose.** Per `docs/MULTI_AGENT_WORKFLOW.md`, these are
+filed as `status:available` tasks with explicit `Blocked by` lineages:
+
+| Step | Issue | Blocked by |
+|---|---|---|
+| 1. Transfer-target list (corpus Part 2) | #26 | — (start here) |
+| 2. Candidate ledger + coverage map | #27 | — |
+| 3. Structural similarity search | #28 | #27 |
+| 4. Shared metaprogramming harness | #29 | #28 |
+| 5. First candidate batch | #30 | #26, #27, #29 |
+| —. Conservativity corpus (corpus Part 1) | #31 | **blocked** on upstream `PleaNP.Circuits` |
+
+Each candidate outcome is recorded as a DEC entry (pass and fail alike).

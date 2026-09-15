@@ -23,7 +23,9 @@ Top-level protocol docs:
 | Doc | Contents |
 |---|---|
 | [`TOOLCHAIN_AND_CI.md`](TOOLCHAIN_AND_CI.md) | The PleaNP-derived CI, toolchain bootstrap, two-tier integrity gates, and single-`dev`-branch protocol |
+| [`MULTI_AGENT_WORKFLOW.md`](MULTI_AGENT_WORKFLOW.md) | The PleaNP-derived task protocol — run-ids, atomic claims, sweeps, `blocked by` lineages, done-evidence, blockers |
 | [`../tooling/gates/README.md`](../tooling/gates/README.md) | The integrity scanners (hygiene, vacuity, lethality) and their fixtures |
+| [`../blockers/README.md`](../blockers/README.md) | Agent blocker files (`open_*` → `closed_*`) |
 
 Start with [`decisions/INDEX.md`](decisions/INDEX.md) for a navigational guide to
 the decision log, and [`experiments/V2_COMPARISON_MATRIX.md`](experiments/V2_COMPARISON_MATRIX.md)

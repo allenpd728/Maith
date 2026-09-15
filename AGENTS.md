@@ -91,6 +91,8 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | `docs/experiments/AXIOM_DISCOVERY.md` | **Active research track** — search for a kernel-checked structure-preserving map φ (supersedes toy-model training) |
 | `docs/experiments/BENCHMARK_CORPUS_PLAN.md` | Companion: how the circuit-complexity benchmark corpus (transfer targets + conservativity corpus) is built and signed off |
 | `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-`dev`-branch protocol (ported from PleaNP) |
+| `docs/MULTI_AGENT_WORKFLOW.md` | **Multi-agent task protocol** — run-ids, atomic claims, sweeps, `blocked by` lineages, done-evidence (ported from PleaNP); includes the known gate-model gaps |
+| `blockers/` | Agent blocker files (`open_*` → `closed_*`), per the workflow protocol |
 | `tooling/gates/README.md` | Integrity scanners (hygiene/vacuity/lethality) + fixtures |
 | `docs/experiments/HYPOTHESIS_GRID.md` | Sub-claims H1–H11 with status, evidence, experiment-scope matrix |
 | `docs/experiments/V2_NEXT_STEPS.md` | Active specs, gate tracking, pre-existing test failures, next steps |
@@ -155,6 +157,11 @@ is the reviewed branch. Nothing is pushed to `main` unreviewed — the agent tha
 writes a change is not the agent that approves it (see `docs/TOOLCHAIN_AND_CI.md`
 §5). All historical per-task branches were consolidated into `dev` (DEC-036).
 
+**Task coordination** (claiming, run-ids, sweeps, `blocked by` lineages,
+done-evidence) is governed by `docs/MULTI_AGENT_WORKFLOW.md`. Commit directly to
+`dev` — do not open a per-task branch; that is what produced the DEC-036 sprawl.
+An agent holds at most one `status:claimed` issue at a time.
+
 ```bash
 # Commit (identifies as AI agent)
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
@@ -178,6 +185,7 @@ git push origin dev
 ## Conventions
 
 - **Decision log:** Append-only; format `### DEC-0XX` with Date, Status, Scope, Decision, Rationale
+- **Task protocol:** Coordinate via `docs/MULTI_AGENT_WORKFLOW.md` — run-id per session, one `status:claimed` issue at a time, commit to `dev`, evidence in the done comment, blockers in `blockers/`.
 - **Gate discipline:** No Lean claim is cited as evidence before the Tier-1 integrity gates pass (`tooling/gates/`); `--prove-stage` for claimed-complete proofs. See `docs/TOOLCHAIN_AND_CI.md`.
 - **Load-bearing claims:** Before calling a definition "load-bearing" or a flaw "fixed", run `binder_usage_scan.py` — the header is not evidence, the body is.
 - **Axiom-discovery claims:** candidates follow the gate pipeline in `docs/experiments/AXIOM_DISCOVERY.md` (homomorphism → faithfulness → transfer → compression → breadth); compression/entropy numbers are recorded only for candidates already at the kernel-checked transfer gate.
