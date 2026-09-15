@@ -18,7 +18,7 @@ acting on any step below, note what was verified on 2026-09-15:
 |---|---|
 | "Structural similarity search (subgraph isomorphism / graph edit distance / structural fingerprinting) — originally built as a proof-candidate generator (DIRECTION.md). Reused here..." | **Does not exist.** `Maith/GraphEquivalence.lean` is exact structural/normalized/rewrite *equality* (a test helper, referenced only by `Init.lean`), not a similarity search. There is no subgraph-isomorphism, graph-edit-distance, or fingerprinting code anywhere in the repo. **This must be built**, so the "nothing here is being rebuilt" framing is wrong for this item. |
 | "HOF application support / projection expression parsing — still the highest-priority extraction gaps... remains the actual blocking dependency." | **Implemented and passing.** `Maith/MetaExtractor.lean` handles variable-headed application (`hof`) and `.proj`; `Tests/CorpusPipelineTests.lean::testHOFApplicationExtracts` / `testProjectionExtracts` pass. (The inline code comment in `MetaExtractor.lean` saying they are "NOT covered" is itself stale — a branch immediately below covers them.) This is **not** the blocking dependency; see the actual one below. |
-| "complexitylib / descriptive-complexity (external, once toolchain reconciliation in PleaNP issue #70 lands) — source of the circuit complexity benchmark corpus." | **Superseded.** PleaNP #70 closed 2026-09-13 **rejecting** the `complexitylib` import (it pins `v4.34.0-rc2` + `cslib` vs PleaNP's stable `v4.31.0`), and chose a local `PleaNP.Circuits`. That module now exists but is an **early stub**. See `BENCHMARK_CORPUS_PLAN.md` §Dependencies. |
+| "complexitylib / descriptive-complexity (external, once toolchain reconciliation in PleaNP issue #70 lands) — source of the circuit complexity benchmark corpus." | **Superseded.** PleaNP #70 closed 2026-09-13 **rejecting** the `complexitylib` import (it pins `v4.34.0-rc2` + `cslib` vs PleaNP's stable `v4.31.0`), and chose a local `PleaNP.Circuits`. That module now exists and is materially further along than "stub" (five type-checking modules on PleaNP `dev`: `Basic`, `AC0`, `Monotone`, `MonotoneApprox`, `MustRefute`), though it is concentrated in one area. See `BENCHMARK_CORPUS_PLAN.md` §Dependencies. |
 | "the toy-model training loop and harness (moved to `archive/`, not deleted)" | **No `archive/` directory exists.** The toy-model scripts (`train.py`, `train_h5_*`, `train_h9_*`, `train_v2_resume.py`) are still live and referenced by `python/manage.py` and `python/launch_run.py`. The shelving is a *research-direction* decision, not a filesystem move. |
 | "DIRECTION.md" (3 references) | No `DIRECTION.md` in Maith, PleaNP, muse, or philharmonic. |
 | "Decision log (DEC-001 through DEC-024+)" | The log now runs to DEC-036. |
@@ -80,11 +80,13 @@ never the stated target of a search step. See "Non-goals" below.
   concrete integration point between the two projects: Maith generates candidate
   techniques, PleaNP screens them for relativization.
 - **`PleaNP.Circuits`** (external, PleaNP) — source of the circuit-complexity
-  benchmark corpus. Currently an **early stub**: the validation suite for the
-  natural-property/largeness definitions has landed, but the lower-bound library
-  is still being built (e.g. PleaNP #72, parity ∉ AC⁰). The benchmark corpus
-  plan is blocked on that library growing; see `BENCHMARK_CORPUS_PLAN.md`
-  §Dependencies. We are not re-deriving circuit infrastructure ourselves.
+  benchmark corpus. On PleaNP's `dev` branch it holds five type-checking modules
+  (`Basic`, `AC0` incl. the unproved `parity_notin_AC0` statement, `Monotone`,
+  `MonotoneApprox`, `MustRefute`), so a first transfer test has real content.
+  It is concentrated in circuit complexity, so Part 1's breadth requirement is
+  not yet met (issue #31); Part 2 is unblocked. See
+  `BENCHMARK_CORPUS_PLAN.md` §Dependencies. We are not re-deriving circuit
+  infrastructure ourselves.
 
 **Retiring the toy-model loop is a research-direction decision, not a filesystem
 move.** No `archive/` directory exists or is being created. The toy-model scripts
