@@ -110,6 +110,26 @@ Maith's benchmark corpus depends on PleaNP's circuit-complexity substrate.
   (`lean/PleaNP/Calculus/BarrierCalculus.lean`) screens a transferred
   circuit-complexity theorem for relativization before it counts as interesting.
 
+**Independent verification of all five Circuits modules (2026-09-15).** A
+separate reviewer checked `Basic`, `AC0`, `Monotone`, `MonotoneApprox`, and
+`MustRefute` against the claims above: all five confirmed accurate — real
+proofs, zero sorries, no inflated claims. Two additions. First, `AC0.lean`
+carries **more** proved content than the bullet list implies
+(`parity_notin_AC0_relativizing`, plus `depth_eq_zero_iff_input` and
+`not_computes_parity_depth1`), so "materially further along than stub" is if
+anything conservative. Second, `Monotone.lean` proves the model's defining
+theorem (`monotone_eval_preserves_order` — evaluation preserves the `false <
+true` order) with the AND/OR order lemmas, and `MonotoneApprox.lean` proves the
+sm-AND/sm-OR size bounds and membership identities (Razborov's
+approximation-reducer structural core). No blockers found.
+
+**Cosmetic upstream note.** PleaNP #101 records a cosmetic-only whitespace/
+punctuation corruption in the Rung-5 calculus doc comments (including
+`BarrierCalculus.lean`). Confined to comments, present since that file's first
+commit, absent from the newer `Circuits/` modules, and **not** caused by any
+in-repo tooling (no script writes `.lean` source). Do not mistake it for a
+defect in the elaborator.
+
 **Note:** the corpus-breadth requirement in `BENCHMARK_CORPUS_PLAN.md` Part 1 is
 that the corpus span *genuinely unrelated* sub-areas. Today's substrate is
 circuit-complexity-focused (AC⁰, monotone) — that may be enough for a **first**
