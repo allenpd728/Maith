@@ -53,15 +53,22 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
 
 ## Highest-value open issues (in dependency order)
 
-| Issue | Task | Blocked by |
+> **Queue state:** `status:available` = claimable now. Issues with unmet `blocked by`
+> deliberately carry **no** status label until their blocker closes (protocol §7) —
+> do not claim those. #26 is unlabeled pending a scope decision (below).
+
+| Issue | Task | State |
 |---|---|---|
-| **#22–#25** | Four gate-model gaps (`priority:high`): invariant fixtures cover only the epoch axis; encoder claims ungated; `manage.py gate --datasets` scoping; harness exits 0 on failure | — |
-| **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2). Research + plain-English filtering + formalize each target *statement* in Lean. **Start here for the axiom track.** | — |
-| **#27** | Candidate ledger + coverage-map tooling (`axiom-rewrite/`) | — |
-| **#28** | Structural similarity search (**does not exist yet** — real work) | #27 |
-| **#29** | Shared metaprogramming harness (spec-in, gates-out) | #28 |
-| **#30** | First candidate batch, log all outcomes | #26, #27, #29 |
-| **#31** | Conservativity corpus (corpus plan Part 1) | **blocked upstream** (`status:blocked-needs-input`) |
+| **#22–#25** | Four gate-model gaps (`priority:high`) | **`status:available`** |
+| **#27** | Candidate ledger + coverage-map tooling (`axiom-rewrite/`) | **`status:available`** |
+| **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | unlabeled — **needs the (a)/(b) decision below first** |
+| **#28** | Structural similarity search (does not exist yet — real work) | blocked by #27 |
+| **#29** | Shared metaprogramming harness (spec-in, gates-out) | blocked by #28 |
+| **#30** | First candidate batch, log all outcomes | blocked by #26, #27, #29 |
+| **#31** | Conservativity corpus (corpus plan Part 1) | **blocked** upstream (`status:blocked-needs-input`) |
+
+CI is green on both `main` and `dev` (3 jobs: Lean build+test, Tier-1 gates,
+stdlib-only Python tests). `main` and `dev` are content-identical.
 
 ## The one hard constraint on #26 (read before starting)
 
