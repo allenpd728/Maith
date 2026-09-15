@@ -15,6 +15,9 @@ rather than raw source syntax — improves performance on formal-math tasks.
 - **Base model:** Qwen2.5-Coder-0.5B (all variants share this transformer base)
 - **Central hypothesis:** a canonical semantic representation improves formal math
   tooling. Decomposed into 11 testable sub-claims (H1–H11); see hypothesis grid below.
+- **Active track (2026-09-15):** axiom discovery — searching for a kernel-checked
+  structure-preserving map φ that transfers existing theorems into new proofs
+  (`docs/experiments/AXIOM_DISCOVERY.md`). Toy-model training is shelved, not deleted.
 
 ## Current state (v2 era, 2026-08-09)
 
@@ -26,28 +29,37 @@ rather than raw source syntax — improves performance on formal-math tasks.
   or completion accuracy over size-matched BPE at toy scale (DEC-027). Prediction metrics
   are structurally biased against the IR's canonicalization goal (H11 ◐). Whether it helps
   under non-prediction metrics (retrieval, ATP) or at larger scale is open.
+- **Direction (DEC-036, 2026-09-15):** the active track is now axiom discovery on a
+  circuit-complexity benchmark, guarded by the ported PleaNP integrity gates
+  (`tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`). All development is on the single
+  `dev` branch.
 
 ## Key terms (see `docs/reference/GLOSSARY.md` for full definitions)
 
 | Term | Meaning |
 |---|---|
-| **A** | IR tokens (semantic graph), 601-vocab, 358M params |
+| **A** | IR tokens (semantic graph) — per-operator mode uses gen:FullName, 2254-vocab |
 | **B** | Raw leanExpr via Qwen BPE, 151K-vocab, 494M params |
 | **C** | AST-split leanExpr via Qwen BPE, 151K-vocab, 494M params |
 | **B-small** | BPE truncated to 601 tokens, 358M params (size-matched control for A) |
 | **IR** | Intermediate Representation — semantic graph from elaborated Lean `Expr` |
 | **Flat-IR** | DEC-024 ablation: IR with all semantic content replaced by SLOT |
-| **per_operator** | DEC-028: un-bucketed operator identity (op:<shortName> instead of GEN_*) |
+| **per_operator** | DEC-028: un-bucketed operator identity (gen:FullName instead of GEN_*) |
 | **DEC-0XX** | Decision-log entry in `docs/decisions/LOG.md` |
+| **Pretrained** | Qwen2.5-Coder-0.5B before fine-tuning — has existing retrieval signal (S1 finding) |
+| **Fine-tuned** | Pretrained model + Maith training on IR/BPE data |
 
-## Results table
-
-| Variant | Representation | Vocab | Params | Epochs | Perplexity | Top-1 Acc | Era |
-|---|---|---|---|---|---|---|---|
-| A | Semantic IR graph | 601 | 358M | 2 | 1.2361 | 90.0% | v2 (authoritative) |
-| B-small | BPE truncated to 601 | 601 | 358M | 2 | 1.1294 | 90.5% | v2 (authoritative) |
-| B | Raw BPE | 151,643 | 494M | 3 | 1.107 | 91.7% | v1-era (epoch confound) |
-| C | AST-split BPE | 151,643 | 494M | 3 | 1.098 | 93.0% | v1-era (epoch confound) |
+> **⚠ All prior experimental results invalidated (2026-08-12, DEC-031/032).**
+> The results table below has been removed. Previous numbers were from runs with
+> split leakage, epoch confounds, and dataset contamination. Clean retrains are
+> complete (A_v3_2ep, B_small_clean, flat_clean — all 3375/376, 2 epochs) but
+> hypothesis tests have not been re-run under verified quality gates.
+>
+> **For current status, see:**
+> - [`docs/experiments/HYPOTHESIS_GRID.md`](docs/experiments/HYPOTHESIS_GRID.md) — per-claim status (all ⬜ reset)
+> - [`docs/decisions/LOG.md`](docs/decisions/LOG.md) — DEC-031 (invalidation), DEC-032 (retrains + sanity checks)
+> - [`docs/reference/EXPERIMENT_MEASUREMENT.md`](docs/reference/EXPERIMENT_MEASUREMENT.md) — how each metric is measured + validity gaps
+> - [`docs/reference/PIPELINE_QUALITY_GATES.md`](docs/reference/PIPELINE_QUALITY_GATES.md) — gate design + status
 
 ## Model-size taxonomy (see `docs/experiments/EXPERIMENT_DESIGN.md` for full table)
 
@@ -75,7 +87,11 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | Path | Contents |
 |---|---|
 | `README.md` | Human-readable project introduction, results, roadmap |
-| `docs/decisions/LOG.md` | Chronological experiment record (DEC-001 through DEC-029) |
+| `docs/decisions/LOG.md` | Chronological experiment record (DEC-001 through DEC-036) |
+| `docs/experiments/AXIOM_DISCOVERY.md` | **Active research track** — search for a kernel-checked structure-preserving map φ (supersedes toy-model training) |
+| `docs/experiments/BENCHMARK_CORPUS_PLAN.md` | Companion: how the circuit-complexity benchmark corpus (transfer targets + conservativity corpus) is built and signed off |
+| `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-`dev`-branch protocol (ported from PleaNP) |
+| `tooling/gates/README.md` | Integrity scanners (hygiene/vacuity/lethality) + fixtures |
 | `docs/experiments/HYPOTHESIS_GRID.md` | Sub-claims H1–H11 with status, evidence, experiment-scope matrix |
 | `docs/experiments/V2_NEXT_STEPS.md` | Active specs, gate tracking, pre-existing test failures, next steps |
 | `docs/experiments/H6_RETRIEVAL_SCOPE.md` | H6 retrieval experiment spec (the decisive test) |
@@ -86,13 +102,25 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | `docs/reference/GLOSSARY.md` | Term definitions for cross-domain readers |
 | `docs/reference/ENCODER_FORMAT.md` | Canonical token format spec |
 | `docs/experiments/EXPERIMENT_DESIGN.md` | Experiment protocol, evaluation framework, model-size taxonomy |
+| `python/manage.py` | Self-service control layer (status, results, aliases, dashboard) — wraps `launch_run.py` |
 
 ## Build and test commands
 
-**Lean:**
+**Lean (bootstrap — any sandbox or CI runner, no bespoke machine):**
 ```bash
+curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+  | sh -s -- -y --default-toolchain none
+export PATH="$HOME/.elan/bin:$PATH"
+lake exe cache get          # restore precompiled Mathlib oleans (community Azure cache)
 lake build tests
 ./.lake/build/bin/tests
+```
+
+**Integrity gates (Tier 1 — run before citing any Lean claim as evidence):**
+```bash
+python3 tooling/gates/hygiene_scan.py --prove-stage Maith Tests Scripts   # no sorry/admit/axiom
+python3 tooling/gates/vacuity_scan.py Maith Tests Scripts                 # no dishonest placeholders
+python3 tooling/gates/binder_usage_scan.py Maith Tests Scripts            # every binder load-bearing
 ```
 
 **Python:**
@@ -100,6 +128,16 @@ lake build tests
 python3 python/train.py --variant A --datasets datasets/ --embed-project datasets/embed_proj_A.pt
 python3 python/eval_completion.py --variants A B_SMALL --samples 200 --mask-last 10
 python3 python/validate_roundtrip.py
+```
+
+**Self-service control (manage.py):**
+```bash
+python3 python/manage.py status          # grid + processes + latest results
+python3 python/manage.py results         # H6 retrieval + probing formatted
+python3 python/manage.py grid            # comparison matrix (valid vs confounded)
+python3 python/manage.py invariants      # invariant checker
+python3 python/manage.py train-av3-2ep   # pre-configured A v3 retrain (guarded)
+python3 python/manage.py watch --once    # HTML dashboard snapshot
 ```
 
 **Corpus rebuild:**
@@ -112,24 +150,37 @@ lake exe buildCorpus --per-operator  # per_operator mode (op:<shortName>)
 
 ## Git workflow
 
+**Single dev branch (2026-09-15 consolidation).** All work lands on `dev`; `main`
+is the reviewed branch. Nothing is pushed to `main` unreviewed — the agent that
+writes a change is not the agent that approves it (see `docs/TOOLCHAIN_AND_CI.md`
+§5). All historical per-task branches were consolidated into `dev` (DEC-036).
+
 ```bash
 # Commit (identifies as AI agent)
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
 
-# Push to kit/dev (NOT main)
-git push origin your-branch:kit/dev
+# Work on dev; push to dev for review (NOT main)
+git fetch origin
+git checkout dev && git pull origin dev --ff-only
+git push origin dev
+
+# A different agent/human reviews dev, then merges to main:
+#   git checkout main && git merge --no-ff dev && git push origin main
 ```
 
-If kit/dev has diverged, use merge (not rebase) to avoid working-tree conflicts:
+If `dev` has diverged, use merge (not rebase) to avoid working-tree conflicts:
 ```bash
-git fetch origin kit/dev
-git merge origin/kit/dev --no-edit
-git push origin your-branch:kit/dev
+git fetch origin dev
+git merge origin/dev --no-edit
+git push origin dev
 ```
 
 ## Conventions
 
 - **Decision log:** Append-only; format `### DEC-0XX` with Date, Status, Scope, Decision, Rationale
+- **Gate discipline:** No Lean claim is cited as evidence before the Tier-1 integrity gates pass (`tooling/gates/`); `--prove-stage` for claimed-complete proofs. See `docs/TOOLCHAIN_AND_CI.md`.
+- **Load-bearing claims:** Before calling a definition "load-bearing" or a flaw "fixed", run `binder_usage_scan.py` — the header is not evidence, the body is.
+- **Axiom-discovery claims:** candidates follow the gate pipeline in `docs/experiments/AXIOM_DISCOVERY.md` (homomorphism → faithfulness → transfer → compression → breadth); compression/entropy numbers are recorded only for candidates already at the kernel-checked transfer gate.
 - **Audit resolution:** When resolving an audit item in `docs/experiments/AUDIT_2026_08_10.md`, mark it `[RESOLVED <commit-sha>]` next to the heading (e.g., `### P0-2. ... [RESOLVED 73dfc18]`). Use the commit SHA, not a date — it's unique, orderable, and traces directly to the diff. The `manage.py` alias system checks for this marker before allowing experiments that depend on the audit item to launch.
 - **Negative-claim scoping:** Every "not a representation deficit" must carry "under prediction-family metrics at this scale"
 - **Grid axes:** Use "narrow-vocab" / "full-vocab" (not "small model" / "large model")
@@ -137,6 +188,10 @@ git push origin your-branch:kit/dev
 
 ## Pitfalls to avoid
 
+- Don't cite a Lean claim as evidence without the Tier-1 gates passing — "it compiles" is not "it means what we intended" (see `docs/TOOLCHAIN_AND_CI.md`)
+- Don't call a definition load-bearing from its header — run `binder_usage_scan.py`; the body is the evidence
+- Don't record compression/entropy numbers for candidates that failed the transfer gate — they are bookkeeping on an existing result, never validation (`AXIOM_DISCOVERY.md`)
+- Don't treat AXIOM_DISCOVERY.md's target as resolving P vs NP — that is a possible downstream consequence of a real result, never a search target
 - Don't state the hypothesis is disproven — only H2's prediction-metric null at toy scale is closed
 - Don't use "small model" / "large model" for grid axes — both are toy-scale
 - Don't cite B/C numbers without the epoch-confound caveat
@@ -145,3 +200,6 @@ git push origin your-branch:kit/dev
 - Don't use `train.py` directly — it's deprecated (no invariant checker, no manifest writes, no per-variant LR). Use `launch_run.py train` which calls `train_v2_resume.py` (the canonical script) with enforced preconditions
 - Don't run experiments without `check_invariants.py` passing first — it's wired into `extract_retrieval_embeddings.py` and `retrieval_eval.py` as an enforced precondition, and `launch_run.py` enforces it for training runs
 - Don't overwrite `datasets/` — use versioned dirs (`datasets_perop/`, `datasets_v{N}/`). See `docs/experiments/RUN_REGISTRY.md` contamination rules
+- Don't treat G1-4 (330 sequences > 512 tokens) as a blocker — it is a **known accepted warning** grandfathered in by DEC-032. It affects all variants equally and does not bias the comparison. The path to H6 is not blocked by G1-4. See `docs/decisions/LOG.md` ~line 1760.
+- Don't run `python/manage.py` (or `python3 manage.py`) without specifying the ML Python binary explicitly — the system `python3` (`/usr/bin/python3`, 3.9.6) lacks ML packages and doesn't support `str | Path` union syntax (fails at `manifest.py:98`). Always invoke as `/usr/local/bin/python3 python/manage.py ...`. See Issue 9 in `docs/experiments/KNOWN_ISSUES.md`.
+- Don't use old checkpoint names `variant_A_v1_4_0`, `variant_A_v2_full`, or `variant_B_small` for evaluation — these are dirty (trained on the leaky 3491/388 split). Use `variant_A_v3_2ep` and `variant_B_small_clean` (both 3375/376, 2ep) instead. The dirty checkpoints remain on disk but must not be used.

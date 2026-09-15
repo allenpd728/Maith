@@ -14,6 +14,8 @@
 > [`V2_COMPARISON_MATRIX`](docs/experiments/V2_COMPARISON_MATRIX.md) (control grid) ·
 > [`EXPERIMENT_DESIGN`](docs/experiments/EXPERIMENT_DESIGN.md) (evaluation framework) ·
 > [`PRIOR_ART`](docs/reference/PRIOR_ART.md) (related work) ·
+> [`LITERATURE_REVIEW_2026_08`](docs/experiments/LITERATURE_REVIEW_2026_08.md) (field check of open sub-claims) ·
+> [`LEAN_PIPELINE_AUDIT_2026_08`](docs/experiments/LEAN_PIPELINE_AUDIT_2026_08.md) (Lean IR/corpus code audit) ·
 > [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-026/027).
 
 ## At a glance
@@ -23,10 +25,20 @@
 - **Open research practice**: hypothesis grid with per-claim status, experiment design, decision log (DEC-0xx), and prior-art review — so results are legible, not just reported.
 
 > Read the full background below, or jump to [hypotheses](docs/experiments/HYPOTHESIS_GRID.md) and [experiment design](docs/experiments/EXPERIMENT_DESIGN.md).
->> **Built with agentic AI tooling.** The author directed agent-based coding workflows to architect, implement, and validate this pipeline — breaking work into task specs, reviewing output, and running the experiments. Commit history on this repo reflects that process.
 
+> **Built with agentic AI tooling.** The author directed agent-based coding workflows to architect, implement, and validate this pipeline — breaking work into task specs, reviewing output, and running the experiments. Commit history on this repo reflects that process.
 
- a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
+> **New direction (2026-09-15).** The active research track has moved to
+> **axiom discovery** — searching for a structure-preserving map φ that pulls
+> existing theorems back into a new domain as kernel-checked transfer results —
+> superseding the shelved toy-model training path. See
+> [`AXIOM_DISCOVERY`](docs/experiments/AXIOM_DISCOVERY.md) and its companion
+> corpus plan, [`BENCHMARK_CORPUS_PLAN`](docs/experiments/BENCHMARK_CORPUS_PLAN.md).
+> The repo now runs the PleaNP-derived CI and two-tier integrity gates
+> ([`TOOLCHAIN_AND_CI`](docs/TOOLCHAIN_AND_CI.md)) and develops on a single
+> `dev` branch.
+
+Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
 ## 1) Research Question
 
@@ -82,19 +94,32 @@ flowchart LR
     D --> E[IR Graph]
     E --> F[Normalizer.lean]
     F --> G[Canonical graph]
-    G --> H[Encoder.lean v2.0.0]
-    H --> I[Token sequence]
+    G --> H[Encoder.lean v1.2.0]
+    H --> I[Token sequence — v1-style strings]
     I --> J[CorpusSerializer.lean]
-    J --> K[Corpus/corpus.jsonl]
+    J --> K[Corpus/corpus.jsonl — v1 tokens, NOT committed]
     K --> L[python/build_dataset.py]
-    L --> M[datasets/train_*.jsonl + eval_*.jsonl]
+    L --> L1[v2 re-encode: C1/C2/C4 + integer mapping via vocab_A.json]
+    L1 --> M[datasets/train_*.jsonl + eval_*.jsonl — integer input_ids]
     M --> N[python/train.py variants A/B/C]
     N --> O[runs/variant_*/results.json + loss_curve.json]
 ```
 
+> **Where v2 encoding and integer mapping actually happen (diagram correction).**
+> The Lean-side `Encoder.lean` emits **v1-style string tokens** (`neut`, `gen:<FullName>`)
+> into `corpus.jsonl`. The **v2 token stream** (C1 polarity removal, C2 typeclass short
+> names, C4 GEN bucketing) and the **token→integer mapping** are both produced in
+> `python/build_dataset.py`'s `encode_ir` + `build_ir_vocab` at dataset-build time — not
+> in Lean, and not in `train.py`. So `corpus.jsonl` holds v1-style strings; the v2
+> integers exist only in `datasets/train_*.jsonl` (`input_ids`/`labels`). See
+> [`CORPUS_SCHEMA.md`](docs/reference/CORPUS_SCHEMA.md) and
+> [`build_dataset.py`](python/build_dataset.py) `encode_ir`/`bucket_from_module`.
+> `Corpus/corpus.jsonl` itself is gitignored (not committed); `Corpus/corpus_manifest.json`
+> records its hash and regeneration command.
+
 Concrete pipeline in this repo:
 
-`Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean -> token sequence -> CorpusSerializer.lean -> corpus.jsonl -> python/`
+`Lean environment -> MetaExtractor.lean -> IR Graph -> Normalizer.lean -> canonical graph -> Encoder.lean (v1 strings) -> corpus.jsonl -> build_dataset.py (v2 encode + int map) -> datasets/train_*.jsonl (int ids) -> train.py`
 
 For a fuller, stage-by-stage architecture and artifact map, see:
 [`docs/reference/Design.md#detailed-pipeline-diagram`](docs/reference/Design.md#detailed-pipeline-diagram).
@@ -107,6 +132,29 @@ The full pipeline is implemented and validated. See section 7 for corpus results
 
 - `lake build tests` passes (0 failures).
 - All tests pass (**66+ unit tests + corpus-pipeline/serializer integration checks**).
+
+**Bootstrap (any sandbox or CI runner — no bespoke machine required):**
+
+```bash
+curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+  | sh -s -- -y --default-toolchain none
+export PATH="$HOME/.elan/bin:$PATH"
+lake exe cache get      # restore precompiled Mathlib oleans (community Azure cache)
+lake build tests
+./.lake/build/bin/tests
+```
+
+`.devcontainer/` provides a warm Codespaces/Gitpod environment that runs the same
+recipe. See [`docs/TOOLCHAIN_AND_CI.md`](docs/TOOLCHAIN_AND_CI.md) for the full
+CI/toolchain protocol.
+
+**Integrity gates (Tier 1 — CI-enforced, no Lean needed):**
+
+```bash
+python3 tooling/gates/hygiene_scan.py --prove-stage Maith Tests Scripts   # no sorry/admit/axiom
+python3 tooling/gates/vacuity_scan.py Maith Tests Scripts                 # no dishonest placeholders
+python3 tooling/gates/binder_usage_scan.py Maith Tests Scripts            # every binder load-bearing
+```
 
 **Python test suite** — all passing, 0 failures:
 
@@ -124,6 +172,12 @@ python3 python/test_build_dataset.py
 python3 python/test_variant_config.py
 python3 python/test_pipeline_integration.py
 ```
+
+CI additionally runs the stdlib-only pipeline-contract tests
+(`test_build_dataset_v2`, `test_c4_bucketing`, `test_c4_consistency`,
+`test_corpus_expansion_config`, `test_eval_checkpoint_guard`,
+`test_eval_completion_authoritative`, `test_h5_pairs`, `test_invariants`).
+See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ### While full A/B/C runs are active
 
@@ -255,7 +309,8 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
 6. **Phase 5–6: Run A/B/C training + v2 control grid** — ✅ complete (2026-08-09). Full grid in section 8. Representation hypothesis not yet supported on perplexity/completion; cold-start (DEC-021) and size (DEC-027) confounds ruled out.
-7. **Phase 7: IR-candidate search** — active. Next levers per DEC-027: corpus expansion (>10k examples), objective redesign (masked-reconstruction / proof-completion), IR pretraining, and downstream theorem-proving evaluation. See [`docs/history/PHASE_7_ROADMAP.md`](docs/history/PHASE_7_ROADMAP.md).
+7. **Phase 7: IR-candidate search** — ✅ closed (DEC-027/028/034). The prediction-metric levers (corpus expansion, objective redesign, IR pretraining) do not recover a representation advantage at toy scale.
+8. **Phase 8+: Axiom discovery** — **active** (2026-09-15). The active track redirects the same IR-extraction machinery at a narrower, structurally rich domain (circuit complexity) and searches for a kernel-checked structure-preserving map φ that transfers existing theorems into new proofs. Toy-model training is shelved, not deleted. See [`docs/experiments/AXIOM_DISCOVERY.md`](docs/experiments/AXIOM_DISCOVERY.md) (track) and [`docs/experiments/BENCHMARK_CORPUS_PLAN.md`](docs/experiments/BENCHMARK_CORPUS_PLAN.md) (corpus). Claims from this track are guarded by the ported integrity gates — see [`docs/TOOLCHAIN_AND_CI.md`](docs/TOOLCHAIN_AND_CI.md).
 
 Related work is surveyed in [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md); project terminology is defined in [`docs/reference/GLOSSARY.md`](docs/reference/GLOSSARY.md).
 
@@ -354,13 +409,18 @@ python/
   validate_roundtrip.py    # decoder round-trip validator (confirms BVAR/TERM stability)
   tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
 docs/
-  decisions/LOG.md         # experiment decisions and confound documentation (DEC-001..027)
+  decisions/LOG.md         # experiment decisions and confound documentation (DEC-001..036)
   decisions/INDEX.md       # navigation index for decision log
-  experiments/             # experiment designs, comparison matrix, probing task
+  experiments/             # experiment designs, comparison matrix, probing task, AXIOM_DISCOVERY, BENCHMARK_CORPUS_PLAN
   reference/               # Design.md, ENCODER_FORMAT, PRIOR_ART, EXAMPLE_ROUNDTRIP, ...
   history/                 # PHASE_5/6/7 results, roadmap, validation plan
   scratch/                 # working notes (audits, analysis, resume notes)
+  TOOLCHAIN_AND_CI.md      # PleaNP-derived CI + two-tier integrity-gate protocol
   README.md                # docs index
+tooling/
+  gates/                   # integrity scanners (hygiene, vacuity, lethality) + fixtures
+.github/workflows/ci.yml   # Lean build+tests, Tier-1 gates, stdlib-only Python tests
+.devcontainer/             # warm Codespaces/Gitpod Lean+Mathlib environment
 ```
 
 ## 13) License

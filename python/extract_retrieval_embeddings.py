@@ -52,11 +52,25 @@ _DATASETS_DIR = Path(os.environ.get(
 
 CHECKPOINTS = {
     "A":       _RUNS_DIR / "variant_A_v2_full" / "checkpoint-final",
-    "B_small": _RUNS_DIR / "variant_B_small" / "checkpoint-final",
+    "A_v3_2ep": _RUNS_DIR / "variant_A_v3_2ep" / "checkpoint-final",
+    "A_h5_e2e": _RUNS_DIR / "variant_A_h5_e2e" / "checkpoint-final",  # H5 end-to-end contrastive
+    "A_h9":     _RUNS_DIR / "variant_A_h9"     / "checkpoint-final",  # H9 co-training
+    "B_small":      _RUNS_DIR / "variant_B_small" / "checkpoint-final",       # DIRTY: 3491/388 leaky split — do not use for clean experiments
+    "B_small_clean":_RUNS_DIR / "variant_B_small_clean" / "checkpoint-final",   # CLEAN: 3375/376, 2ep
     "B":       _RUNS_DIR / "variant_B_phase6" / "checkpoint-final",
     "C":       _RUNS_DIR / "variant_C_v2" / "checkpoint-final",
-    "flat":    _RUNS_DIR / "variant_flat" / "checkpoint-final",
+    "flat":     _RUNS_DIR / "variant_flat" / "checkpoint-final",                # DIRTY: 3627/402 old split — do not use for clean experiments
+    "flat_clean":_RUNS_DIR / "variant_flat_clean" / "checkpoint-final",         # CLEAN: 3375/376, 2ep
     "random":  None,  # Loaded from HuggingFace cache, no fine-tuning
+}
+
+# Map checkpoint variant names to dataset file names (e.g., A_v3_2ep uses train_A.jsonl)
+VARIANT_FILE_MAP = {
+    "A_v3_2ep": "A",
+    "A_h5_e2e": "A",  # trained on same IR tokens as A_v3_2ep
+    "A_h9":     "A",  # co-trained on same IR tokens as A_v3_2ep
+    "B_small_clean": "B_small",
+    "flat_clean": "flat",
 }
 
 BASE_MODEL = "Qwen/Qwen2.5-Coder-0.5B"
@@ -74,9 +88,10 @@ def get_device() -> str:
         return "cpu"
 
 
-def load_dataset_split(variant: str, split: str) -> list[dict]:
-    """Load a dataset split (train or eval) for a variant."""
-    path = Path(_DATASETS_DIR) / f"{split}_{variant}.jsonl"
+def load_dataset_split(variant: str, split: str, dataset_dir: Path = None) -> list[dict]:
+    """Load a dataset split (train or eval) for a variant from the given directory."""
+    base = dataset_dir or _DATASETS_DIR
+    path = Path(base) / f"{split}_{variant}.jsonl"
     if not path.exists():
         print(f"WARNING: {path} not found, skipping {variant}/{split}")
         return []
@@ -221,6 +236,20 @@ def main():
         help="Output directory"
     )
     parser.add_argument(
+        "--dataset-dir", default=str(_DATASETS_DIR),
+        help="Default dataset directory for all variants"
+    )
+    parser.add_argument(
+        "--perop-dataset-dir", default="",
+        help="Dataset directory for per-operator variants (e.g., datasets_perop). "
+             "Variants listed in --perop-variants will load from here."
+    )
+    parser.add_argument(
+        "--perop-variants", default="",
+        help="Comma-separated variant names that use the perop dataset dir "
+             "(e.g., A_v3_2ep)"
+    )
+    parser.add_argument(
         "--skip-invariant-check", action="store_true",
         help="Skip the invariant checker precondition (NOT RECOMMENDED)"
     )
@@ -244,9 +273,16 @@ def main():
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    default_dataset_dir = Path(args.dataset_dir)
+    perop_dataset_dir = Path(args.perop_dataset_dir) if args.perop_dataset_dir else None
+    perop_variants = set(v.strip() for v in args.perop_variants.split(",") if v.strip())
+
     device = get_device()
     print(f"Device: {device}")
     print(f"Output: {out_dir}")
+    print(f"Default dataset dir: {default_dataset_dir}")
+    if perop_dataset_dir:
+        print(f"Perop dataset dir: {perop_dataset_dir} (for variants: {perop_variants})")
     print()
 
     for variant in variants:
@@ -254,9 +290,18 @@ def main():
         print(f"VARIANT: {variant}")
         print(f"{'='*60}")
 
+        # Select the dataset directory for this variant
+        if variant in perop_variants and perop_dataset_dir:
+            ds_dir = perop_dataset_dir
+        else:
+            ds_dir = default_dataset_dir
+
+        # Map checkpoint variant to dataset file name (e.g., A_v3_2ep → A)
+        file_variant = VARIANT_FILE_MAP.get(variant, variant)
+
         # Load the variant's actual datasets
-        train_rows = load_dataset_split(variant, "train")
-        eval_rows = load_dataset_split(variant, "eval")
+        train_rows = load_dataset_split(file_variant, "train", ds_dir)
+        eval_rows = load_dataset_split(file_variant, "eval", ds_dir)
 
         if not train_rows and not eval_rows:
             print(f"No data for variant {variant}, skipping.")
@@ -264,7 +309,7 @@ def main():
 
         # Verify the source field matches the variant (invariant 3)
         expected_source_map = {
-            "A": "A", "B_small": "B_small", "B": "B",
+            "A": "A", "A_v3_2ep": "A", "B_small": "B_small", "B": "B",
             "C": "C", "flat": "flat_ir", "random": "random",
         }
         expected_source = expected_source_map.get(variant, variant)

@@ -96,6 +96,20 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | **DEC-027** | ✅ Complete — B-small control. B-small (BPE, 358M, 601-vocab) = 90.5% top-1 / 1.1294 ppl, essentially tied with A (90.0% / 1.2361). Size explains the A-vs-B/C gap; the v2 IR is not yet doing measurable work *under prediction metrics* beyond small-vocab BPE at this scale. Non-prediction metrics (retrieval, ATP) open (H6/H7). Next levers: corpus expansion, objective redesign, IR pretraining, retrieval eval. See `docs/experiments/V2_COMPARISON_MATRIX.md`. |
 | **DEC-028** | ⬜ Accepted — C4 GEN bucketing identified as a competing explanation for the perplexity null. C4 collapses operator identity into ~20 GEN_* tokens, making the IR more lossy than BPE on operator identity. Experiment: `per_operator` mode (un-bucketed) vs current `module` mode. Decisive test of whether H2's null is representation-intrinsic or a C4 artifact. |
 | **DEC-029** | ⬜ Accepted — Code review findings (6 items): C4 bucketing (DEC-028), proof terms skipped (doc fix), polarity no-ops (code fix), device priority bug (code fix), asymmetric init framing (already addressed), B/C special-token inconsistency (doc fix). |
+| **DEC-036** | ✅ Active (2026-09-15) — Adopt PleaNP CI/toolchain + integrity-gate protocol (`.github/workflows/ci.yml`, `.devcontainer/`, `tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`); add the axiom-discovery direction (`AXIOM_DISCOVERY.md`, `BENCHMARK_CORPUS_PLAN.md`); consolidate all branches onto a single `dev` branch. |
+
+---
+
+## Research Direction (post-DEC-035)
+
+The active track moved from prediction-metric experiments to axiom discovery.
+
+| Doc | What it specifies |
+|---|---|
+| [`docs/experiments/AXIOM_DISCOVERY.md`](../experiments/AXIOM_DISCOVERY.md) | Active track — search for compressive foundations via a structure-preserving map φ with a kernel-checked transfer result. Supersedes the shelved toy-model training path. |
+| [`docs/experiments/BENCHMARK_CORPUS_PLAN.md`](../experiments/BENCHMARK_CORPUS_PLAN.md) | How the circuit-complexity benchmark corpus (conservativity corpus + transfer targets) is built and signed off. |
+| [`docs/TOOLCHAIN_AND_CI.md`](../TOOLCHAIN_AND_CI.md) | The ported PleaNP CI/toolchain protocol + two-tier integrity gates that guard the axiom-discovery claims. |
+| [`tooling/gates/README.md`](../../tooling/gates/README.md) | The gate scanners (hygiene, vacuity, lethality) and their fixtures. |
 
 ---
 

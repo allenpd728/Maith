@@ -57,14 +57,16 @@ flowchart TD
     A4 --> A5[IR Graph]
     A5 --> A6[Normalizer.lean]
     A6 --> A7[Canonical graph]
-    A7 --> A8[Encoder.lean v2.0.0]
-    A8 --> A9[Token sequence]
+    A7 --> A8[Encoder.lean v1.2.0]
+    A8 --> A9[Token sequence — v1-style strings]
     A9 --> A10[CorpusSerializer.lean]
-    A10 --> A11[Corpus/corpus.jsonl]
+    A10 --> A11[Corpus/corpus.jsonl — v1 tokens, gitignored]
   end
 
   subgraph PythonData[Dataset and experiment prep]
-    B1[python/build_dataset.py] --> B2[datasets/train_A_train_B_train_C.jsonl]
+    B1[python/build_dataset.py] --> B0[v2 re-encode: C1/C2/C4 via encode_ir]
+    B0 --> B0a[Integer mapping via build_ir_vocab → vocab_A.json]
+    B0a --> B2[datasets/train_A_train_B_train_C.jsonl — integer input_ids]
     B1 --> B3[datasets/eval_A_eval_B_eval_C.jsonl]
     B1 --> B4[datasets/train_manifest.json + eval_manifest.json]
     B1 --> B5[datasets/representation_manifest.json]
@@ -85,6 +87,17 @@ flowchart TD
   C2 --> C6
   C2 --> C8
 ```
+
+> **Correction note (2026-08).** The Lean-side `Encoder.lean` emits **v1-style string
+> tokens** into `corpus.jsonl`; it does not produce the v2 token stream. The **v2
+> re-encoding** (C1 polarity removal, C2 typeclass short names, C4 GEN bucketing via
+> `bucket_from_module`) and the **token→integer mapping** (`build_ir_vocab` →
+> `vocab_A.json`) both happen in `python/build_dataset.py` at dataset-build time. So
+> `corpus.jsonl` holds v1-style strings; the v2 integers exist only in
+> `datasets/*.jsonl` `input_ids`. Earlier versions of this diagram labeled the Lean
+> encoder "v2.0.0" and omitted the Python-side re-encode + integer-mapping step, which
+> was inaccurate. See [`CORPUS_SCHEMA.md`](CORPUS_SCHEMA.md) (v2 note) and
+> [`build_dataset.py`](../../python/build_dataset.py) `encode_ir`/`build_ir_vocab`.
 
 `Transpiler.lean` provides bidirectional IR↔string conversion:
 - **Encoder**: formats IR as human-readable string for debugging (uses `var:/term:/bound:` prefixes)
