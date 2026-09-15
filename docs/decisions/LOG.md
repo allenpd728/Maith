@@ -1971,20 +1971,56 @@ line (42 ahead / 3 behind `main`). The three `main`-only commits are docs
 unmerged content from stale branches was checked file-by-file and merged onto
 `dev` where it was not superseded:
 
-- `docs/glossary-readability` — glossary readability pass (retained; merged).
+- `docs/glossary-readability` — glossary readability pass (retained; merged, verified identical).
 - `docs/agents-md` — V2_COMPARISON_MATRIX `A-large` N/A + `C-small` correction
-  (retained; merged).
+  (retained; merged, verified identical).
 - `docs/bucketing-confound-and-fixes` — DEC-028/029 already in `kit/dev`
   (superseded).
 - `openhands/build-dataset-v2` — v2 GEN_* buckets already in `kit/dev`
   (superseded). `docs/DEPENDENCIES.md` (from `openhands/dev`, `probing-scripts`)
   is superseded by `docs/reference/PYTHON_PIPELINE.md` + `requirements.txt`.
+- `openhands/ir-compression-gate` — the `ir-research/scripts/compression_gate.py`
+  work is superseded by `python/check_ir_build.py` (the DEC-026 gate landing);
+  `ir-research/` is a local-only, gitignored research dir.
+
+The retired remote branches and their tip SHAs are recorded below so any
+previously-unmerged commit remains recoverable (GitHub keeps unreachable objects
+reachable via these SHAs; this table is the pointer registry):
+
+| Retired branch | Tip SHA |
+|---|---|
+| `copilot/dev` | `db4a0ef6374931de72f580395cafc9169368af8d` |
+| `docs/agents-md` | `642802976923c55bf87965cdb76dc40b7a39fc5a` |
+| `docs/bucketing-confound-and-fixes` | `ed6a3565945f3711151e5e4aa45f33a3f58f829a` |
+| `docs/experiment-scope` | `ba7731cb286185c3e7fb5e268b250806ffe1dce4` |
+| `docs/glossary-readability` | `25e75e87efcb4614c6e9a058fec6db6a6c1ff4cf` |
+| `kit/dev` | `6ae5593c418977b9cdc07b5b52e6cd613a40e86a` |
+| `kit/ir-design-research` | `8f88331e3d74b1214091c84b7f79078b0fb55d36` |
+| `literature-review-2026-08` | `9c06fc2f7d7a2487a01e6bf9f07d0d76e82ddea0` |
+| `openhands/build-dataset-v2` | `b7f1dbb8e0e4d7fb8bcd500960c75e44c20064b5` |
+| `openhands/decompiler` | `b46c5167e48e07ecc03183336d93a35aed4602c0` |
+| `openhands/dev` | `1fdf258e121170087228a68cf0578f439c92fe95` |
+| `openhands/ir-compression-gate` | `40d8704d48d3b63aa96b1ed4ac396dbae16c364f` |
+| `openhands/ir-coverage-step2` | `0c52d4843fbc7096af497f84863b3ef57fdc1aaf` |
+| `openhands/ir-metaextractor-v2` | `b37f86feb64632002405cb49088b421d96463fb7` |
+| `openhands/ir-metaextractor-v2-c3c4` | `c89d0ec6b268bad27b6e893f52c18985786673d8` |
+| `openhands/ir-schema-step3` | `f22d2932dc0d919e999489d92afec191ec3e89cd` |
+| `openhands/ir-v2-test-audit` | `f7e2069e8b757e1e286efc819e64432b25400f40` |
+| `openhands/phase-8c` | `52c084763569cd50058cf30288a92411cc2ddc1b` |
+| `openhands/phase-8d` | `2ab10a5caca3880e856218f2b7f3103123177f91` |
+| `openhands/probing-scripts` | `313034d58670a33760c0a1c6c0c7fc112cb94623` |
+| `openhands/probing-task-design` | `ffdd2c4d670303c61582d873db613effb02f7c90` |
 
 **Verification:** Lean toolchain set up per the ported bootstrap; `lake build
-tests` succeeds and `./.lake/build/bin/tests` reports all tests passing. Tier-1
-hygiene and vacuity scans are clean; the lethality scan surfaced one real
-pre-existing dead helper (`runEnvTest`, unused `env` parameter) and is wired
-advisory in CI pending triage.
+tests` and `lake build buildCorpus` both succeed. Tier-1 hygiene and vacuity
+scans are clean; the lethality scan surfaced one real pre-existing dead helper
+(`runEnvTest`, unused `env` parameter) and is wired advisory in CI pending
+triage. **Caveat recorded:** the test harness exits 0 even when assertions fail
+— the suite reports 4 pre-existing failures (2 decoder round-trip format, 1
+injectivity non-commutative, 1 Lean validity), all documented in
+`docs/experiments/V2_NEXT_STEPS.md`. The CI `lean` job surfaces these as a
+warning rather than a false green. Making the harness exit non-zero on failure
+is required before the test step is a true oracle. See `docs/TOOLCHAIN_AND_CI.md` §6.
 
 **Status of gates at adoption:** Gate 6 (hygiene) clean; Gate 5 (vacuity) clean;
 Gate 5 Tier 1b (lethality) 1 violation / 47 reviews (entry-point noise, allow-listed).
