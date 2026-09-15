@@ -169,20 +169,29 @@ changed source on 2026-09-13. Current state, verified:
 | Dependency | Status |
 |---|---|
 | `complexitylib` import into PleaNP | **Rejected** (PleaNP #70, its DEC-025) — pins `v4.34.0-rc2` + `cslib`; incompatible with PleaNP's stable `v4.31.0` pin |
-| Local `PleaNP.Circuits` | **Exists, but is an early stub** — `lean/PleaNP/Circuits/Basic.lean` is a 17-line header listing *planned* coverage (boolean circuits, AC⁰/TC⁰/NC, switching lemma, Parity ∉ AC⁰, Razborov monotone lower bounds, Williams). The validation suite landed (PleaNP #71) covering the natural-property/largeness definitions; the lower-bound library is still open (e.g. PleaNP #72: parity ∉ AC⁰ via the switching lemma). |
+| Local `PleaNP.Circuits` | **Exists and is further along than it first appeared** — on PleaNP's `dev` branch (not `main`), `lean/PleaNP/Circuits/` holds five type-checking modules: `Basic.lean` (`BoolGate`, `CircuitFamily`, `IsPPoly`, `PropertyFamily`, `Largeness`, `Constructive`, `NaturalProperty`), `AC0.lean` (`parity`, `IsAC0`, `ComputesParity`, `parity_notin_AC0` as an unproved `def : Prop`, plus depth-1 results), `Monotone.lean`, `MonotoneApprox.lean` (monomial machinery, Razborov direction), and the `MustRefute.lean` validation suite. A **first** transfer test therefore has real content to work with. |
 | Extra circuits modules (#73, #37) | Landed — tree/decision-tree models and an "invented-model round" |
 
-**Consequence for this plan: Part 1 (the conservativity corpus) cannot be built
-yet.** The "enumerate everything already formalized" inventory pass would today
-find a handful of modules, not a broad multi-sub-area corpus — and the plan's own
-domain-breadth check (step 2) would fail on it. Part 1 is **blocked** on PleaNP's
-Rung-4 lower-bound library growing (PleaNP #72 and successors).
+**Consequence for this plan: Part 1 (the conservativity corpus) still cannot be
+signed off, but for a narrower reason than "nothing exists."** The inventory
+pass would find real, type-checking declarations — but they are concentrated in
+circuit complexity (AC0, monotone), so they would not pass the domain-breadth
+check (step 2) that requires genuinely *unrelated* sub-areas. Part 1 is
+**blocked on breadth**, not on existence; issue #31 holds it. If the maintainer
+decides the current spread is enough for a first experiment, that call should be
+recorded as a DEC entry rather than assumed.
 
-**Part 2 (transfer targets) is not blocked** in the same way: the *research* and
-*filtering* passes (DeepSeek + a second LLM pass) need no Lean, and the
-formalization pass needs only whatever circuit-model definitions already exist.
-Part 2 should proceed first, and Part 1 revisited once the substrate is broad
-enough to be a real breadth test.
+**Part 2 (transfer targets) is not blocked at all.** The research and filtering
+passes (DeepSeek + a second LLM pass) need no Lean, and statement formalization
+needs only the circuit-model definitions that already exist. Part 2 should
+proceed first (issue #26).
+
+**One further constraint for Part 2:** Maith extracts IR from elaborated `Expr`
+inside a running Lean process, and `Scripts/BuildCorpus.lean` enumerates only
+modules it can import — there is no mechanism yet to add an external repo's
+modules to that graph. Formalizing a target *statement* is therefore not the
+same as getting it into Maith's pipeline. See `docs/AGENT_HANDOFF.md` for the
+(a)-formalize-in-Maith vs (b)-formalize-in-PleaNP decision.
 
 *This table is the doc-coherence fix required by the corpus plan having been
 written against `complexitylib`, which will never be imported. Maith's
