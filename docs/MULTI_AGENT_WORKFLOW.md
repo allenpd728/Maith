@@ -208,10 +208,10 @@ has been updated since the file was written; if resolved, rename it to
 
 Porting the protocol surfaced places where a "green check" is weaker than it
 looks. Per §Task definition ("one task = one signal"), these must be closed
-before the corresponding station can be trusted as done-evidence. File them as
-`priority:high` tasks; do not paper over them.
+before the corresponding station can be trusted as done-evidence. Filed as
+`priority:high` tasks — do not paper over them:
 
-1. **Most `must_match` fields are declared but unexercised.**
+1. **Most `must_match` fields are declared but unexercised.** (#22)
    `check_invariants.py` requires `representation_id`, `seed`, `train_examples`,
    `eval_examples`, and `epochs` to match for a comparison to be valid, but
    `test_invariants.py` contains only an **epoch**-mismatch fixture
@@ -221,15 +221,15 @@ before the corresponding station can be trusted as done-evidence. File them as
    fail. **One fixture per `must_match` field** — each asserting the check
    reports a failure — closes this. Until then, treat an "Invariant 5 passed"
    claim as covering only the epoch axis.
-2. **No invariant covers losslessly-verifiable representation claims.** The
+2. **No invariant covers losslessly-verifiable representation claims.** (#23) The
    correctness claims in `docs/reference/ENCODER_FORMAT.md` (e.g. injectivity)
    should become named invariants with a fixture per claim, so they are graded by
    a check that can fail rather than by prose.
-3. **Repository-wide gate consistency.** `manage.py gate` takes a `--datasets`
+3. **Repository-wide gate consistency.** (#24) `manage.py gate` takes a `--datasets`
    path; agents must confirm it operates on the intended versioned directory
    (see `docs/experiments/RUN_REGISTRY.md` contamination rules) rather than
    defaulting silently.
-4. **The Lean test harness exits 0 on failure.** `Tests/Main.lean` prints
+4. **The Lean test harness exits 0 on failure.** (#25) `Tests/Main.lean` prints
    `⚠ Some tests failed!` but returns success, so `lake build tests && tests`
    cannot currently distinguish all-pass from 4-failures. The CI job surfaces
    this as a warning rather than a false green. Making the harness exit non-zero

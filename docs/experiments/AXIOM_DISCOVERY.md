@@ -236,6 +236,16 @@ and the dependency in `BENCHMARK_CORPUS_PLAN.md` §Dependencies.
    recursive-structure proposals, against whatever benchmark subset exists;
    log all outcomes regardless of result.
 
-**Tracked as issues, not prose.** Per `docs/MULTI_AGENT_WORKFLOW.md`, these
-should be filed as `status:available` tasks with explicit `Blocked by` lineages,
-and each candidate outcome recorded as a DEC entry (pass and fail alike).
+**Tracked as issues, not prose.** Per `docs/MULTI_AGENT_WORKFLOW.md`, these are
+filed as `status:available` tasks with explicit `Blocked by` lineages:
+
+| Step | Issue | Blocked by |
+|---|---|---|
+| 1. Transfer-target list (corpus Part 2) | #26 | — (start here) |
+| 2. Candidate ledger + coverage map | #27 | — |
+| 3. Structural similarity search | #28 | #27 |
+| 4. Shared metaprogramming harness | #29 | #28 |
+| 5. First candidate batch | #30 | #26, #27, #29 |
+| —. Conservativity corpus (corpus Part 1) | #31 | **blocked** on upstream `PleaNP.Circuits` |
+
+Each candidate outcome is recorded as a DEC entry (pass and fail alike).
