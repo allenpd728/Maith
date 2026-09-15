@@ -2120,3 +2120,64 @@ build-out as a `blocked by` lineage: #26 targets, #27 ledger, #28 search ← #27
 blocked on upstream `PleaNP.Circuits`). Dependency edges were set via the GitHub
 issue-dependencies API (which requires the internal `issue_id`, not the issue
 number).
+---
+
+### DEC-038 — Axiom-discovery taxonomy + pipeline diagram; restore the glossary's lost terminology section (2026-09-15)
+
+**Date:** 2026-09-15
+**Status:** Active
+**Scope:** Terminology, documentation of the transfer pipeline
+
+**Decision:** Name the axiom-discovery pipeline and its vocabulary explicitly, and
+fix a documentation regression introduced during the DEC-036 branch consolidation.
+
+**(1) New glossary sections.** `docs/reference/GLOSSARY.md` gains:
+
+- **§Terminology: family, candidate, structure** — *restored*, see (3).
+- **§Axiom discovery: the transfer pipeline** — defines the track's terms:
+  transfer target, benchmark corpus (Parts 1/2), φ, target structure, the five
+  gates, candidate ledger, coverage map, the proposal heuristics, `#barrier_check`.
+
+**(2) A real terminology collision, now named.** The word **"candidate" is
+overloaded** between the two tracks:
+
+- *Experiment track* ("the IR"): a candidate = a concrete tokenization of the
+  semantic graph family (v2.0.0, a v2.x tweak). Defined since `966c49a`.
+- *Axiom track*: a candidate = the φ spec (target structure + domain + φ
+  definition + provenance). ~35 uses in `AXIOM_DISCOVERY.md`.
+
+Same word, different referents. The glossary now flags this with an explicit ⚠ and
+a rule: qualify in writing as **"candidate φ"** vs **"IR candidate"** when the
+distinction matters. This was previously undocumented — a reader moving between
+the two docs would reasonably conflate them.
+
+**(3) Regression found and fixed.** `ENCODER_FORMAT.md` links to the glossary
+anchor `#terminology-family-candidate-structure`. **That section did not exist** at
+`origin/dev`: it was added at `966c49a` (2026-08-12, "consolidate IR terminology"),
+and the `docs/glossary-readability` branch — which rewrote `GLOSSARY.md` — was
+based on a commit *before* `966c49a`, so its rewrite reverted the section. When
+that branch was folded into `dev` in DEC-036, the loss came with it.
+
+This is a self-inflicted regression from DEC-036: the consolidation verified the
+glossary's *readability* changes as byte-identical to the source branch, but did
+not check that the source branch had dropped content added *after* its base. The
+lesson — **when merging a long-lived branch, diff its content against the current
+work branch, not just against the branch it came from** — is the same class as the
+"check the work branch, not the default branch" lesson from DEC-037.
+
+Fix: the section is restored verbatim from `966c49a`, plus a `##` heading so the
+anchor `ENCODER_FORMAT.md` already links to resolves.
+
+**(4) Pipeline diagram.** `AXIOM_DISCOVERY.md` gains a mermaid diagram of the
+end-to-end flow: upstream `PleaNP.Circuits` → corpus (targets unblocked / Part 1
+breadth-blocked) → proposal (ledger, coverage map, similarity search) → the five
+gates → `#barrier_check` on anything crossing gate 3. It makes three buried facts
+visible: #28 is a real build rather than reuse; the corpus halves differ in status;
+and gate 4 is downstream of gate 3 by construction.
+
+**Verification:** mermaid block balanced (4 `subgraph` / 4 `end`); both files
+UTF-8 clean; anchor target now resolves.
+
+**Next:** the taxonomy is now written down but the overload remains in prose —
+`AXIOM_DISCOVERY.md`'s ~35 unqualified uses were left as-is (qualifying them all
+would churn the doc). Cleared up as each section is next edited.

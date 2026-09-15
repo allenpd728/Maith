@@ -114,6 +114,64 @@ a long-lived branch; Maith works on the single `dev` branch per DEC-036) consume
 these specs uniformly. Do not write a new elaborator or DSL implementation per
 candidate — only the spec changes.
 
+## The pipeline (how the pieces connect)
+
+```mermaid
+flowchart TD
+    subgraph upstream["Upstream — PleaNP (separate repo, work off dev)"]
+      C1["PleaNP.Circuits<br/>Basic / AC0 / Monotone /<br/>MonotoneApprox / MustRefute"]
+      BC["#barrier_check elaborator<br/>(BarrierCalculus.lean)"]
+    end
+
+    subgraph corpus["Corpus (Maith)"]
+      T["Transfer targets<br/>Part 2 — ISSUE #26 (unblocked)<br/>plain-English list + Lean statements"]
+      CC["Conservativity corpus<br/>Part 1 — ISSUE #31 (blocked: breadth)"]
+    end
+
+    subgraph search["Proposal (Maith)"]
+      L["Candidate ledger<br/>axiom-rewrite/candidates.jsonl<br/>ISSUE #27"]
+      CM["Coverage map<br/>ISSUE #27"]
+      SS["Structural similarity search<br/>ISSUE #28 (does not exist yet)"]
+    end
+
+    subgraph gates["Validation — 5 gates, in order"]
+      G1["1. Homomorphism<br/>phi(x . y) = phi(x) + phi(y)"]
+      G2["2. Faithfulness<br/>non-collapse (kills Unit trap)"]
+      G3["3. Transfer test<br/>pull back a theorem -> new/shorter proof"]
+      G4["4. Compression accounting<br/>(bookkeeping, only post-G3)"]
+      G5["5. Breadth check<br/>(2nd unrelated sub-domain)"]
+      H["Shared harness<br/>ISSUE #29"]
+    end
+
+    C1 --> CC
+    T --> L
+    L --> SS
+    CM <--> SS
+    SS --> G1
+    G1 --> G2 --> G3 --> G4 --> G5
+    G5 -->|survives| PROMOTE["Promoted: reusable"]
+    G3 -->|any candidate crossing G3| BC
+    BC -->|DEAD| KILL["Not a P-vs-NP candidate"]
+    H --- G1
+    gates --> DEC["DEC entries (pass and fail alike)"]
+```
+
+Reading it: **targets and corpus come from upstream PleaNP** (real, type-checking
+`PleaNP.Circuits` modules — five verified 2026-09-15); Maith **proposes** candidate
+φ's (recorded in the ledger, biased by the coverage map, found via the similarity
+search); the **shared harness** runs them through the five gates; anything crossing
+the transfer gate goes through `#barrier_check` before it counts. The toy-model
+training loop is not in this diagram — it is shelved (DEC-036).
+
+Three things the diagram makes visible that the prose buries:
+
+1. **#28 (similarity search) is a real build, not reuse.** The original doc claimed
+   it already existed as a proof-candidate generator; it does not.
+2. **The corpus has two halves with different status.** Part 2 (targets) is
+   unblocked; Part 1 (conservativity) is blocked on *breadth*, not existence.
+3. **Gate 4 is downstream of gate 3 by design** — it can never rescue a candidate
+   that failed the transfer test.
+
 ## Validation pipeline (gates, in order — each is a real Lean obligation)
 
 1. **Homomorphism obligation.** Prove φ(x ∘ y) = φ(x) ⊕ φ(y) for the

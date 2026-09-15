@@ -50,6 +50,32 @@ token sequence for model training. The core hypothesis: this representation expo
 semantic structure that source syntax hides.
 See: ENCODER_FORMAT.md, Design.md
 
+## Terminology: family, candidate, structure
+
+**Terminology: family, candidate, structure** dagger
+The project uses one canonical noun — **semantic graph IR** — for the representation.
+This matches the family ID `semantic_graph_ir` in `Scripts/representation_families.json`
+and the representation IDs `semantic_graph_ir_v1_2_0` / `semantic_graph_ir_v2_0_0` in
+`datasets/representation_manifest.json`. The term **canonical** is a *property* of
+this IR (it canonicalizes ordering and resolves implicits), used as a modifier
+("canonical semantic graph IR") when the canonicalization is the point — not a separate
+representation name. Older docs occasionally wrote "canonical semantic IR" (dropping
+"graph"); this is the same thing and is being consolidated to "semantic graph IR."
+
+Three levels to keep distinct:
+- **Family** (`semantic_graph_ir`): the graph structure — Entity/Attribute/Relation/
+  Operation rows extracted from elaborated `Expr`. v1.x and v2.x are *the same family*.
+- **Candidate** (`semantic_graph_ir_v1_2_0`, `..._v2_0_0`): a concrete tokenization of
+  that graph. v1 → v2 changed *which graph attributes become tokens and how granularly*
+  (C1/C2/C4); the graph structure (E/R/O rows) is preserved across candidates. So v1
+  and v2 are same-structure, different-tokenization candidates — not different structures.
+- **Different-structure candidates** (`typed_term_ir`, `hybrid_graph_term`): registered
+  as "planned" in `representation_families.json` but never built. These would change the
+  graph structure itself. Nazrin/ExprGraph (arXiv:2602.18767, external) is a
+  different-structure *approach* — a GNN consuming Lean expression graphs directly,
+  without linearization to tokens.
+See: REPRESENTATION_EVOLUTION.md, ENCODER_FORMAT.md v2.0.0
+
 **E / A / R / O rows** dagger
 The four row types in the IR graph serialization:
 - E (Entity): declares an entity (variable, term, bound binder)
@@ -206,6 +232,87 @@ re-runs B/C at 2 epochs to eliminate this. (In progress.)
 A decision-log entry (e.g. DEC-026, DEC-027). The decision log (LOG.md) is the
 chronological experiment record; the hypothesis grid (HYPOTHESIS_GRID.md) is the
 structured view of which sub-claims each DEC closes.
+
+---
+
+## Axiom discovery: the transfer pipeline
+
+The active track (`docs/experiments/AXIOM_DISCOVERY.md`). It reuses the IR
+extraction machinery but has its own vocabulary. **Read this before using the word
+"candidate"** — it is overloaded across the two tracks.
+
+**Transfer target**
+A specific, citable lower-bound result (open or hard) in a *restricted* model —
+bounded-depth circuits, monotone circuits, a named proof system — that the track
+tries to reach. Curated in `BENCHMARK_CORPUS_PLAN.md` Part 2 (issue #26). Explicitly
+**not** P vs NP or NP vs P/poly, which are too broad for a new technique to have a
+plausible shot. A target is a *statement*; the track does not claim to prove it.
+
+**Benchmark corpus**
+The set of already-proved declarations the track runs against. Two parts, and they
+have different status: **Part 1** (conservativity/compression corpus) is the broad
+already-proved set used to measure whether a φ transfers — currently blocked on
+*breadth* (the substrate is concentrated in circuit complexity; issue #31).
+**Part 2** (transfer targets, above) is unblocked. Source is `PleaNP.Circuits`, not
+`complexitylib` (which was rejected upstream).
+
+**φ (phi)**
+The proposed structure-preserving map from a *source domain* (initially
+circuit-complexity objects) into an existing algebraic *target structure*. Not a
+claim — a real Lean definition. Greek phi because it denotes a map, not a
+representation.
+
+**Target structure**
+The rich, well-lemma'd Mathlib structure φ maps *into* (group, lattice, category,
+module) — chosen for how much manipulation machinery transfers for free. Distinct
+from "transfer target" (the theorem being reached).
+
+**Homomorphism obligation / faithfulness / transfer test / compression accounting /
+breadth check**
+The five gates, in order, each a real Lean obligation
+(`AXIOM_DISCOVERY.md` §Validation pipeline). Only a candidate surviving gate 3
+(transfer) gets a compression number; only one surviving gate 5 (breadth) is
+promoted to "reusable." Steps 1–2 are admission control, not results.
+
+**Candidate φ ("candidate")**
+⚠ **Overloaded — this is the collision to watch.** In this track, *candidate* means
+the φ spec (target structure + domain + φ definition + provenance). In the
+experiment track ("the IR"), *candidate* means a concrete tokenization of the
+semantic graph family (v2.0.0, a v2.x tweak). Same word, different referents. When
+ambiguous in writing, qualify: **"candidate φ"** (axiom track) vs **"IR candidate"**
+(experiment track). The IR sense is defined under
+[§Terminology: family, candidate, structure](#terminology-family-candidate-structure).
+
+**Candidate ledger**
+Append-only record (`axiom-rewrite/candidates.jsonl`), one row per candidate φ:
+spec, which gate it passed/failed, compression numbers if applicable, provenance.
+Failed candidates are kept — the search history is itself data. Issue #27.
+
+**Coverage map**
+Per benchmark declaration, how many candidate φ's have been tried and with what
+outcome. Used to bias proposal toward under-explored, high-proof-size declarations
+rather than re-testing easy wins. Issue #27.
+
+**Homomorphic-first / recursive-structure bias**
+The two proposal heuristics. Homomorphic-first: prefer target structures with a
+statable operation-preserving map. Recursive bias: prefer candidates
+defined by a small self-referential generating rule (continued-fraction-shaped),
+which is where the "small generator, large reproduced structure" signature should
+come from.
+
+**`#barrier_check`**
+PleaNP's elaborator (`lean/PleaNP/Calculus/BarrierCalculus.lean`) that walks a
+statement's dependence graph and reports whether the proof relativizes. A **DEAD**
+verdict means the claim cannot resolve P vs NP. Maith runs a transferred
+circuit-complexity theorem through it before treating the result as interesting.
+
+**Not-A-target: the non-goals.** P vs NP is never a search target or success
+criterion — only a possible downstream observation. Tiny entropy/compression
+numbers are never validation; they are bookkeeping recorded *after* a
+kernel-checked transfer.
+
+See: `docs/experiments/AXIOM_DISCOVERY.md`,
+`docs/experiments/BENCHMARK_CORPUS_PLAN.md`, `docs/AGENT_HANDOFF.md`
 
 ---
 
