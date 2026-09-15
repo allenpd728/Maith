@@ -22,6 +22,7 @@ Top-level protocol docs:
 
 | Doc | Contents |
 |---|---|
+| [`AGENT_HANDOFF.md`](AGENT_HANDOFF.md) | **Start here for a new agent/session** — how to pick up work, current state, highest-value issues, the upstream dependency, honest constraints |
 | [`TOOLCHAIN_AND_CI.md`](TOOLCHAIN_AND_CI.md) | The PleaNP-derived CI, toolchain bootstrap, two-tier integrity gates, and single-`dev`-branch protocol |
 | [`MULTI_AGENT_WORKFLOW.md`](MULTI_AGENT_WORKFLOW.md) | The PleaNP-derived task protocol — run-ids, atomic claims, sweeps, `blocked by` lineages, done-evidence, blockers |
 | [`../tooling/gates/README.md`](../tooling/gates/README.md) | The integrity scanners (hygiene, vacuity, lethality) and their fixtures |
