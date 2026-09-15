@@ -1928,3 +1928,68 @@ Full analysis: docs/experiments/H6_RESULTS.md.
 **Next:** DEC-033 (H5 infrastructure) is the active front. H5 smoke test and full run
 in progress as of 2026-08-18.
 
+
+---
+
+### DEC-036 — Adopt PleaNP CI/toolchain + integrity-gate protocol; open the axiom-discovery track; consolidate branches (2026-09-15)
+
+**Date:** 2026-09-15
+**Status:** Active
+**Scope:** Repo infrastructure (CI, toolchain, gates), research direction (axiom discovery), branch hygiene
+
+**Decision:** Maith adopts the CI and toolchain protocols learned in the sibling
+project PleaNP (same author), redirects research toward the axiom-discovery track,
+and consolidates all development onto a single `dev` branch. Concretely:
+
+1. **Add the two new direction documents** — `docs/experiments/AXIOM_DISCOVERY.md`
+   (active track: search for compressive foundations via homomorphic φ candidates,
+   superseding the toy-model training path) and
+   `docs/experiments/BENCHMARK_CORPUS_PLAN.md` (how the circuit-complexity
+   benchmark corpus is built: conservativity corpus + transfer targets).
+2. **Port PleaNP's CI/toolchain protocol** — `.github/workflows/ci.yml` (Lean
+   build + tests, Tier-1 integrity gates, stdlib-only Python tests),
+   `.devcontainer/` (warm elan + Mathlib-cache environment), `tooling/gates/`
+   (hygiene, vacuity, lethality scanners + their fixtures), and
+   `docs/TOOLCHAIN_AND_CI.md` documenting the two-tier gate model.
+3. **Consolidate branches** — `dev` is now the single integration branch,
+   merging `kit/dev` (42 commits ahead of `main`) with `main`'s doc commits.
+   The stale remote branches are retired (see below).
+
+**Rationale:** PleaNP formalized the complexity barriers under an integrity
+protocol built specifically to defeat AI-authored proof failures — the class of
+failure the claimed OpenAI Navier–Stokes resolution exemplifies: a proof that
+compiles and reads plausibly but hides its difficulty in a definition, an
+unstated axiom, or an unused hypothesis. The axiom-discovery track
+(AXIOM_DISCOVERY.md) has exactly this exposure — it will produce Lean claims
+(homomorphism obligations, transfer results) evaluated by AI-generated code — so
+the gates must be in place *before* the first candidate, not after. Adopting the
+protocol now, while the theorem surface is small, makes the discipline cheap.
+
+**Branch consolidation detail (no work lost):** `kit/dev` was the canonical dev
+line (42 ahead / 3 behind `main`). The three `main`-only commits are docs
+(README "At a glance" + agentic-AI disclosure) and are retained. Genuinely
+unmerged content from stale branches was checked file-by-file and merged onto
+`dev` where it was not superseded:
+
+- `docs/glossary-readability` — glossary readability pass (retained; merged).
+- `docs/agents-md` — V2_COMPARISON_MATRIX `A-large` N/A + `C-small` correction
+  (retained; merged).
+- `docs/bucketing-confound-and-fixes` — DEC-028/029 already in `kit/dev`
+  (superseded).
+- `openhands/build-dataset-v2` — v2 GEN_* buckets already in `kit/dev`
+  (superseded). `docs/DEPENDENCIES.md` (from `openhands/dev`, `probing-scripts`)
+  is superseded by `docs/reference/PYTHON_PIPELINE.md` + `requirements.txt`.
+
+**Verification:** Lean toolchain set up per the ported bootstrap; `lake build
+tests` succeeds and `./.lake/build/bin/tests` reports all tests passing. Tier-1
+hygiene and vacuity scans are clean; the lethality scan surfaced one real
+pre-existing dead helper (`runEnvTest`, unused `env` parameter) and is wired
+advisory in CI pending triage.
+
+**Status of gates at adoption:** Gate 6 (hygiene) clean; Gate 5 (vacuity) clean;
+Gate 5 Tier 1b (lethality) 1 violation / 47 reviews (entry-point noise, allow-listed).
+
+**Next:** stand up the axiom-rewrite harness (AXIOM_DISCOVERY §Immediate next
+steps 3–4); the transfer gate's Tier-2 `#print axioms` check
+(`tooling/gates/axiom_check.py`) activates with the first kernel-checked
+transferred theorem.

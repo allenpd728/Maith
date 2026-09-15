@@ -1,0 +1,20 @@
+{
+  "name": "Maith (Lean 4 + Mathlib)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/Maith",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "leanprover.lean4"
+      ],
+      "settings": {
+        "lean4.infoviewAutoOpen": true
+      }
+    }
+  },
+  "postCreateCommand": "cd /workspaces/Maith && lake exe cache get && lake build tests",
+  "postStartCommand": "cd /workspaces/Maith && lake build tests"
+}
