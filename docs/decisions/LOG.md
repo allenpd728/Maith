@@ -2104,3 +2104,11 @@ Tier-1 hygiene/vacuity gates still clean.
 
 **Next:** file the four §Known-gaps items as `priority:high` issues, then the
 axiom-discovery build-out as a `blocked by` lineage per the new protocol.
+
+**Filed (this session, exercising the new protocol):** #22–#25 (the four
+gate-model gaps, `priority:high` + `needs-gate`) and #26–#31 (the axiom-discovery
+build-out as a `blocked by` lineage: #26 targets, #27 ledger, #28 search ← #27,
+#29 harness ← #28, #30 first batch ← #26/#27/#29, #31 conservativity corpus
+blocked on upstream `PleaNP.Circuits`). Dependency edges were set via the GitHub
+issue-dependencies API (which requires the internal `issue_id`, not the issue
+number).
