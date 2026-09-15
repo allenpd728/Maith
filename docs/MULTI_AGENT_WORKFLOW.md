@@ -1,0 +1,260 @@
+# Multi-agent task protocol (ported from PleaNP, 2026-09-15)
+
+How OpenHands agents coordinate work on Maith. Ported from the sibling project
+**PleaNP** (`docs/MULTI_AGENT_WORKFLOW.md`), which battle-tested it under a
+shared GitHub identity.
+
+> **Why this exists.** Maith consolidated 21 parallel branches into one `dev` in
+> DEC-036 precisely because it lacked this protocol: without run-ids, atomic
+> claims, dependency lineages, and sweeps, parallel agents double-claim, strand
+> dependents, and lose work at rebase. The branch sprawl *was* the symptom. This
+> file is the fix.
+
+> **System of record:** the issue queue plus `git log origin/dev`. Status tables
+> in docs (HYPOTHESIS_GRID, RUN_REGISTRY) are caches updated by sweeps and may
+> lag — check the queue and `dev` history before concluding work is undone.
+
+## Run-ids
+
+Every agent session generates a **run-id** at session start:
+`<YYYYMMDD-HHMM>-<4 random alphanumerics>` (e.g. `20260915-1430-a1b2`). It appears
+in every claim comment, done comment, and blocker the session writes. It is the
+only way to distinguish claims under a shared GitHub identity — all agents
+authenticate as the same account, so labels, assignees, and author fields cannot
+tell claims apart. Without run-ids the re-fetch check in §Claiming has no teeth.
+
+## Task states (labels)
+
+These labels now exist on the repo.
+
+| Label | Meaning |
+|---|---|
+| `status:available` | Ready to be claimed. All blockers are `done`. |
+| `status:claimed` | An agent has claimed it. Claim comment is the heartbeat. |
+| `status:done` | Work committed to `dev`. The human reviews on `dev` at leisure; anything needing changes spawns a follow-up task. |
+| `status:blocked-needs-input` | Agent could not start or finish; needs human input. |
+| `priority:high` | Jumps the work queue (default order is lowest issue number). |
+| `community-ready` | Good first contribution for external contributors. |
+| `needs-gate` | Requires integrity/quality-gate review before acceptance. |
+
+## Task definition
+
+Each issue contains:
+
+- **Summary** — what to build, in one paragraph
+- **Definition of done** — the observable end state (files written, checks passing, gate evidence)
+- **Context** — links to spec sections, prior art, or related tasks
+- **Blocked by** — native GitHub issue-blocking relationships forming the lineage
+
+Sizing rule: one task = completable in one agent run (well under an hour). If a
+task can't be done in one run, decompose it before it becomes `available`.
+
+**One task = one signal.** Every task's Definition of Done names a single
+observable check (or a named sequence of them) that turns green only when the
+task is genuinely finished. That check **must be demonstrably able to fail** —
+a check that cannot fail is not a check (see §Known gaps).
+
+## Dependencies
+
+Dependencies are expressed as GitHub "blocked by" relationships, forming
+lineages. A task becomes `available` only when **every** issue blocking it is
+`status:done` (merged — not merely in review). Within a lineage, only one task is
+ever available at a time.
+
+## Claiming protocol
+
+The claim lock applies to **any issue an agent is actively working** — a task, a
+test follow-up, or a blocker-resolution.
+
+**One claim per agent at a time.** An agent holds **exactly one**
+`status:claimed` label across the tracker. Finish the claimed item (commit +
+close + unblock dependents) before claiming the next. Parallel agents are safe
+because **each** agent respects this rule.
+
+1. **Sweep stale claims.** Before selecting work, list all `status:claimed`
+   issues. For each, if the claim comment is older than **1 hour** with no
+   activity since (no commits, no new comments), the claim is void: remove
+   `status:claimed`, restore the prior label, and comment that the work was
+   reclaimed (audit trail). A fresh claim carrying a run-id that is not yours
+   belongs to a live sibling — leave it alone.
+
+1a. **Sweep protocol violations.** An issue carrying two status labels at once
+   is in an illegal state. The sweep repairs it: the *older* label wins
+   (`blocked-needs-input` outranks `claimed`), the extra label is removed, and a
+   comment records the repair.
+
+1b. **Docs coherence sweep.** Check that `README.md`, `AGENTS.md`,
+   `docs/decisions/LOG.md`, and the relevant `docs/experiments/*` spec agree. If
+   a recently-closed task changed the design or the plan, the sibling docs must
+   reflect it in the same session — a stale doc is a process failure on par with
+   a stale claim.
+
+2. **Pick work.** Any `status:available` issue the agent can start. Default
+   order: lowest issue number first; `priority:high` jumps the queue. Before
+   concluding any work item is undone, check `git log origin/dev` and the issue
+   queue — docs tables lag.
+
+2a. **Filing is not atomic — search, file, search again.** Before filing a new
+   task, search open issues for its slug. After filing, search again: if a twin
+   with a **lower issue number** now exists, close yours as duplicate.
+
+3. **When no task is available, fall through in priority order:**
+   - **(a) Open `Tests:` issues.** Claim and complete them one at a time.
+   - **(b) Open PRs with unaddressed review comments.** Address each, reply to
+     every thread with the fixing commit, mark threads resolved.
+   - **(c) Open blockers.** Work through `status:blocked-needs-input` issues one
+     at a time; if resolvable, close the blocker and return the task to
+     `status:available`.
+   - Only when tasks, `Tests:` issues, PR comments, and blockers are exhausted is
+     the queue empty and the session done.
+
+4. **Attempt the claim, then verify ownership.** Swap the item's current label to
+   `status:claimed` **in one atomic edit** — self-assign, and post a claim
+   comment (`claimed by <agent-name> run=<run-id> at <UTC timestamp>`). Then
+   re-fetch the issue **and read the latest claim comment**: if its run-id is not
+   yours, a sibling won — back off and pick a different item.
+
+5. **Do the work; prove the done.** Commit directly to `dev` (no PR — review
+   happens retrospectively on `dev`). Swap `status:claimed` → `status:done` and
+   close the issue with a comment linking the commits. **Tasks with
+   known-answer criteria close only when the done comment includes the exact
+   command and its output** — a done claim without evidence is how full maps ship
+   empty and nobody notices.
+
+   **Concurrent-work rules** (agents run in parallel against `dev`):
+   - Pull before you start, and again before you push.
+   - On push rejection (non-fast-forward): `git pull --rebase origin dev`,
+     resolve conflicts, push again. Repeat as needed.
+   - **Rebase revealed a sibling landed the same work?** Compare the two
+     implementations: if yours adds nothing, drop it; if yours genuinely extends
+     it, merge the two in the rebase. Never push a second copy.
+   - **Never force-push to `dev`** — it can destroy a sibling's committed work.
+   - A rebase conflict you cannot resolve confidently is a blocker — file it.
+
+6. **Spec the tests.** Before closing out, write a test spec describing the
+   coverage the work needs. If the task introduced behavior with no existing
+   coverage, the test spec is mandatory. Then file a follow-up issue titled
+   `Tests: <task title>` linking the spec, labelled `status:available`, and
+   marked `Blocked by` the task just completed.
+
+7. **Unblock dependents.** Before finishing, check the issues that listed this
+   task under "Blocked by". For each whose blockers are all now `status:done`,
+   label it `status:available` and comment that it is unblocked. Dependent tasks
+   do not become visible to the queue on their own.
+
+8. **Iterate.** If review later finds the work lacking, write a new task rather
+   than reopening the old one.
+
+## Gates (done-evidence) — Maith's quality gates
+
+Maith's analogue of PleaNP's integrity gates is the **pipeline quality gate**
+system, which already exists and is enforced by code (`python/manage.py gate`).
+A task is not `status:done` without the relevant gate command and its output in
+the done comment.
+
+| Station | Command | Oracles for |
+|---|---|---|
+| `ir` | `python3 python/manage.py gate ir` | IR build integrity (Gate 1: `check_ir_build.py`) |
+| `corpus` | `python3 python/manage.py gate corpus` | Corpus acceptance (Gate 2: `check_corpus.py`) |
+| `dataset` | `python3 python/manage.py gate dataset` | Dataset quality/invariants (Gate 3: `check_invariants.py`) |
+| `train` | `python3 python/manage.py gate train` | Training-output integrity (Gate 4) |
+| `eval` | `python3 python/manage.py gate eval` | Evaluation integrity (Gate 5) |
+| `all` | `python3 python/manage.py gate all` | All five |
+
+Plus the mechanical integrity gates ported in DEC-036 (Tier 1, CI-enforced):
+
+- `python3 tooling/gates/hygiene_scan.py --prove-stage Maith Tests Scripts`
+- `python3 tooling/gates/vacuity_scan.py Maith Tests Scripts`
+- `python3 tooling/gates/binder_usage_scan.py Maith Tests Scripts`
+
+And the build oracle: `lake build tests` under Lean v4.31.0 / Mathlib v4.31.0.
+
+For experiment-family tasks, `docs/experiments/RUN_REGISTRY.md` is updated in the
+same commit (rows added **before** the run starts, never deleted).
+
+## Blockers
+
+When an agent cannot start or complete a task (unclear spec, missing context,
+ambiguous definition of done), it must not guess:
+
+1. Write `blockers/open_YYYYMMDD-HHMMSS_<short-slug>.md` containing:
+   - the issue attempted
+   - what information is missing
+   - what is needed to unblock
+2. Label the issue `status:blocked-needs-input` and comment with a link to the
+   blocker file.
+3. Move on to a different available task — never sit idle on a blocker.
+
+**Blocker quality bar.** Blockers are for spec-level ambiguity — missing or
+contradictory information only the human can resolve. They are not for
+implementation choices, which are the agent's to make. Before writing one,
+confirm: you read the relevant spec and can cite the exact gap; the missing
+information is a *decision*, not a *mechanism*; you state what you tried and why
+it was insufficient.
+
+**Nested blockers.** Any claimed item can be blocked, including a `Tests:`
+issue. The exception is blocker-resolution itself: an agent that cannot resolve a
+blocker must **not** file a blocker-on-a-blocker and walk away. Instead leave the
+issue `status:blocked-needs-input`, comment what is still missing, and flag it in
+the end-of-session report.
+
+Resolving a blocker: the human answers on the issue or updates the spec. During
+the start-of-session sweep, agents check every `blockers/open_*` file whose issue
+has been updated since the file was written; if resolved, rename it to
+`closed_YYYYMMDD-HHMMSS_<short-slug>.md` (appending the resolution), remove
+`status:blocked-needs-input`, and return the task to `status:available`.
+
+## Known gaps in the current gate model (agents must know these)
+
+Porting the protocol surfaced places where a "green check" is weaker than it
+looks. Per §Task definition ("one task = one signal"), these must be closed
+before the corresponding station can be trusted as done-evidence. File them as
+`priority:high` tasks; do not paper over them.
+
+1. **Most `must_match` fields are declared but unexercised.**
+   `check_invariants.py` requires `representation_id`, `seed`, `train_examples`,
+   `eval_examples`, and `epochs` to match for a comparison to be valid, but
+   `test_invariants.py` contains only an **epoch**-mismatch fixture
+   (`test_comparison_validity_catches_epoch_mismatch`). A mismatch in `seed`,
+   `train_examples`, `eval_examples`, or `representation_id` has no failing
+   fixture, so those constraints are asserted by code nobody has proven can
+   fail. **One fixture per `must_match` field** — each asserting the check
+   reports a failure — closes this. Until then, treat an "Invariant 5 passed"
+   claim as covering only the epoch axis.
+2. **No invariant covers losslessly-verifiable representation claims.** The
+   correctness claims in `docs/reference/ENCODER_FORMAT.md` (e.g. injectivity)
+   should become named invariants with a fixture per claim, so they are graded by
+   a check that can fail rather than by prose.
+3. **Repository-wide gate consistency.** `manage.py gate` takes a `--datasets`
+   path; agents must confirm it operates on the intended versioned directory
+   (see `docs/experiments/RUN_REGISTRY.md` contamination rules) rather than
+   defaulting silently.
+4. **The Lean test harness exits 0 on failure.** `Tests/Main.lean` prints
+   `⚠ Some tests failed!` but returns success, so `lake build tests && tests`
+   cannot currently distinguish all-pass from 4-failures. The CI job surfaces
+   this as a warning rather than a false green. Making the harness exit non-zero
+   is a prerequisite for using it as done-evidence. See
+   `docs/TOOLCHAIN_AND_CI.md` §6.
+
+## End-of-session report
+
+Before finishing, every agent reports (with its run-id):
+
+- Tasks completed (with commit links), including gate evidence for known-answer DoDs
+- Test specs written (linked `Tests:` issues) and any completed tasks whose test
+  follow-up never landed
+- Stale claims reclaimed during the sweep
+- Protocol violations repaired (issues found with two status labels)
+- Duplicate filings closed (twins with lower issue numbers surviving)
+- Work dropped at rebase because a sibling landed it first
+- New blockers written (with one-line reasons)
+- Open blockers still awaiting human input
+- Blockers closed during the sweep
+- Unresolvable blockers escalated, or **stalled queue** if nothing was workable
+
+## Relationship to the branch protocol
+
+This file governs *task coordination*; `docs/TOOLCHAIN_AND_CI.md` §5 governs
+*branches*. They compose: agents commit directly to the single `dev` branch
+(no per-task branches — that is what produced the DEC-036 sprawl), and a
+different agent/human reviews `dev` before it merges to `main`.
