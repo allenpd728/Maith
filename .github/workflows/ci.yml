@@ -122,3 +122,10 @@ jobs:
             python3 "python/$t.py"
             echo "::endgroup::"
           done
+
+      # A test that passes on a broken checker is not a test. This mutates
+      # check_invariants.py (one declared constraint at a time), asserts the
+      # invariant-5 fixtures DETECT each mutation, and restores the file.
+      # Guards against the #22 failure mode recurring.
+      - name: Invariant fixtures are not vacuous (mutation check)
+        run: python3 python/test_mutation_guard.py
