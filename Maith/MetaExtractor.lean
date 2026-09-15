@@ -276,9 +276,8 @@ private partial def extractExprEntityId (expr : Expr) : ExtractM EntityId := do
         -- Generic fallback: represent as an Operation tagged with the head's name.
         -- This keeps the IR vocabulary stable regardless of how many Mathlib operators
         -- exist. The Python-side vocab builder assigns IDs to "gen:<name>" tokens.
-        -- Non-constant application heads (bvar/fvar applied as functions, projections)
-        -- are NOT covered here and still fail explicitly — those require HOF/projection
-        -- representation which is a separate IR extension.
+        -- (Constant-headed and -arity-mismatched applications land here; the
+        -- variable-headed `f a` and `.proj` cases are handled below.)
         let argIds ← args.mapM extractExprEntityId
         let outputId ← freshTerm
         let st ← get
