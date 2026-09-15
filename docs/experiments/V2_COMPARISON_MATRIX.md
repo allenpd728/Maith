@@ -29,7 +29,7 @@ confirming the A-vs-B/C gap is a parameter-count effect, not a representation de
 
 | | Narrow-vocab (601 tokens, 358M) | Full-vocab (151K tokens, 494M) |
 |---|---|---|
-| **IR vocab (601 tokens)** | **A** ✅ 90.0% acc / 1.2361 ppl | **A-large** ❌ untested |
+| **IR vocab (601 tokens)** | **A** ✅ 90.0% acc / 1.2361 ppl | **A-large** ❌ N/A (see below) |
 | **BPE vocab (151k tokens)** | **B-small** ✅ 90.5% acc / 1.1294 ppl (v2, 2ep) | **B** ✅ 91.7% acc / 1.107 ppl (v1-era, 3ep; re-run in progress) |
 | **BPE variant vocab (151k tokens)** | **C-small** ❌ untested | **C** ✅ 93.0% acc / 1.098 ppl (v1-era, 3ep; re-run queued) |
 
@@ -116,20 +116,21 @@ for the full interpretation and next steps.
 - **Notes:** Size control for DEC-027. B-small ≈ A (90.5% vs 90.0%) at matched params →
   size explains the gap, not the representation. Vocab builder: `python/build_b_small_vocab.py`.
 
-### A-large — IR v2, full-vocab ❌ (lower priority)
-- **Purpose:** Shows the ceiling of the IR approach at B/C's parameter count.
-- **Run dir:** `runs/variant_A_large/` (to be created)
-- **IR version:** `semantic_graph_ir_v2_0_0`
-- **Base model:** Qwen2.5-Coder-0.5B with embedding table expanded to match 494M params
-- **Vocab size:** 601 tokens
-- **Params:** 494M
-- **Training data:** same 3,491 examples, seed=42
-- **Epochs:** 2
-- **Status:** Not started. Lower priority than B-small.
+### A-large — IR v2, full-vocab ❌ (not applicable)
 
-### C-small — BPE variant, narrow-vocab ❌ (optional, closes the grid)
-- **Purpose:** Completes the 2×2. Paired with C to isolate size effect on the BPE variant.
-- **Status:** Not started. Lower priority than B-small.
+> **Not a meaningful experiment.** The IR vocabulary is 601 tokens by design — there is
+> no natural "full-vocab IR" the way there is a natural "full-vocab BPE" (Variant B).
+> Expanding A's embedding table to 151K rows would add unused padding, not real distinct
+> tokens. This cell is marked N/A rather than "planned." The meaningful scale test for
+> the IR is a larger *transformer-capacity* base model (1B+), not a bigger embedding
+> table on the same 0.5B base — see the [model-size taxonomy](EXPERIMENT_DESIGN.md#model-size-taxonomy).
+
+### C-small — BPE variant, narrow-vocab ❌ (real, cheap next test)
+- **Purpose:** Completes the 2×2 grid. AST-split BPE truncated to 601 tokens, matching
+  A and B-small's vocab and params. Isolates whether C's advantage over A is
+  representation (AST structure vs semantic IR) or size (494M vs 358M).
+- **Status:** Not started. Cheap to run (reuses `build_b_small_vocab.py` approach on
+  AST-split text). Lower priority than H6 (retrieval) but worth running to close the grid.
 
 ## How to add a new IR candidate
 

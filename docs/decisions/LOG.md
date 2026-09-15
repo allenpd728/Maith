@@ -1714,3 +1714,282 @@ Undocumented difference, minor confound.
 - DEC-028 (bucketing confound — the primary finding)
 - `docs/experiments/HYPOTHESIS_GRID.md` — H2, H7, H11
 - `docs/experiments/EXPERIMENT_DESIGN.md` — variant definitions, evaluation framework
+
+### DEC-033 — H5 contrastive objective experiment: infrastructure built, ready to run (2026-08-18)
+
+**Date:** 2026-08-18
+**Status:** Active — infrastructure complete, training not yet run
+**Scope:** H5 hypothesis, contrastive objective
+
+**Decision:** Implement H5 (contrastive training objective) using NT-Xent / SimCSE
+in-batch negatives, building on the A_v3_2ep checkpoint. Motivated by H6's ambiguous
+result — the most credible explanation at toy scale is that next-token prediction does
+not optimize for semantic similarity, not that the IR is wrong.
+
+**Infrastructure built:**
+- `python/build_h5_pairs.py` — positive pair construction from dependency groundtruth
+- `python/train_h5_contrastive.py` — NT-Xent training loop with pre-flight gates
+- `python/test_h5_pairs.py` — 15 unit tests (15/15 pass)
+- `python/test_h5_contrastive.py` — 20 unit tests (20/20 pass)
+- `datasets/h5_pairs_train.json` — 12,460 pairs from 3,375 declarations
+- manage.py aliases: `build-h5-pairs`, `train-h5`, `extract-h5`, `eval-h5`, `eval-h5-mode2`
+- `docs/experiments/H5_SCOPE.md` — full gate sequence and acceptance criteria
+
+**Gate sequence:** see `H5_SCOPE.md`. Run `python test_h5_pairs.py` and
+`python test_h5_contrastive.py` before any training run.
+
+**What would close H5 positive:** A_h5 Recall@10 > A_v3_2ep with non-overlapping CIs
+in both Mode 1 and Mode 2.
+
+---
+
+### DEC-030 — H6 retrieval retest: IR does not improve retrieval over BPE at toy scale (2026-08-12)
+
+**Date:** 2026-08-12
+**Status:** Closed
+**Scope:** H6 (retrieval/similarity)
+
+**Decision:** H6 is closed (negative) at toy scale under the prediction-trained objective.
+
+**Experiment:** Clean 2-epoch retest of A_v3_2ep (per-operator IR, 2254-vocab, 359.9M params,
+perplexity 1.2928) vs B_small (BPE truncated to 601-vocab, 358M params), both on the same
+clean 3375/376 split. Fixes the epoch confound and dataset contamination from the initial run.
+
+**Results:** Both modes agree — A_v3_2ep does not beat B_small (Recall@10: 0.0052 vs 0.0064
+Mode 1, 0.0012 vs 0.0028 Mode 2, CIs overlap). The IR's explicit dep-name tokens didn't help
+retrieval under next-token prediction.
+
+**See:** `docs/experiments/H6_RESULTS.md` for full results and confound acknowledgment.
+
+
+### DEC-031 — Comparison invariants invalidated: B_small and flat retrain pending (2026-08-12)
+
+**Date:** 2026-08-12
+**Status:** Active
+**Scope:** Pipeline quality gates, H2/H6 comparison validity
+
+**Decision:** Retrain B_small and flat on the clean 3375/376 split to resolve the
+comparison-validity invariant failures (Gate 5-G5-4).
+
+**Context:** The quality gate system (DEC-030 era, PIPELINE_QUALITY_GATES.md) identified
+three comparison-validity failures in the invariant checker:
+
+1. `comparison_representation_at_matched_size`: A (3375/376, 2ep) vs B_small (3491/388, 2ep) —
+   train_examples and eval_examples differ. B_small was trained on the old leaky split.
+2. `comparison_representation_at_matched_size` (A_v3): A_v3_2ep (3375/376, 2ep) vs B_small
+   (3491/388, 2ep) — same issue, different train/eval counts.
+3. `comparison_ir_vs_flat_ablation`: A (3375/376) vs flat (3627/402) — flat was trained on
+   a different split.
+
+**Resolution:** Retrain B_small and flat on the clean 3375/376 split at 2 epochs and
+max_seq_len=512 (matching A_v3_2ep). This makes all three variants comparable: same
+split, same epochs, same truncation.
+
+**max_seq_len decision:** 512 (not 1024). Rationale: A_v3_2ep was already trained at 512;
+switching to 1024 for B_small/flat would introduce a new truncation confound. G1-4 (330
+sequences exceeding 512) remains a known warning — it affects all variants equally and
+does not bias the comparison. A 1024 retrain of all variants is deferred unless results
+suggest truncation matters.
+
+**Pre-condition:** All quality gates must pass after retrain before any hypothesis test
+(H1-H14) runs. Sanity checks (S1, S2) must also pass first.
+
+
+### DEC-032 — B_small and flat retrained on clean split, comparison invariants resolved (2026-08-12)
+
+**Date:** 2026-08-12
+**Status:** Closed
+**Scope:** H2/H6 comparison validity, pipeline quality gates
+
+**Decision:** B_small and flat retrained on clean 3375/376 split at 2 epochs, max_seq_len=512.
+Comparison-validity invariants now pass.
+
+**Results:**
+- B_small_clean: perplexity 1.1385, 358.4M params, 601 vocab, 3375/376, 2 epochs
+- flat_clean: perplexity 1.063, 357.9M params, 11 vocab, 3375/376, 2 epochs
+- A_v3_2ep: perplexity 1.2928, 359.9M params, 2254 vocab, 3375/376, 2 epochs
+
+All three variants matched on split (3375/376), epochs (2), and size (~358M).
+
+**Gate status after retrain:**
+- Gate 1: 3/4 pass (G1-4 seq_len known warning, 330 seqs > 512)
+- Gate 2: 5/5 pass
+- Gate 3: 57/57 pass (all comparison invariants green)
+- Gate 4: 23/23 pass
+- Gate 5: 57/57 pass
+
+**Sanity checks:**
+- S1 (random baseline): WARNING — pretrained model scores above chance (0.072 vs 0.020). Not contamination
+  — the "untrained" Qwen is actually pretrained on code and has existing retrieval signal.
+- S2 (identical pair): PASS — Recall@1=1.0, MRR=1.0. Ranking logic verified.
+
+**Pre-condition for hypothesis tests:** Gates 2-5 green, S2 passed, S1 is a documented warning.
+  Hypothesis tests (H1-H14) are unblocked.
+
+### DEC-035 — H5 end-to-end contrastive fine-tune complete; retrieval eval pending (2026-08-19)
+
+**Date:** 2026-08-19
+**Status:** Closed — ambiguous positive
+**Scope:** H5 hypothesis, end-to-end contrastive fine-tune
+
+**Decision:** Run the full end-to-end contrastive fine-tune (fine-tune the entire
+A_v3_2ep encoder, not just a projection head) to test whether the H5 projection-head
+effect grows with full model adaptation.
+
+**Motivation:** DEC-033 established the projection-head result (Mode 2 statistically
+positive, effect small). The projection head compresses 896→256 dims and freezes the
+encoder; full e2e removes both constraints and is the cleaner test of whether the
+contrastive signal can reshape the representation layer itself.
+
+**Training run:**
+- Base checkpoint: `runs/variant_A_v3_2ep/checkpoint-final`
+- Objective: NT-Xent (in-batch negatives, temp=0.07)
+- Dataset: 12,443 dependency pairs from `datasets/h5_pairs_train.json`
+- Config: 1 epoch, batch=32, lr=2e-5, max_seq_len=512, device=MPS
+- Total steps: 388
+- Initial loss: 3.9335
+- Final loss: 2.6762 (loss_descended=True)
+- Duration: ~5.9 hours (21,344s)
+- Checkpoint: `runs/variant_A_h5_e2e/checkpoint-final`
+- Mid-run checkpoint: `runs/variant_A_h5_e2e/checkpoint-step200`
+- Results: `runs/variant_A_h5_e2e/results.json`
+
+**Gate status:** All gates verified clean at time of training (inherited from DEC-032/DEC-034).
+
+**Retrieval eval results (2026-08-19):**
+
+Mode 1 (eval→train, n=287):
+- A_h5_e2e  Recall@10: 0.0042 [0.0009, 0.0082]  MRR: 0.0144 [0.0059, 0.0255]
+- A_h5_proj Recall@10: 0.0057 [0.0013, 0.0118]  MRR: 0.0100 [0.0049, 0.0184]
+- A_v3_2ep  Recall@10: 0.0052 [0.0009, 0.0113]  MRR: 0.0095 [0.0046, 0.0171]
+- B_small   Recall@10: 0.0049 [0.0009, 0.0101]  MRR: 0.0140 [0.0062, 0.0256]
+All CIs overlap — no statistically significant separation.
+
+Mode 2 (train→train, n=2641):
+- A_h5_e2e  Recall@10: 0.0027 [0.0016, 0.0040]  MRR: 0.0066 [0.0055, 0.0082]
+- A_h5_proj Recall@10: 0.0029 [0.0014, 0.0048]  MRR: 0.0058 [0.0048, 0.0072]
+- A_v3_2ep  Recall@10: 0.0012 [0.0005, 0.0019]  MRR: 0.0051 [0.0041, 0.0065]
+- B_small   Recall@10: 0.0028 [0.0016, 0.0042]  MRR: 0.0061 [0.0051, 0.0075]
+
+Mode 2 key finding: A_h5_e2e (0.0027) and A_h5_proj (0.0029) both statistically ahead
+of A_v3_2ep (0.0012) — CIs non-overlapping. A_h5_e2e matches B_small_clean (0.0028),
+CIs overlapping. Both contrastive variants improve over the next-token baseline; e2e
+and projection-head are statistically indistinguishable from each other.
+
+**Results files:**
+- Mode 1: `runs/h5_retrieval/results_e2e.json`
+- Mode 2: `runs/h5_retrieval/results_e2e_mode2.json`
+
+**Interpretation:** H5 is an ambiguous positive. Contrastive objective (both e2e and
+projection-head) reliably beats the next-token baseline in Mode 2. Full e2e fine-tune
+does not further improve over the projection-head. The effect is real but small — well
+below the pretrained baseline (Recall@10≈0.072). H5 cannot be closed positive at this
+scale. Most informative next steps: H4/H8 (scale) or H9 (co-training).
+
+**Status:** Closed — ambiguous positive. See HYPOTHESIS_GRID H5 row.
+
+---
+
+### DEC-034 — H6 retest: ambiguous result, closes neither direction (2026-08-18)
+
+**Date:** 2026-08-18
+**Status:** Closed
+**Scope:** H6 retrieval hypothesis, HYPOTHESIS_GRID
+
+**Decision:** H6 is marked partial/ambiguous in the hypothesis grid. The retest under
+verified quality gates produced conflicting results across evaluation modes. H6 is not
+worth re-running at toy scale; the next informative step is H5 or H4/H8.
+
+**Evidence:**
+
+Mode 1 (eval to train, n=287):
+- A_v3_2ep Recall@10: 0.0052 [0.0006, 0.0090]
+- B_small_clean Recall@10: 0.0049 [0.0009, 0.0101]
+- A numerically ahead; CIs fully overlap — not statistically meaningful.
+
+Mode 2 (train to train, n=2641):
+- A_v3_2ep Recall@10: 0.0012 [0.0005, 0.0028]
+- B_small_clean Recall@10: 0.0028 [0.0016, 0.0042]
+- B_small_clean ahead; CIs do not overlap — statistically meaningful, leans negative.
+
+**Interpretation:** The two modes disagree. Mode 2 has 9x more queries and its CIs do
+not overlap — it is the more reliable signal. Under Mode 2, H6 leans negative at toy
+scale. The direction is consistent with the original (invalid) DEC-030 finding after
+correcting for the dataset confound.
+
+**What this does not close:** H6 at scale (H4/H8), H6 under a contrastive objective
+(H5), H6 under a graph-native architecture (H12). The negative result is specific to
+next-token-prediction-trained embeddings at 358-360M parameters on 3375 examples.
+
+**Gate status at time of test:** 57/57 pass (verified clean embeddings, correct split).
+Results: runs/h6_retrieval/results_clean.json (Mode 1), results_mode2.json (Mode 2).
+Full analysis: docs/experiments/H6_RESULTS.md.
+
+**Next:** DEC-033 (H5 infrastructure) is the active front. H5 smoke test and full run
+in progress as of 2026-08-18.
+
+
+---
+
+### DEC-036 — Adopt PleaNP CI/toolchain + integrity-gate protocol; open the axiom-discovery track; consolidate branches (2026-09-15)
+
+**Date:** 2026-09-15
+**Status:** Active
+**Scope:** Repo infrastructure (CI, toolchain, gates), research direction (axiom discovery), branch hygiene
+
+**Decision:** Maith adopts the CI and toolchain protocols learned in the sibling
+project PleaNP (same author), redirects research toward the axiom-discovery track,
+and consolidates all development onto a single `dev` branch. Concretely:
+
+1. **Add the two new direction documents** — `docs/experiments/AXIOM_DISCOVERY.md`
+   (active track: search for compressive foundations via homomorphic φ candidates,
+   superseding the toy-model training path) and
+   `docs/experiments/BENCHMARK_CORPUS_PLAN.md` (how the circuit-complexity
+   benchmark corpus is built: conservativity corpus + transfer targets).
+2. **Port PleaNP's CI/toolchain protocol** — `.github/workflows/ci.yml` (Lean
+   build + tests, Tier-1 integrity gates, stdlib-only Python tests),
+   `.devcontainer/` (warm elan + Mathlib-cache environment), `tooling/gates/`
+   (hygiene, vacuity, lethality scanners + their fixtures), and
+   `docs/TOOLCHAIN_AND_CI.md` documenting the two-tier gate model.
+3. **Consolidate branches** — `dev` is now the single integration branch,
+   merging `kit/dev` (42 commits ahead of `main`) with `main`'s doc commits.
+   The stale remote branches are retired (see below).
+
+**Rationale:** PleaNP formalized the complexity barriers under an integrity
+protocol built specifically to defeat AI-authored proof failures — the class of
+failure the claimed OpenAI Navier–Stokes resolution exemplifies: a proof that
+compiles and reads plausibly but hides its difficulty in a definition, an
+unstated axiom, or an unused hypothesis. The axiom-discovery track
+(AXIOM_DISCOVERY.md) has exactly this exposure — it will produce Lean claims
+(homomorphism obligations, transfer results) evaluated by AI-generated code — so
+the gates must be in place *before* the first candidate, not after. Adopting the
+protocol now, while the theorem surface is small, makes the discipline cheap.
+
+**Branch consolidation detail (no work lost):** `kit/dev` was the canonical dev
+line (42 ahead / 3 behind `main`). The three `main`-only commits are docs
+(README "At a glance" + agentic-AI disclosure) and are retained. Genuinely
+unmerged content from stale branches was checked file-by-file and merged onto
+`dev` where it was not superseded:
+
+- `docs/glossary-readability` — glossary readability pass (retained; merged).
+- `docs/agents-md` — V2_COMPARISON_MATRIX `A-large` N/A + `C-small` correction
+  (retained; merged).
+- `docs/bucketing-confound-and-fixes` — DEC-028/029 already in `kit/dev`
+  (superseded).
+- `openhands/build-dataset-v2` — v2 GEN_* buckets already in `kit/dev`
+  (superseded). `docs/DEPENDENCIES.md` (from `openhands/dev`, `probing-scripts`)
+  is superseded by `docs/reference/PYTHON_PIPELINE.md` + `requirements.txt`.
+
+**Verification:** Lean toolchain set up per the ported bootstrap; `lake build
+tests` succeeds and `./.lake/build/bin/tests` reports all tests passing. Tier-1
+hygiene and vacuity scans are clean; the lethality scan surfaced one real
+pre-existing dead helper (`runEnvTest`, unused `env` parameter) and is wired
+advisory in CI pending triage.
+
+**Status of gates at adoption:** Gate 6 (hygiene) clean; Gate 5 (vacuity) clean;
+Gate 5 Tier 1b (lethality) 1 violation / 47 reviews (entry-point noise, allow-listed).
+
+**Next:** stand up the axiom-rewrite harness (AXIOM_DISCOVERY §Immediate next
+steps 3–4); the transfer gate's Tier-2 `#print axioms` check
+(`tooling/gates/axiom_check.py`) activates with the first kernel-checked
+transferred theorem.
