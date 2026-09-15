@@ -98,6 +98,7 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | **DEC-029** | ⬜ Accepted — Code review findings (6 items): C4 bucketing (DEC-028), proof terms skipped (doc fix), polarity no-ops (code fix), device priority bug (code fix), asymmetric init framing (already addressed), B/C special-token inconsistency (doc fix). |
 | **DEC-036** | ✅ Active (2026-09-15) — Adopt PleaNP CI/toolchain + integrity-gate protocol (`.github/workflows/ci.yml`, `.devcontainer/`, `tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`); add the axiom-discovery direction (`AXIOM_DISCOVERY.md`, `BENCHMARK_CORPUS_PLAN.md`); consolidate all branches onto a single `dev` branch. |
 | **DEC-037** | ✅ Active (2026-09-15) — Port the multi-agent task protocol (`docs/MULTI_AGENT_WORKFLOW.md` + status labels + `blockers/`), reconcile the axiom-discovery docs against reality (corpus source is `PleaNP.Circuits`, not `complexitylib`; structural-similarity search absent; HOF/proj already done), and record four gate-model gaps rather than paper over them. |
+| **DEC-038** | ✅ Active (2026-09-15) — Name the axiom-discovery pipeline + its taxonomy in GLOSSARY (§Axiom discovery: the transfer pipeline); flag the "candidate" overload (candidate φ vs IR candidate); restore the glossary §Terminology: family, candidate, structure, lost in DEC-036's consolidation (regression: the readability branch predated `966c49a`). |
 
 ---
 
