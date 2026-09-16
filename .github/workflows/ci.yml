@@ -128,3 +128,11 @@ jobs:
       # Guards against the #22 failure mode recurring.
       - name: Invariant fixtures are not vacuous (mutation check)
         run: python3 python/test_mutation_guard.py
+
+      # Axiom-discovery ledger + coverage map (#27). The validation rules that
+      # keep compression/reusable honest are themselves mutation-tested.
+      - name: Candidate ledger tests
+        run: python3 axiom-rewrite/test_candidates.py
+
+      - name: Candidate ledger validation not vacuous (mutation check)
+        run: python3 axiom-rewrite/test_mutation_guard.py
