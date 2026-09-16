@@ -166,10 +166,15 @@ Three things to know if you wire this up:
    `Maith/Benchmark/` declarations into the IR corpus is a *separate* change to
    that list (or to its discovery mechanism) — not covered by #26.
 
-4. **The corpus is not committed.** `Corpus/corpus.jsonl` is gitignored (only
-   `corpus_manifest.json`, `stats.json`, `logs.txt` are tracked), so anything
-   needing an IR corpus must run `lake exe buildCorpus --per-operator` first.
-   `check_ir_build.py` already defaults to `Corpus/corpus.per_operator.jsonl`.
+4. **The corpus is not committed.** `Corpus/corpus.jsonl` and
+   `Corpus/corpus.per_operator.jsonl` are gitignored (only `corpus_manifest.json`,
+   `stats.json`, `logs.txt` are tracked), so anything needing an IR corpus must run
+   `lake exe buildCorpus --per-operator` first. Since #35 the bucket mode is
+   encoded in the filename, so `--per-operator` writes
+   `Corpus/corpus.per_operator.jsonl` and plain `buildCorpus` writes
+   `Corpus/corpus.jsonl` — the two modes no longer overwrite each other.
+   `check_ir_build.py` and `structural_similarity.py` default to
+   `Corpus/corpus.per_operator.jsonl` and now find it without `--corpus`.
 
 **Steps 1-3 of #26 (research, filtering, cross-check) need no Lean and are
 unblocked.** Step 4 (formalization) waits on PleaNP #102. #26 carries no

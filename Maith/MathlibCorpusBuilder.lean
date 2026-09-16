@@ -17,6 +17,20 @@ import Maith.MetaExtractor
 namespace Lean.DSL
 
 /--
+Output filename for a bucket mode.
+
+The mode is encoded in the artifact name (issue #35) so that (a) consumers
+(`python/check_ir_build.py`, `python/structural_similarity.py`) find the file the
+documented command produced, and (b) the two modes write *different* files — both
+previously wrote `corpus.jsonl`, so building `--per-operator` silently overwrote
+the module-mode corpus (KNOWN_ISSUES #3 / AUDIT_2026_08_10 P0-2).
+-/
+def corpusFileNameForMode (mode : BucketMode) : String :=
+  match mode with
+  | .module => "corpus.jsonl"
+  | .per_operator => "corpus.per_operator.jsonl"
+
+/--
 Main entry point: Build a complete Mathlib IR training corpus.
 
 Pipeline:
@@ -48,6 +62,10 @@ def buildMathlibIRCorpus
   IO.println "=== Mathlib IR Training Corpus Builder ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
   IO.println ""
+  -- The bucket mode determines the output filename (#35): the two modes produce
+  -- different token streams for the same corpus, so they must not share a file.
+  let serializationConfig := { serializationConfig with corpusFile := corpusFileNameForMode bucketMode }
+  IO.println s!"[CORPUS] Output file: {serializationConfig.corpusFile}"
 
   let env ← loadEnvironment modules
 
@@ -201,6 +219,9 @@ def buildMathlibIRCorpusWithTrace
   IO.println "=== Mathlib IR Training Corpus Builder (with Trace) ==="
   IO.println s!"Target modules: {String.intercalate ", " modules}"
   IO.println ""
+  -- Encode the bucket mode in the filename (issue #35); see buildMathlibIRCorpus.
+  let serializationConfig := { serializationConfig with corpusFile := corpusFileNameForMode bucketMode }
+  IO.println s!"[CORPUS] Output file: {serializationConfig.corpusFile}"
 
   let env ← loadEnvironment modules
 

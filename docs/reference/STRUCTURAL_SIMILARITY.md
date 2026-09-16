@@ -85,9 +85,10 @@ Nearly 3× inflation, from losing operator identity alone.
 # Corpus/corpus*.jsonl is gitignored — build it first (the per-operator mode):
 lake env ./.lake/build/bin/buildCorpus --per-operator
 
-python3 python/structural_similarity.py --corpus Corpus/corpus.jsonl \
-    --query CancelMonoid --top 10
-python3 python/structural_similarity.py --corpus Corpus/corpus.jsonl --pairs --top 20
+# The default already points at the per-operator corpus (#35 encodes the mode in
+# the filename), so --corpus is optional here:
+python3 python/structural_similarity.py --query CancelMonoid --top 10
+python3 python/structural_similarity.py --pairs --top 20
 ```
 
 ## Results on the current corpus (4,029 graphs)

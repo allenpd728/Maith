@@ -75,25 +75,31 @@ comparisons are invalid until rebuilt.
 
 ## Issue 3: Corpus overwritten — on-disk corpus does not match v2 manifest
 
-**Status:** OPEN — discovered during pipeline-hardening investigation (2026-08-10)
-**Severity:** MEDIUM — affects anyone rebuilding datasets from the current corpus
+**Status:** FIXED (root cause) 2026-09-16 by #35 — see below. The specific
+2026-08-10 on-disk mismatch may still need a rebuild to clear.
+**Severity:** MEDIUM — affected anyone rebuilding datasets from the current corpus
 
 The current `Corpus/corpus.jsonl` on the M4 contains **v1-era token format** (`IN_1`,
 `IN_2`, `OUT_1` IO-markers, named `gen:` tokens without v2 `GEN_` bucketing), but
 `datasets/representation_manifest.json` claims `semantic_graph_ir_v2_0_0`.
 
-This happened because running `lake exe buildCorpus --per-operator` overwrote
-`Corpus/corpus.jsonl` with a per-operator-mode corpus, replacing the v2 module-mode
-corpus that the current datasets were built from.
+This happened because both bucket modes wrote the same filename, so running
+`lake exe buildCorpus --per-operator` overwrote `Corpus/corpus.jsonl` with a
+per-operator-mode corpus, replacing the v2 module-mode corpus the current datasets
+were built from.
 
-**Impact:** If anyone re-runs `build_dataset.py` from the current `Corpus/corpus.jsonl`,
-they will get datasets built from a different corpus than the one the trained models
-were trained on. The existing `datasets/*.jsonl` files are still valid (they were built
-from the original v2 corpus before the overwrite), but regenerating them from the current
-corpus file would produce different data.
+**Impact:** If anyone re-ran `build_dataset.py` from the current `Corpus/corpus.jsonl`,
+they would get datasets built from a different corpus than the one the trained models
+were trained on.
 
-**Fix needed:** Re-run `lake exe buildCorpus` (without `--per-operator`) to regenerate
-the module-mode v2 corpus. Or: back up corpus files before running alternative modes.
+**Root-cause fix (#35, 2026-09-16):** the bucket mode is now encoded in the output
+filename — module mode writes `Corpus/corpus.jsonl`, `--per-operator` writes
+`Corpus/corpus.per_operator.jsonl`. The two modes no longer share a path, so this
+overwrite can no longer happen by accident.
+
+**Remaining action:** re-run `lake exe buildCorpus` (without `--per-operator`) to
+regenerate the module-mode v2 corpus if the 2026-08-10 mismatch is still on disk.
+An explicit `--corpus <path>` on consumers can still cross modes deliberately.
 **Added as an invariant:** the provenance-hash check (invariant 6) will catch this
 going forward — if a rebuilt dataset's provenance hash doesn't match the original's
 manifest, the gate blocks.

@@ -163,6 +163,16 @@ def testSerializationConfig : Bool :=
   config.corpusFile = "corpus.jsonl"
 
 /--
+Issue #35: the bucket mode is encoded in the output filename, so the two modes do
+not overwrite each other and the documented command produces the artifact the
+consumers (`check_ir_build.py`, `structural_similarity.py`) look for.
+-/
+def testCorpusFileNameForMode : Bool :=
+  corpusFileNameForMode .module = "corpus.jsonl" &&
+  corpusFileNameForMode .per_operator = "corpus.per_operator.jsonl" &&
+  corpusFileNameForMode .module != corpusFileNameForMode .per_operator
+
+/--
 Test that a `∀ x y : Nat, x + y = y + x` Expr produces a non-trivial graph
 with ≥ 2 operations (HAdd.hAdd) and ≥ 1 relation (Eq) — confirming that
 forallE recursion reaches a real arithmetic body and produces structural IR,
@@ -366,6 +376,11 @@ def runAllCorpusPipelineTests : IO Nat := do
     IO.println "    ✓ Serialization configuration"
   else
     IO.println "    ✗ Serialization configuration FAILED"
+    failures := failures + 1
+  if testCorpusFileNameForMode then
+    IO.println "    ✓ Corpus filename encodes bucket mode (#35)"
+  else
+    IO.println "    ✗ Corpus filename encodes bucket mode (#35) FAILED"
     failures := failures + 1
   if testForallBodyWithOps then
     IO.println "    ✓ Forall body with arithmetic ops (non-trivial graph)"

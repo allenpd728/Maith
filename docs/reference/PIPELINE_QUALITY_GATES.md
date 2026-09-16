@@ -46,11 +46,14 @@ Each arrow is a **gate**. The gate must pass before the next station can start.
 
 **What it does:** The Lean pipeline (`Scripts/BuildCorpus.lean`) runs
 `MetaExtractor → Normalizer → Encoder` on every declaration and writes
-`Corpus/corpus.per_operator.jsonl` and `Corpus/stats.json`.
+`Corpus/stats.json` plus a corpus whose name encodes the bucket mode (#35):
+`Corpus/corpus.per_operator.jsonl` under `--per-operator`, else
+`Corpus/corpus.jsonl`.
 
 **Inputs:** Lean source files, `Maith/*.lean`
 
-**Output:** `Corpus/corpus.per_operator.jsonl`, `Corpus/stats.json`
+**Output:** `Corpus/corpus.per_operator.jsonl` (canonical per-operator build),
+`Corpus/stats.json`
 
 ### Gate 1 — IR Build Quality Check
 

@@ -146,14 +146,13 @@ def check_g1_4_seq_len(args):
 def _corpus_missing_detail(corpus_path: Path) -> str:
     """Explain a missing corpus, naming the alternative that IS present.
 
-    Issue #35: `buildCorpus` writes `Corpus/corpus.jsonl` regardless of
-    `--per-operator`, while this gate defaults to `Corpus/corpus.per_operator.jsonl`.
-    The bare "corpus not found" message therefore appears while a corpus sits right
-    there under the other name, which is misleading rather than actionable.
-
-    This helper does not change *which* file is read (that is #35's fix decision);
-    it only makes the failure legible, and it reports the detected mode so the
-    operator can tell whether the corpus present is even the right one.
+    Since #35, `buildCorpus` encodes the bucket mode in the filename: module mode
+    writes `Corpus/corpus.jsonl`, `--per-operator` writes
+    `Corpus/corpus.per_operator.jsonl`, so the two modes no longer overwrite each
+    other. A missing default therefore means the corpus was either not built in
+    this mode, or built under a different name — this helper says which, and
+    reports the detected mode so the operator can tell whether the corpus present
+    is even the right one.
     """
     parent = corpus_path.parent
     if not parent.exists():
@@ -166,7 +165,7 @@ def _corpus_missing_detail(corpus_path: Path) -> str:
         bits.append(f"{other.name} [{_detect_corpus_mode(other)}]")
     return (f"corpus not found at {corpus_path} — but present: "
             f"{', '.join(bits)}. "
-            f"buildCorpus writes corpus.jsonl regardless of --per-operator (#35); "
+            f"buildCorpus encodes the mode in the filename (#35); "
             f"pass --corpus explicitly to select one.")
 
 
