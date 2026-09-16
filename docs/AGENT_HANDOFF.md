@@ -45,7 +45,8 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
   injectivity non-commutative, 1 decompiled-Lean validity). Issue #25 tracks
   fixing the exit code.
 - **Integrity gates (Tier 1, CI-enforced):** hygiene / vacuity clean;
-  lethality has 1 pre-existing dead helper (`runEnvTest`) and is advisory.
+  lethality is **blocking** since #38 (the last dead helper, `runEnvTest`, was
+  removed; the remaining ~34 items are advisory REVIEWs).
 - **Research direction:** `docs/experiments/AXIOM_DISCOVERY.md` is the active
   track (supersedes toy-model training, which is shelved but not deleted).
   Its prerequisite docs were reconciled on 2026-09-15 (DEC-037) — read that
