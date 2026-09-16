@@ -2473,3 +2473,91 @@ every citation URL resolves; Tier-1 gates clean. Nothing was entered into the
 candidate ledger — targets are not candidates (a candidate is a φ, and no φ has been
 proposed); future candidates should reference a target id (T1-T10) in their `domain`
 field.
+
+---
+
+### DEC-043 — PleaNP #102 landed: step 4 unblocked; pin-to-SHA required, PleaNP dev is CI-unverified (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** Cross-repo dependency for #26 step 4; PleaNP packaging
+
+**Decision:** PleaNP #102 is closed (commits `1037101` + `da0f7f0` on PleaNP `dev`),
+so **#26's step 4 (formalizing transfer-target statements in Maith) is no longer
+blocked on the import**. Two operational constraints are recorded with it, and one
+open decision is deferred.
+
+**What landed upstream.** A root `lakefile.lean` with `srcDir := "lean"` (option A
+from #102), a drift guard (`tooling/gates/lakefile_sync_check.py`, wired into CI,
+5 tests / 7 drift classes), and PleaNP DEC-027. PleaNP's own build commands are
+unaffected — every one runs from `lean/`, and Lake picks the nearest lakefile.
+
+**Verified end-to-end from Maith**, against the real GitHub URL rather than a local
+copy:
+
+```
+require PleaNP from git "https://github.com/allenpd728/PleaNP.git" @ "dev"
+$ lake update                                       -> EXIT=0
+✔ Built PleaNP.Circuits.Basic (62s) / Soundness (5.1s) / AC0 (6.1s)
+✔ Built Maith.Benchmark.Probe (5.6s)
+PleaNP.Circuits.parity_notin_AC0 : Prop
+PleaNP.Circuits.IsAC0 : PleaNP.Circuits.CircuitFamily -> Prop
+```
+
+So T1's statement shape imports directly instead of being restated — the point of
+option (a). The temporary Maith-side change was **reverted**; Maith's tree is clean.
+
+**Constraint 1 — pin to a SHA, not `@ "dev"`.** The verification used the moving
+branch, which works but means a PleaNP push could break Maith's build with no
+change on Maith's side. Step 4 should pin a revision.
+
+**Constraint 2 — PleaNP `dev` is not CI-verified.** Checked every workflow trigger:
+`ci.yml` runs on `push: [main]` and `pull_request: [main]` only; `warm-toolchain.yml`
+runs on `push: [main, dev]`; and `main` is **not branch-protected** (API returns
+"Branch not protected"). So the `#102` commits were verified *locally* — both build
+commands, all four Tier-1 gates, the sync guard and its tests, plus the end-to-end
+consumer build — but not by CI. The legitimate route to CI coverage without
+violating branch discipline is a `dev` -> `main` **pull request**, which both
+triggers the workflow and surfaces the change for the review `AGENTS.md` requires.
+Recorded upstream on #102; the maintainer's call whether to add `dev` to `ci.yml`'s
+triggers instead.
+
+**Deferred decision — the permanent Maith-side dependency.** Whether Maith adds
+`require PleaNP` to its `lakefile.lean` for good. Verified working, but it makes
+Maith's CI hard-depend on PleaNP building and pulls the full Mathlib closure (via
+`Circuits.Basic`'s `import Mathlib`). Deferred to when step 4 actually starts; not
+made unilaterally.
+
+**On Mathlib submission (asked, answered, no action).** The question was whether
+submitting PleaNP's Lean files to Mathlib formally would establish that Maith is
+using valid, useful code. **No — that would not achieve the goal, and PleaNP has
+already scoped the question.** Its `docs/MATHLIB_SUBMISSION.md` (2026-09-06) records
+that PleaNP is *not* ready to submit anything: the upstream P/NP substrate is
+contested, the only eventual candidate is the **oracle-machine layer** (not
+circuits, not the barriers), and the load-bearing prerequisite is a **named human
+accountability anchor** who can engage Zulip — the same gap flagged for funding.
+
+The category mismatch is the real answer: Mathlib acceptance validates
+*Mathlib-appropriateness* — style, generality, API design, absence of duplication in
+their tree — not that a definition is *useful for Maith* or *used correctly by
+Maith*. And it is slow (weeks to months, multiple review rounds, rejection the
+default expectation).
+
+**What actually satisfies the goal** is Maith-side and cheap: (a) the definitions
+*type-check and compose*, which is mechanically verified; and (b) the formal
+definition -> plain-English gloss mapping is correct, which is the irreducible human
+read-back step (`docs/AGENT_HANDOFF.md` §"The human's part", Gate 4). That is a
+per-definition review, not an upstream process. Recorded on #26 so step 4 does it
+explicitly rather than assuming it.
+
+**Also recorded:** the corpus needed by #28 phase 1 is **not committed**
+(`Corpus/corpus.jsonl` is gitignored; only manifest/logs/stats are tracked), so a
+`lake exe buildCorpus --per-operator` run is a prerequisite for that work. Noted
+because it is easy to assume the corpus is present. `check_ir_build.py` already
+defaults to `Corpus/corpus.per_operator.jsonl`, so the per-operator mode is at least
+consistent with the IR gates' expectations.
+
+**Verification:** `lake update` + consumer build green from Maith; PleaNP's own
+`lake build PleaNP.Circuits.Basic` (8558 jobs) and `lake build tests` (8564 jobs)
+green with the root file present; PleaNP hygiene/vacuity/unicode gates clean on all
+changed paths; Maith tree clean after reverting the temporary dependency.
