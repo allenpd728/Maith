@@ -18,33 +18,12 @@ Run: python3 python/test_invariants_8_9_guard.py
 """
 
 import json
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-
-def _purge_bytecode(module_path):
-    """Remove cached bytecode for `module_path` after restoring its source.
-
-    A guard writes a MUTATED module to disk, runs the tests, then restores it. If
-    the mutated build was imported, its `.pyc` can survive and be loaded by a LATER
-    process even though the source is correct -- which is how a guard silently
-    corrupted `axiom-rewrite/candidates.py` (loaded `open("w")` instead of `"a"`,
-    truncating the ledger). Purging after every restore closes that.
-    """
-    import shutil
-    from pathlib import Path as _P
-    p = _P(module_path)
-    cache = p.parent / "__pycache__"
-    if not cache.exists():
-        return
-    try:
-        shutil.rmtree(cache)
-    except OSError:
-        pass
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tooling"))
+from mutation_guard_lib import guarded_source, invalidate_module, run_python  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "python" / "check_invariants.py"
@@ -85,16 +64,14 @@ MUTATIONS = [
 
 
 def suite_fails():
-    r = subprocess.run([sys.executable, str(TEST)], capture_output=True,
-                       text=True, cwd=str(REPO))
+    r = run_python([str(TEST)], capture_output=True,
+                   text=True, cwd=str(REPO))
     return r.returncode != 0
 
 
 def any_path_rejects(tokens):
     """Import the (possibly mutated) module fresh and test one violating input."""
-    for m in list(sys.modules):
-        if m.startswith("check_invariants"):
-            del sys.modules[m]
+    invalidate_module(SRC)
     sys.path.insert(0, str(REPO / "python"))
     import check_invariants as ci
 
@@ -114,9 +91,8 @@ def any_path_rejects(tokens):
 
 
 def main() -> int:
-    original = SRC.read_text()
     rows = []
-    try:
+    with guarded_source(SRC) as original:
         for label, old, new, probe in MUTATIONS:
             if old not in original:
                 print(f"  [MISS] {label}: anchor not found")
@@ -131,9 +107,6 @@ def main() -> int:
             else:
                 rows.append((label, "GAP"))
             print(f"  [{rows[-1][1]:<10}] {label}")
-    finally:
-        SRC.write_text(original)
-    _purge_bytecode(SRC)
 
     control = not suite_fails()
     print(f"\n  [{'PASS' if control else 'FAIL'}] control: unmutated suite passes")

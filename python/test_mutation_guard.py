@@ -9,38 +9,18 @@ This guard mutates `check_invariants.py` (one declared constraint at a time),
 runs `test_invariants.py`, and asserts the failures are DETECTED. If a fixture is
 ever removed or weakened, this fails in CI instead of silently regressing.
 
-The mutation is applied to a temp copy via an import shim — the real source file
-is never modified, so a crash cannot leave the repo dirty.
+The mutation is applied to the real source; `guarded_source` restores it and
+purges the bytecode cache on EVERY exit path (normal, exception, timeout), so a
+crash cannot leave a stale mutated `.pyc` for a later process to load (#36).
 
 Run: python3 python/test_mutation_guard.py
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
-
-def _purge_bytecode(module_path):
-    """Remove cached bytecode for `module_path` after restoring its source.
-
-    A guard writes a MUTATED module to disk, runs the tests, then restores it. If
-    the mutated build was imported, its `.pyc` can survive and be loaded by a LATER
-    process even though the source is correct -- which is how a guard silently
-    corrupted `axiom-rewrite/candidates.py` (loaded `open("w")` instead of `"a"`,
-    truncating the ledger). Purging after every restore closes that.
-    """
-    import shutil
-    from pathlib import Path as _P
-    p = _P(module_path)
-    cache = p.parent / "__pycache__"
-    if not cache.exists():
-        return
-    try:
-        shutil.rmtree(cache)
-    except OSError:
-        pass
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tooling"))
+from mutation_guard_lib import guarded_source, run_python  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 PY = REPO / "python"
@@ -74,17 +54,16 @@ MUTATIONS = [
 
 
 def run_tests():
-    proc = subprocess.run(
-        [sys.executable, str(TEST)],
+    proc = run_python(
+        [str(TEST)],
         capture_output=True, text=True, cwd=str(REPO),
     )
     return proc.returncode, proc.stdout
 
 
 def main() -> int:
-    original = SRC.read_text()
     results = []
-    try:
+    with guarded_source(SRC) as original:
         for name, old, new in MUTATIONS:
             if old not in original:
                 # Anchor drifted — that itself is a maintenance signal, not a pass.
@@ -98,9 +77,6 @@ def main() -> int:
             print(f"  [{'DETECTED' if detected else 'MISSED'}] {name} "
                   f"(exit={code}, failures={n})")
             results.append((name, detected))
-    finally:
-        SRC.write_text(original)
-    _purge_bytecode(SRC)
 
     missed = [n for n, ok in results if not ok]
     print()
