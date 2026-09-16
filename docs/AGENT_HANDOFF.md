@@ -267,8 +267,13 @@ reports DETECTED / REDUNDANT / GAP so defence-in-depth is not mistaken for failu
 > module to disk and restores it; the mutated `.pyc` could otherwise be loaded by
 > a *later* process. That once corrupted `axiom-rewrite/candidates.py`
 > (`open("w")` instead of `"a"`, truncating the ledger) and surfaced as
-> unrelated test failures hours later with a clean `git diff`. All five guards now
-> call `_purge_bytecode(SRC)` after restoring — copy that pattern.
+> unrelated test failures hours later with a clean `git diff`. **Do not hand-roll
+> the restore/purge pair** — use `tooling/mutation_guard_lib.py`:
+> `with guarded_source(SRC) as original:` binds restore + purge into one
+> `finally` (so a crash or a child timeout cannot skip the purge) and runs child
+> processes with `run_python(...)` (`-B`), which stops the mutated `.pyc` being
+> written at all. Tested by `tooling/test_mutation_guard_lib.py` (issue #36);
+> copy that, not the old five-copy pattern.
 
 ```bash
 # bootstrap (any sandbox/CI runner; no bespoke machine)

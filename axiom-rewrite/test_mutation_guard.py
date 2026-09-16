@@ -6,38 +6,19 @@ validation rule in `candidates.py` one at a time, asserts the test suite DETECTS
 it, and restores the file. If a fixture is ever weakened, this fails in CI instead
 of silently regressing.
 
-The mutation is applied to the real source and restored in a `finally`, so a
-crash cannot leave the repo dirty (the same hazard the guard itself checks for).
+The mutation is applied to the real source; `guarded_source` restores it and
+purges the bytecode cache on EVERY exit path (normal, exception, timeout), so a
+crash cannot leave a stale mutated `.pyc` for a later process to load -- the
+hazard that once truncated the ledger (DEC-048, issue #36).
 
 Run: python3 axiom-rewrite/test_mutation_guard.py
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
-
-def _purge_bytecode(module_path):
-    """Remove cached bytecode for `module_path` after restoring its source.
-
-    A guard writes a MUTATED module to disk, runs the tests, then restores it. If
-    the mutated build was imported, its `.pyc` can survive and be loaded by a LATER
-    process even though the source is correct -- which is how a guard silently
-    corrupted `axiom-rewrite/candidates.py` (loaded `open("w")` instead of `"a"`,
-    truncating the ledger). Purging after every restore closes that.
-    """
-    import shutil
-    from pathlib import Path as _P
-    p = _P(module_path)
-    cache = p.parent / "__pycache__"
-    if not cache.exists():
-        return
-    try:
-        shutil.rmtree(cache)
-    except OSError:
-        pass
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tooling"))
+from mutation_guard_lib import guarded_source, run_python  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
@@ -70,25 +51,21 @@ MUTATIONS = [
 
 
 def main() -> int:
-    original = SRC.read_text()
     results = []
-    try:
+    with guarded_source(SRC) as original:
         for name, old, new in MUTATIONS:
             if old not in original:
                 print(f"  [MISS] {name}: mutation anchor not found")
                 results.append((name, False))
                 continue
             SRC.write_text(original.replace(old, new, 1))
-            r = subprocess.run([sys.executable, str(TEST)],
-                               capture_output=True, text=True, cwd=str(REPO))
+            r = run_python([str(TEST)], capture_output=True, text=True,
+                           cwd=str(REPO))
             detected = r.returncode != 0
             n = r.stdout.count("FAIL:") + r.stdout.count("ERROR:")
             print(f"  [{'DETECTED' if detected else 'MISSED'}] {name} "
                   f"(exit={r.returncode}, failures={n})")
             results.append((name, detected))
-    finally:
-        SRC.write_text(original)
-    _purge_bytecode(SRC)
 
     missed = [n for n, ok in results if not ok]
     print()
