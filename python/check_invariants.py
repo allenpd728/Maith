@@ -18,6 +18,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Optional
@@ -503,6 +504,269 @@ def check_corpus_format(datasets_dir: Path) -> list[dict]:
 # Main: run all checks
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Invariant 8: Token-stream grammar / arity conformance
+# ---------------------------------------------------------------------------
+# ENCODER_FORMAT.md "Token grammar" specifies the shape of every graph:
+#
+#   GRAPH_BEGIN ( E <id> | A <id> <key> <value> | R <id> <id> <op>
+#                 | O <arity> <output> <op> )* GRAPH_END
+#
+# with <arity> = IN_N (N=0..9) or IN_MANY, and <output> = OUT_N (N=0..63),
+# OUT_MANY, or OUT_VAR. This invariant asserts that shape over the committed
+# datasets, so a grammar break is a named failure rather than something a reader
+# is expected to notice in prose.
+
+_ROW_HEADERS = {"E", "A", "R", "O"}
+_IN_TOKEN = re.compile(r"^IN_(\d|MANY)$")
+_OUT_TOKEN = re.compile(r"^OUT_(\d+|MANY|VAR)$")
+_IN_MAX = 9
+_OUT_MAX = 63
+
+
+def _decode_tokens(datasets_dir: Path, variant: str, split: str):
+    """Yield (example_id, token_list) for a variant/split, or (None, None) if absent."""
+    path = datasets_dir / f"{split}_{variant}.jsonl"
+    if not path.exists():
+        return
+    vocab = _load_vocab_for(datasets_dir, variant)
+    if not vocab:
+        return
+    rev = {i: tok for tok, i in vocab.items()}
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            ids = rec.get("input_ids") or []
+            yield rec.get("example_id", "<unknown>"), [rev.get(i, "<OOV>") for i in ids]
+
+
+def _load_vocab_for(datasets_dir: Path, variant: str) -> Optional[dict]:
+    """The vocab a variant's dataset was built with, if tracked."""
+    candidates = [datasets_dir / f"vocab_{variant}.json", datasets_dir / "vocab_A.json"]
+    for c in candidates:
+        if c.exists():
+            with open(c) as f:
+                return json.load(f)
+    return None
+
+
+# The IR token grammar (ENCODER_FORMAT.md) describes the IR token stream only.
+# Other variants are different token spaces and must not be checked against it:
+#   - B / B_small / C: raw or AST-split BPE (Qwen BPE vocab)
+#   - flat:            the DEC-024 SLOT ablation (all content tokens -> SLOT)
+# A record's `source` field is the authority, so discovery is by data, not by a
+# hardcoded list -- a future IR variant is covered without editing this check.
+_IR_SOURCES = {"A", "ir_tokens"}
+
+
+def _ir_variants(datasets_dir: Path, splits=("train", "eval")) -> list[str]:
+    """Variants whose datasets carry IR tokens, discovered from record `source`."""
+    found = {}
+    for path in sorted(datasets_dir.glob("*.jsonl")):
+        stem = path.stem
+        if "_" not in stem:
+            continue
+        split, variant = stem.split("_", 1)
+        if split not in splits:
+            continue
+        try:
+            with open(path) as f:
+                first = f.readline()
+            if not first.strip():
+                continue
+            src = json.loads(first).get("source")
+        except Exception:
+            continue
+        if src in _IR_SOURCES:
+            found[variant] = True
+    return sorted(found)
+
+
+def check_grammar_arity(datasets_dir: Path, variants: list[str] = None) -> list[dict]:
+    """Invariant 8: every graph is well-formed and every row has documented arity."""
+    results = []
+    if variants is None:
+        # Only IR-token variants; see _ir_variants. B/B_small/C are BPE and flat is
+        # the SLOT ablation -- the IR grammar does not describe their token space.
+        variants = _ir_variants(datasets_dir)
+
+    for variant in variants:
+        for split in ("train", "eval"):
+            checked = 0
+            errors = []
+            for example_id, toks in _decode_tokens(datasets_dir, variant, split) or []:
+                checked += 1
+                if not toks:
+                    errors.append(f"{example_id}: empty token list")
+                    continue
+                if toks[0] != "GRAPH_BEGIN":
+                    errors.append(f"{example_id}: starts with {toks[0]!r}, not GRAPH_BEGIN")
+                if toks[-1] != "GRAPH_END":
+                    errors.append(f"{example_id}: ends with {toks[-1]!r}, not GRAPH_END")
+                i = 1
+                end = len(toks) - 1
+                while i < end:
+                    head = toks[i]
+                    if head not in _ROW_HEADERS:
+                        errors.append(
+                            f"{example_id}: position {i} is {head!r}, not a row header "
+                            f"(body should be E/A/R/O only)"
+                        )
+                        break
+                    if head == "E":
+                        need = 2          # E <entity_id>
+                    elif head == "A":
+                        need = 4          # A <entity_id> <key> <value>
+                    elif head == "R":
+                        need = 4          # R <src> <tgt> <rel_op>
+                    else:                 # O
+                        need = 4          # O <arity> <output> <op>
+                    row = toks[i:i + need]
+                    # A row must not swallow a boundary: if GRAPH_END (or another
+                    # row header) falls inside the row's slot count, the row is
+                    # truncated. Without this, a short row silently absorbs
+                    # GRAPH_END as its last slot and the terminator check never
+                    # fires -- found by a #23 fixture.
+                    for j in range(1, len(row)):
+                        if row[j] == "GRAPH_END" or row[j] in _ROW_HEADERS:
+                            row = row[:j]
+                            break
+                    if len(row) < need:
+                        errors.append(
+                            f"{example_id}: truncated {head} row at position {i} "
+                            f"(got {len(row) - 1} of {need - 1} slot(s) before a boundary)"
+                        )
+                        break
+                    if head == "O":
+                        arity, out = row[1], row[2]
+                        if not _IN_TOKEN.match(arity):
+                            errors.append(
+                                f"{example_id}: O-row arity {arity!r} is not IN_N/IN_MANY"
+                            )
+                        elif arity != "IN_MANY" and int(arity[3:]) > _IN_MAX:
+                            errors.append(
+                                f"{example_id}: O-row arity {arity!r} exceeds IN_{_IN_MAX}"
+                            )
+                        if not _OUT_TOKEN.match(out):
+                            errors.append(
+                                f"{example_id}: O-row output {out!r} is not OUT_N/OUT_MANY/OUT_VAR"
+                            )
+                        elif out.startswith("OUT_") and out not in ("OUT_MANY", "OUT_VAR"):
+                            if int(out[4:]) > _OUT_MAX:
+                                errors.append(
+                                    f"{example_id}: O-row output {out!r} exceeds OUT_{_OUT_MAX}"
+                                )
+                    i += need
+
+            if checked == 0:
+                continue
+            if errors:
+                shown = "; ".join(errors[:5])
+                more = f" (+{len(errors) - 5} more)" if len(errors) > 5 else ""
+                results.append(_report(
+                    f"grammar_arity_{variant}_{split}", False,
+                    f"{len(errors)} malformed of {checked} graphs: {shown}{more}"
+                ))
+            else:
+                results.append(_report(
+                    f"grammar_arity_{variant}_{split}", True,
+                    f"{checked} graphs conform to GRAPH_BEGIN/END + E/A/R/O arity"
+                ))
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Invariant 9: C1 polarity absence (position-aware)
+# ---------------------------------------------------------------------------
+# ENCODER_FORMAT.md C1: "No `neut`/`pos`/`neg` tokens appear in a v2.0.0 token
+# stream." NOTE the trap: `neg` is ALSO the arithmetic operation token (id 12),
+# and it legitimately appears in O-row op slots. So this invariant cannot be a
+# string-absence check -- it must check ROLES.
+#
+# In v2's grammar there is no polarity slot at all. So what "C1 holds" means
+# operationally: a polarity token never appears in a *row-body* position where
+# the grammar has no polarity slot. Concretely, the only permitted occurrence of
+# `neg` is the op slot of an O row; `pos`/`neut` are never permitted anywhere in
+# a body.
+#
+# (Polarity occurrences would in v1 have sat inside E/A/R/O rows next to their
+# target; v2 has no such slot, so any occurrence outside an O-row op slot is a
+# C1 violation.)
+
+_POLARITY_TOKENS = {"pos", "neg", "neut"}
+_ARITHMETIC_OPS = {"add", "sub", "mul", "div", "neg", "pow"}
+_RELATION_OPS = {"eq", "lt", "le", "gt", "ge"}
+
+
+def check_c1_polarity_absence(datasets_dir: Path, variants: list[str] = None) -> list[dict]:
+    """Invariant 9: no polarity token appears outside a legitimate op slot."""
+    results = []
+    if variants is None:
+        # Only IR-token variants; see _ir_variants. B/B_small/C are BPE and flat is
+        # the SLOT ablation -- the IR grammar does not describe their token space.
+        variants = _ir_variants(datasets_dir)
+
+    for variant in variants:
+        for split in ("train", "eval"):
+            checked = 0
+            violations = []
+            op_slot_hits = 0
+            for example_id, toks in _decode_tokens(datasets_dir, variant, split) or []:
+                checked += 1
+                i = 1
+                end = len(toks) - 1
+                while i < end:
+                    head = toks[i]
+                    if head not in _ROW_HEADERS:
+                        i += 1
+                        continue
+                    need = {"E": 2, "A": 4, "R": 4, "O": 4}[head]
+                    row = toks[i:i + need]
+                    if len(row) < need:
+                        break
+                    body = row[1:]
+                    if head == "O":
+                        op = row[3]
+                        if op in _POLARITY_TOKENS:
+                            op_slot_hits += 1   # legitimate: arithmetic `neg`
+                        for tok in row[1:3]:     # arity + output slots
+                            if tok in _POLARITY_TOKENS:
+                                violations.append(
+                                    f"{example_id}: polarity token {tok!r} in O-row "
+                                    f"arity/output slot"
+                                )
+                    else:
+                        for tok in body:
+                            if tok in _POLARITY_TOKENS:
+                                violations.append(
+                                    f"{example_id}: polarity token {tok!r} in {head}-row body"
+                                )
+                    i += need
+
+            if checked == 0:
+                continue
+            if violations:
+                shown = "; ".join(violations[:5])
+                more = f" (+{len(violations) - 5} more)" if len(violations) > 5 else ""
+                results.append(_report(
+                    f"c1_polarity_absence_{variant}_{split}", False,
+                    f"{len(violations)} polarity occurrence(s) outside an op slot "
+                    f"(C1 violation): {shown}{more}"
+                ))
+            else:
+                results.append(_report(
+                    f"c1_polarity_absence_{variant}_{split}", True,
+                    f"{checked} graphs: no polarity token outside an op slot "
+                    f"({op_slot_hits} arithmetic `neg` op(s) seen in O rows, which C1 permits)"
+                ))
+
+    return results
+
+
 def run_all_checks(
     datasets_dir: Path,
     runs_dir: Path,
@@ -532,6 +796,12 @@ def run_all_checks(
 
     # Invariant 7: Corpus-format consistency
     all_results.extend(check_corpus_format(datasets_dir))
+
+    # Invariant 8: Token-stream grammar / arity conformance
+    all_results.extend(check_grammar_arity(datasets_dir))
+
+    # Invariant 9: C1 polarity absence (position-aware)
+    all_results.extend(check_c1_polarity_absence(datasets_dir))
 
     # Invariant 5: Comparison validity (check all valid pairs from the grid)
     # For each pair of variants with matching configs, verify the comparison

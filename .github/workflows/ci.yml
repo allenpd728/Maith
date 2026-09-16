@@ -129,6 +129,12 @@ jobs:
       - name: Invariant fixtures are not vacuous (mutation check)
         run: python3 python/test_mutation_guard.py
 
+      # Invariants 8 (grammar/arity) + 9 (C1 polarity) — issue #23. Their guard
+      # distinguishes DETECTED / REDUNDANT / GAP so a redundant check is not
+      # reported as a failure and a real hole cannot hide behind one.
+      - name: Encoder-format invariants are not vacuous (mutation check)
+        run: python3 python/test_invariants_8_9_guard.py
+
       # Axiom-discovery ledger + coverage map (#27). The validation rules that
       # keep compression/reusable honest are themselves mutation-tested.
       - name: Candidate ledger tests
