@@ -2389,3 +2389,87 @@ blocker protocol exists for.
 **Verification:** #32-#34 exist (201) with the labels above; #28's body confirmed to
 carry the two-phase addendum and still labelled `status:available`; handoff queue
 table and Commands section updated; docs UTF-8 clean.
+
+---
+
+### DEC-042 — Part 2 transfer targets drafted (T1-T10 + N1/N2); steps 2-3 handed to the maintainer (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** Axiom-discovery benchmark corpus, Part 2; issue #26
+
+**Decision:** the Part 2 transfer-target list is drafted at
+`docs/experiments/TRANSFER_TARGETS.md` — 10 targets plus 2 screening results.
+Research (step 1) is done; **steps 2 and 3 are explicitly NOT done** and remain the
+maintainer's, and step 4 is blocked on PleaNP #102.
+
+**Tool substitution, stated plainly.** `BENCHMARK_CORPUS_PLAN.md` assigns step 1 to
+a DeepSeek research pass. DeepSeek was not available here, so it was executed with
+web research (Tavily, targeted queries, primary sources preferred). That substitutes
+the *tool*, not the *role*: the plan's step-2 human filtering and step-3 independent
+cross-check are unaffected by the substitution and are still required.
+
+**Structure of the list.** Organised around a distinction the plan does not make
+explicitly, which matters for what a candidate φ is being tested against:
+
+- **OPEN** targets (no known proof) — a φ reaching one is a new result.
+- **RESOLVED-but-novel** — a proof exists, so a φ re-deriving it is a
+  *transfer/compression* test rather than a discovery. This is the "small generator
+  repays across scales" signal `AXIOM_DISCOVERY.md` describes.
+- **NEGATIVE / barrier** results (N1 natural proofs, N2 relativization/algebrization)
+  — screening instruments, not targets; N2 is what `#barrier_check` operationalises.
+
+The maintainer should confirm this reading at step 2, because if the track wants
+**only** OPEN targets the list shrinks to T2/T3/T4-gap/T7-general/T8/T9 — every one
+of which is *believed to require* the very circuit lower bounds that are blocked.
+That is a real constraint on what a φ could reach and it is recorded in the doc.
+
+**Primary-source verification caught a real error.** T6 (matching) was first drafted
+from a search snippet as "bipartite matching, 2^{n^{1/3−o(1)}}". Reading the arXiv
+abstract directly showed the headline theorem is **perfect** matching at
+**2^{n^{Ω(1)}}**, with bipartite as a separate theorem and a different exponent. The
+doc now records the corrected statement *and* records the miss in its cross-check
+section — the plan's step-3 rationale ("a single LLM pass can miss a recent result or
+misstate a theorem's status") materialised within the drafting itself.
+
+**Retraction hazard recorded.** T5 notes that Norbert Blum's 2017 claimed P ≠ NP
+proof (approximation method on monotone functions) was retracted by the author —
+arXiv:1708.03486 is the replacement, its comments field reading "the replacement of
+the incorrect paper". Any φ touching monotone lower bounds must cite the established
+papers (Tardos 1988; Grötschel-Lovász-Schrijver), not the retracted claim. This is a
+live hazard for this specific track because the retracted proof used exactly the
+monotone-approximation machinery the track targets.
+
+**Scope finding for step 4 (new).** Two target families likely need substrate
+`PleaNP.Circuits` does **not** have: T8/T9 are proof complexity (Frege, AC⁰-Frege) and
+T7's other half is communication complexity. `PleaNP.Circuits` is Boolean-circuit
+shaped (gates, families, AC⁰, monotone). So even after PleaNP #102 lands, some
+targets need *new substrate*, not just import. Recorded rather than discovered later.
+
+**T1 is already partially available.** PleaNP `Circuits/AC0.lean` defines `parity`,
+`IsAC0`, `ComputesParity`, and `parity_notin_AC0 : Prop` (unproved, with partial
+results landed). It is not yet importable into Maith (blocked on #102), but the
+statement shape exists — verified by inspection, not assumed.
+
+**What was deliberately NOT done.** No stand-in `Maith/Benchmark/` definitions were
+written to make the formalization table look complete. Doing so would violate the
+point of option (a) — importing the *real* PleaNP models — and would produce
+statements that type-check against the wrong substrate, which is the failure mode the
+integrity gates exist to catch. Each target instead records its blocked reason, which
+the issue's DoD explicitly permits.
+
+**Also not done, and flagged:** step 3's genuinely-independent second-model pass. The
+plan says it is mandatory given how load-bearing the list is. The doc says so and
+recommends running it before the list is frozen. Partially mitigated by using
+multiple independent sources per target (course notes, surveys, arXiv, Dagstuhl
+LIPIcs, proceedings) rather than one pass — but that is mitigation, not the step.
+
+**Citations verified:** six primary/secondary URLs checked as resolving (200), and
+the two load-bearing claims (T6's exact statement, the Blum retraction) verified
+against their primary sources rather than a description of them.
+
+**Verification:** doc is 386 lines, UTF-8 clean, 12 per-target verification notes;
+every citation URL resolves; Tier-1 gates clean. Nothing was entered into the
+candidate ledger — targets are not candidates (a candidate is a φ, and no φ has been
+proposed); future candidates should reference a target id (T1-T10) in their `domain`
+field.
