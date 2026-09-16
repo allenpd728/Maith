@@ -77,7 +77,7 @@ def normalizerTests : List TestResult := [
     "Operations should be sorted by output"
 ]
 
-def runAllNormalizerTests : IO Unit := do
-  runTestSuite "Normalizer Tests" normalizerTests
+def runAllNormalizerTests : IO Nat := do
+  runTestSuiteCounted "Normalizer Tests" normalizerTests
 
 end Tests.Normalizer

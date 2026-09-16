@@ -397,11 +397,11 @@ def extractionFaithfulnessTests (env : Environment) : List TestResult := [
     TestResult.pass "Nat.add generic ops use named GEN_* buckets (v2 C4)" "Skipped: Nat.add not available"
 ]
 
-def runAllExtractionFaithfulnessTests : IO Unit := do
+def runAllExtractionFaithfulnessTests : IO Nat := do
   -- Load environment with no extra modules — uses declarations already compiled
   -- into the binary (Init, Lean core). Mathlib-dependent tests skip gracefully.
   let env ← loadEnvironment []
   let tests := extractionFaithfulnessTests env
-  runTestSuite "Phase 8c — Extraction Faithfulness Tests" tests
+  runTestSuiteCounted "Phase 8c — Extraction Faithfulness Tests" tests
 
 end Tests.ExtractionFaithfulness

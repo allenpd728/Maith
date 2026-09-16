@@ -35,7 +35,7 @@ def encoderTests : List TestResult := [
     "Graph encoding should produce at least GRAPH_BEGIN and GRAPH_END"
 ]
 
-def runAllEncoderTests : IO Unit := do
-  runTestSuite "Encoder Tests" encoderTests
+def runAllEncoderTests : IO Nat := do
+  runTestSuiteCounted "Encoder Tests" encoderTests
 
 end Tests.Encoder

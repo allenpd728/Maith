@@ -229,12 +229,13 @@ before the corresponding station can be trusted as done-evidence. Filed as
    path; agents must confirm it operates on the intended versioned directory
    (see `docs/experiments/RUN_REGISTRY.md` contamination rules) rather than
    defaulting silently.
-4. **The Lean test harness exits 0 on failure.** (#25) `Tests/Main.lean` prints
-   `⚠ Some tests failed!` but returns success, so `lake build tests && tests`
-   cannot currently distinguish all-pass from 4-failures. The CI job surfaces
-   this as a warning rather than a false green. Making the harness exit non-zero
-   is a prerequisite for using it as done-evidence. See
-   `docs/TOOLCHAIN_AND_CI.md` §6.
+4. ~~**The Lean test harness exits 0 on failure.**~~ **RESOLVED (#25,
+   2026-09-16).** The harness now sums per-suite unexpected failures and exits
+   non-zero; the CI `lean` job is a hard gate with no grep workaround.
+   Pre-existing failures are listed explicitly in `Tests.Harness.knownFailures`
+   (printed as `⊘ SKIPPED`), and a listed test that starts passing *also* fails
+   the build, so the list cannot rot. Verified by mutation: an injected unlisted
+   failure exits 1. See `docs/TOOLCHAIN_AND_CI.md` §6.
 
 ## End-of-session report
 

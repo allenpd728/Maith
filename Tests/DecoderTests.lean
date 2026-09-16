@@ -166,7 +166,7 @@ def decoderTests : List TestResult := [
     "Should round-trip a graph containing both FVAR_N and BVAR_N positional binders"
 ]
 
-def runAllDecoderTests : IO Unit := do
-  runTestSuite "Decoder Tests" decoderTests
+def runAllDecoderTests : IO Nat := do
+  runTestSuiteCounted "Decoder Tests" decoderTests
 
 end Tests.Decoder
