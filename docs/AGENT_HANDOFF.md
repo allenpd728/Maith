@@ -61,7 +61,7 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
 |---|---|---|
 | **#22–#25** | Four gate-model gaps (`priority:high`) | **`status:available`** |
 | **#27** | Candidate ledger + coverage-map tooling (`axiom-rewrite/`) | **`status:available`** |
-| **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | unlabeled — **needs the (a)/(b) decision below first** |
+| **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | unlabeled — **(a) decided**; step 4 blocked on PleaNP #102 |
 | **#28** | Structural similarity search (does not exist yet — real work) | blocked by #27 |
 | **#29** | Shared metaprogramming harness (spec-in, gates-out) | blocked by #28 |
 | **#30** | First candidate batch, log all outcomes | blocked by #26, #27, #29 |
@@ -70,26 +70,52 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
 CI is green on both `main` and `dev` (3 jobs: Lean build+test, Tier-1 gates,
 stdlib-only Python tests). `main` and `dev` are content-identical.
 
-## The one hard constraint on #26 (read before starting)
+## Cross-repo imports (RESOLVED: option (a)) — for #26
 
-Maith extracts IR from **elaborated Lean `Expr`** inside a running Lean process —
-it cannot parse Lean source text. `Scripts/BuildCorpus.lean` enumerates
-declarations from modules it knows how to import, and there is currently **no
-mechanism to add an external repo's Lean modules** to that import graph.
+Maith extracts IR from **elaborated Lean `Expr`** inside a running Lean process; it
+cannot parse Lean source text, and `Scripts/BuildCorpus.lean` enumerates only
+modules it can import. So *where* a target statement is formalized determines
+whether Maith can see it.
 
-Consequence: a target statement formalized *in PleaNP's repo* cannot be fed to
-Maith's extraction pipeline today. Choose one and say which in the issue thread:
+**Decision (DEC-040, 2026-09-16): formalize in Maith** (`Maith/Benchmark/`),
+importing circuit-model definitions from PleaNP. Option (b) — formalize in PleaNP
+and defer extraction — was rejected.
 
-- **(a)** Formalize targets in Maith (e.g. `Maith/Benchmark/`), so they are
-  extractable — but Maith would then need the circuit-model definitions it
-  imports, and cross-repo Lean imports are not set up.
-- **(b)** Formalize in PleaNP, and treat Maith-side extraction as a *later*
-  problem (issue #28/#29 territory), accepting that the transfer-target list
-  starts life outside Maith's IR pipeline.
+**Cross-repo import is verified feasible**, not assumed. A scratch consumer
+depending on PleaNP at `3e74ae6` built and resolved real definitions:
 
-Do not silently pick one; this is a scope decision that changes what "done"
-means. If you cannot resolve it from the docs, write a blocker per the protocol
-rather than guessing.
+```
+✔ Built PleaNP.Circuits.Basic (21s)      # dependency
+✔ Built Maith.Probe (52s)                # consumer
+PleaNP.Circuits.BoolGate : ℕ → Type
+PleaNP.Circuits.IsPPoly : CircuitFamily → Prop
+PleaNP.Circuits.Largeness : PropertyFamily → Prop
+PleaNP.Circuits.NaturalProperty : PropertyFamily → Prop
+```
+
+Both repos pin Lean `v4.31.0` / Mathlib `v4.31.0` — no toolchain drift.
+
+**The one blocker is upstream: PleaNP #102** (root `lakefile` shim). PleaNP's Lake
+package lives at `lean/`, and Lake resolves a dependency's root at the *repo root*,
+so `require PleaNP` fails with `no configuration file with a supported extension`.
+Until #102 lands, Maith cannot `require PleaNP`.
+
+Three things to know if you wire this up:
+
+1. **A shim alone is insufficient — the dependency must be built**, or the consumer
+   fails with `unknown module prefix 'PleaNP'` (Lake resolves the path but finds no
+   oleans). Build the `PleaNP.Circuits` closure specifically: PleaNP's *full-tree*
+   `lake build` fails on two documented pending-sorry modules.
+2. **Import weight:** `PleaNP.Circuits.Basic` starts with `import Mathlib`, so the
+   consumer inherits the full Mathlib closure.
+3. **`Scripts/BuildCorpus.lean` hardcodes its module list**, so getting
+   `Maith/Benchmark/` declarations into the IR corpus is a *separate* change to
+   that list (or to its discovery mechanism) — not covered by #26.
+
+**Steps 1-3 of #26 (research, filtering, cross-check) need no Lean and are
+unblocked.** Step 4 (formalization) waits on PleaNP #102. #26 carries no
+`status:available` label until then; the external blocker is stated in-body
+because a cross-repo issue cannot be a native GitHub `blocked_by` edge.
 
 ## Upstream dependency (PleaNP) — verified 2026-09-15
 
@@ -116,6 +142,11 @@ Maith's benchmark corpus depends on PleaNP's circuit-complexity substrate.
 - **Integration point:** PleaNP's `#barrier_check` elaborator
   (`lean/PleaNP/Calculus/BarrierCalculus.lean`) screens a transferred
   circuit-complexity theorem for relativization before it counts as interesting.
+- **Packaging blocker for the Maith side:** PleaNP **#102** (root `lakefile` shim)
+  — needed before Maith can `require PleaNP` for #26's formalization step. See
+  §"Cross-repo imports" above.
+- **Also open:** PleaNP #101 (cosmetic comment corruption in the Rung-5 calculus
+  files — comments only, no code or tooling affected).
 
 **Independent verification of all five Circuits modules (2026-09-15).** A
 separate reviewer checked `Basic`, `AC0`, `Monotone`, `MonotoneApprox`, and
