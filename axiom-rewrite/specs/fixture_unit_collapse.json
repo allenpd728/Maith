@@ -1,0 +1,19 @@
+{
+  "candidate_id": "C-FIXTURE-UNIT-COLLAPSE",
+  "target_structure": "Unit",
+  "domain": "synthetic (abstract multiplicative monoid on Nat)",
+  "phi": "phi := fun _ => () — the Unit-collapse degenerate case",
+  "provenance": "DoD fixture for #29: must PASS gate 1 and FAIL gate 2, no partial credit",
+  "note": "The adversarial case AXIOM_DISCOVERY.md §Validation pipeline names: a phi that IS a homomorphism by collapsing everything. Gate 1 genuinely holds (label: pass). Gate 2's obligation is the POSITIVE injectivity claim, which is false for this phi, so it will not elaborate (label: fail). Gate 4 must then refuse a compression number.",
+
+  "prelude": "/- A degenerate phi into Unit. Gate 1 genuinely holds; gate 2 must reject.\n\nObligations below are POSITIVE claims: elaboration success means the claim holds.\nThe harness therefore needs no polarity flag -- a false obligation simply fails to\nelaborate. -/\n\nnamespace GateFixture\n\n/-- Source operation: multiplication on `Nat`. -/\ndef srcMul (a b : Nat) : Nat := a * b\n\n/-- The degenerate map: everything collapses to unit. -/\ndef phi (_ : Nat) : Unit := ()\n\n/-- The target operation on `Unit`. -/\ndef tgtMul (_ _ : Unit) : Unit := ()\n\nend GateFixture\n",
+
+  "obligations": {
+    "1": "/-- GATE 1 (homomorphism, positive form): phi (a * b) = phi a * phi b.\nGenuinely holds -- both sides reduce to `()`, so `rfl` closes it. -/\ntheorem gate1_homomorphism (a b : Nat) :\n    GateFixture.phi (GateFixture.srcMul a b)\n      = GateFixture.tgtMul (GateFixture.phi a) (GateFixture.phi b) := rfl",
+
+    "2": "/-- GATE 2 (faithfulness / non-collapse, positive form): phi is INJECTIVE.\nFor the Unit-collapse this is FALSE, so this obligation will not elaborate and the\nharness reports gate 2 FAIL. That is the intended outcome for this candidate:\ncollapsing everything makes a map a homomorphism for free, so it is rejected here\nrather than credited as a weak positive. -/\ntheorem gate2_faithfulness_injective :\n    ∀ a b : Nat, GateFixture.phi a = GateFixture.phi b → a = b := by\n  intro a b _\n  -- Goal is `a = b` for arbitrary `Nat`, which is unprovable: the kernel rejects\n  -- this candidate here.\n  exact rfl"
+  },
+
+  "second_domain": null,
+  "second_obligation": null
+}

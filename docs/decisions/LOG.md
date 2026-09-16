@@ -2934,3 +2934,75 @@ a CI step in the `python` job.
 makes the safe path the only path is worth more than five correct-but-copyable
 incantations — DEC-048's own note ("more delicate than it looks") was the warning;
 this is the structural answer to it.
+
+---
+
+### DEC-050 — Five-gate harness (#29) + harness→ledger bridge; main untouched by instruction (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `axiom-rewrite/harness.py`; issues #29, #36, #37; branch policy
+
+**Decision:** `#29` lands. The shared five-gate harness consumes candidate **specs as
+data** — per the DoD's explicit constraint, no DSL or elaborator per candidate — and
+gates 1-3 are discharged by the **Lean kernel**, not by a grep. Plus the bridge into
+the candidate ledger that #29's own known-limits list had recorded as missing.
+
+**Gate semantics.** A gate passes iff its obligation **elaborates**.
+`set_option warningAsError true` makes a smuggled `sorry` an *error*, so it cannot
+pass a gate — tested. Obligations are written in **positive** form, so no polarity
+flag is needed: a false obligation simply fails to elaborate.
+
+**Three specs pin the DoD's three requirements:**
+
+- `fixture_unit_collapse.json` — gate 1 PASS (it genuinely is a homomorphism),
+  gate 2 FAIL (collapsing everything makes injectivity false). Rejected, no partial
+  credit.
+- `fixture_transfer_fails.json` — gates 1-2 PASS, gate 3 FAIL → gate 4 refuses.
+- `control_valid.json` — all five PASS. This is what makes the rejections
+  meaningful: without a passing case, "rejects everything" looks identical to
+  "rejects correctly".
+
+**A mistake caught before shipping, worth recording as a pattern.** The first
+version of gate 2's obligation was written as a **refutation** (proving
+non-injectivity). That elaborates fine, so the harness would have marked the
+degenerate candidate as **PASSING** gate 2 — the exact inverse of the DoD's
+requirement, and it would have looked correct. Positive-form obligations fixed it.
+Caught by asking what "gate 2 fails" means *mechanically* before writing the spec.
+
+**Bridge (#37).** `candidate_from_run()` / `record()` persist a run to the ledger;
+`run --record <ledger>` is opt-in so a dry run changes nothing. The ledger's rules
+are deliberately **not** re-implemented — the bridge passes gate outcomes through
+and lets `candidates.py:validate` accept or reject, keeping the ledger the single
+authority. Compression is forwarded only when gate 3 passed, so an offered number
+for a failed transfer is **declined** (recorded as `compression=None`) rather than
+erroring.
+
+**Took a sibling's better fix for the bytecode hazard.** A sibling landed
+`tooling/mutation_guard_lib.py` (#36) which binds restore+purge into one `finally`
+and disables bytecode writes via `-B`/`PYTHONDONTWRITEBYTECODE`. That supersedes my
+DEC-048 per-guard purge, which ran *outside* the `try/finally` and so could still
+leak a mutated `.pyc` on a crash or child timeout. Merged rather than reconciled:
+my commit only added new harness files, so there was nothing of mine to keep.
+
+**Branch policy change — `main` is no longer pushed from this session.** The
+maintainer reported that main-correlated pushes are consuming Netlify credits.
+Investigated: **Maith and PleaNP are not connected to any Netlify site.** The two
+sites are `muse-qa-58fd708e` (repo `allenpd728/muse`, branch `dev`) and
+`philharmonica` (`allenpd728/philharmonic`, branch `main`); scanning 175 recent
+deploys across both found zero mentioning Maith or PleaNP. The `muse` site deploys
+on its **`dev`** branch, and read 20 deploys on 2026-09-16 aligned with `muse`'s own
+commits. So the credit spend is `muse`'s, not this repo's — reported plainly rather
+than silently complying with a premise that does not hold. Reading is all that was
+done: changing a live site's build config is an owner action, not attempted.
+
+Per the instruction, this session pushed **only to `dev`**. Consequence recorded:
+`main` now trails `dev` by the #29 work (and `dev` is by design content-superset).
+The 22 "main-only" commits found while checking are all this session's own earlier
+dev→main merges, not third-party work.
+
+**Verification:** `test_harness.py` 13 passed / 0 failed (incl. 3 bridge tests and a
+`sorry`-must-fail test); `lake build tests` 72 jobs; CI run #52 green on `ecc90ad`
+with the harness step running **in the Lean job**; `#36`'s guard-lib tests 5/5 and
+both migrated guards pass. Tier-1 gates clean; no stray `.lean` scratch or
+`__pycache__` left (`-B` used deliberately).
