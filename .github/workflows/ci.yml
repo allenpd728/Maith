@@ -173,3 +173,9 @@ jobs:
       # and its mode, instead of implying nothing is there.
       - name: Missing-corpus diagnostic tests
         run: python3 python/test_ir_build_missing_corpus.py
+
+      # #35 (the fix): the Lean builder's mode->filename mapping and the Python
+      # consumers' read defaults must agree — the mismatch IS the bug. Binds the
+      # Lean source to the Python defaults so editing one side fails here.
+      - name: Corpus filename contract (Lean<->Python)
+        run: python3 python/test_corpus_filename_contract.py

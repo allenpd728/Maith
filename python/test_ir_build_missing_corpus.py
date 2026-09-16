@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Tests for the missing-corpus diagnostic (#35, Python half).
 
-Issue #35: `buildCorpus --per-operator` writes `Corpus/corpus.jsonl`, while
-`check_ir_build.py` defaults to `Corpus/corpus.per_operator.jsonl`. The gate then
-said "corpus not found" while a corpus sat right there under the other name —
-misleading rather than actionable.
+Historical context: before #35, `buildCorpus --per-operator` wrote
+`Corpus/corpus.jsonl`, while `check_ir_build.py` defaults to
+`Corpus/corpus.per_operator.jsonl`, so the gate said "corpus not found" while a
+corpus sat right there under the other name — misleading rather than actionable.
 
-This does NOT change which file is read (that is #35's fix decision). It makes the
-failure legible and reports the detected mode.
+#35's fix encodes the mode in the filename, so the default now exists whenever the
+matching mode was built. The diagnostic remains for the case where *no* corpus was
+built, or one was built under an unexpected name; it names what is present and
+reports the detected mode.
 
 Run: python3 python/test_ir_build_missing_corpus.py
 """

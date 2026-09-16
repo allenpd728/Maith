@@ -147,9 +147,12 @@ python3 python/manage.py watch --once    # HTML dashboard snapshot
 
 **Corpus rebuild:**
 ```bash
-lake exe buildCorpus              # module mode (GEN_* buckets)
-lake exe buildCorpus --per-operator  # per_operator mode (op:<shortName>)
+lake exe buildCorpus              # module mode (GEN_* buckets) → Corpus/corpus.jsonl
+lake exe buildCorpus --per-operator  # per_operator mode (op:<shortName>) → Corpus/corpus.per_operator.jsonl
 ```
+The bucket mode is encoded in the output filename (#35), so the two modes no
+longer overwrite each other. An explicit `--corpus <path>` on the Python
+consumers still overrides the default.
 
 > Note: exact Python binary and lake paths vary by machine. See `AGENTS_LOCAL.md`.
 
