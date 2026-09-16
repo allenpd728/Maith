@@ -2692,3 +2692,63 @@ Confirmed by `#check`, not by reading.
 **Verification:** PleaNP `main` and `dev` content-identical; CI green on both;
 consumer build against `@ "main"` succeeds and resolves real circuit definitions;
 the merge preserved both README additions; PleaNP #105 closed.
+
+---
+
+### DEC-046 — ENCODER_FORMAT's testable claims machine-enforced (invariants 8 + 9); #23 closed (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `docs/reference/ENCODER_FORMAT.md` claims; `check_invariants.py`; issue #23
+
+**Decision:** `ENCODER_FORMAT.md`'s **testable** claims are now named invariants with
+fixtures that can fail, and the doc carries a claim → invariant → fixture table plus
+an explicit list of claims *deliberately not* machine-checked.
+
+- **Invariant 8** (`check_grammar_arity`): `GRAPH_BEGIN`/`GRAPH_END` envelope,
+  `E`/`A`/`R`/`O` row headers only, row arities (E=2, A/R/O=4), `IN_N ≤ 9`/`IN_MANY`,
+  `OUT_N ≤ 63`/`OUT_MANY`/`OUT_VAR`.
+- **Invariant 9** (`check_c1_polarity_absence`): C1's claim that no polarity tokens
+  appear in a v2 stream.
+
+**Two traps, both found by running against real data rather than reasoning:**
+
+1. **`neg` is ambiguous, so C1 cannot be a string-absence check.** `neg` is both a
+   polarity marker and the arithmetic op token (id 12), and appears **467 times** in
+   `train_A.jsonl`. Every occurrence sits in an `O` row's op slot (all preceded by
+   `OUT_*`) — arithmetic negation, which v2 legitimately emits. My first instinct
+   ("assert no polarity token in the data") would have failed on *correct* data.
+   Invariant 9 is therefore **role-based**.
+2. **The IR grammar describes IR tokens only.** `B`/`C`/`B-small` are Qwen BPE and
+   `flat` is the SLOT ablation. Checking them against the IR grammar produced
+   **10,114** and **103,096** spurious "malformed" reports on the first run. Both
+   invariants now discover IR-token variants from each record's `source` field.
+
+**A fixture caught a bug in my own invariant:** a short `A` row silently absorbed
+`GRAPH_END` as its `value` slot, so the row looked well-formed and the terminator
+check never fired. Fixed by bounding the row slice at the first boundary token.
+
+**Mutation-guard design changed.** The first guard reported 4 mutations as failures.
+Diagnosis showed each property was still caught by a *second* code path — defence in
+depth. Reporting those as failures would train a reader to ignore the guard, so it
+now distinguishes **DETECTED / REDUNDANT / GAP** and fails only on a genuine gap or a
+broken control. Result: 6 detected, 3 redundant, **0 gaps**.
+
+**Also in this change set:** known-gaps 1 and 2 in `MULTI_AGENT_WORKFLOW.md` were
+stale (gap 1 had been closed by #22 but still read as open). Both now marked
+resolved. Gap 3 (#24) is the last open one.
+
+**A false claim in my own commit history, corrected rather than hidden.** Commit
+`3b5d175`'s message asserted it "refreshed the gap-5 wording". It did not — there is
+no gap 5, and the diff touched only gap 2. Since `dev` is not force-pushed, the
+message cannot be amended, so the correction is recorded here and in the follow-up
+commit `3527141`. Worth noting for the pattern: the claim was specific and
+plausible, and I did not verify it before committing. The diff is the evidence, not
+the message.
+
+**Verification:** `test_invariants.py` 23 pass / 0 fail; guard 6/3/0; the real checker
+reports `grammar_arity_A_{train,eval}` and `c1_polarity_absence_A_{train,eval}` PASS
+on committed datasets. CI run #36 green on `5ea8397`, including the new
+"Encoder-format invariants are not vacuous" step. The one checker failure
+(`corpus_format`, `Corpus/corpus.jsonl` absent) is pre-existing — confirmed unchanged
+by re-running with the change stashed.
