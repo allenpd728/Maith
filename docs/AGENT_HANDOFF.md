@@ -97,10 +97,12 @@ PleaNP.Circuits.NaturalProperty : PropertyFamily → Prop
 
 Both repos pin Lean `v4.31.0` / Mathlib `v4.31.0` — no toolchain drift.
 
-**The one blocker is upstream: PleaNP #102** (root `lakefile` shim). PleaNP's Lake
-package lives at `lean/`, and Lake resolves a dependency's root at the *repo root*,
-so `require PleaNP` fails with `no configuration file with a supported extension`.
-Until #102 lands, Maith cannot `require PleaNP`.
+**Upstream blocker CLEARED (2026-09-16): PleaNP #102 landed** (PleaNP commits
+`1037101` + `da0f7f0` on its `dev`). Maith can now `require PleaNP`; verified
+end-to-end including `PleaNP.Circuits.AC0`. See DEC-043. Two constraints come with
+it: **pin a SHA, not `@ "dev"`** (a PleaNP push would otherwise break Maith's
+build), and **PleaNP `dev` is not CI-verified** (`ci.yml` triggers on `main` only;
+a `dev`->`main` PR is the route to CI).
 
 Three things to know if you wire this up:
 
@@ -113,6 +115,11 @@ Three things to know if you wire this up:
 3. **`Scripts/BuildCorpus.lean` hardcodes its module list**, so getting
    `Maith/Benchmark/` declarations into the IR corpus is a *separate* change to
    that list (or to its discovery mechanism) — not covered by #26.
+
+4. **The corpus is not committed.** `Corpus/corpus.jsonl` is gitignored (only
+   `corpus_manifest.json`, `stats.json`, `logs.txt` are tracked), so anything
+   needing an IR corpus must run `lake exe buildCorpus --per-operator` first.
+   `check_ir_build.py` already defaults to `Corpus/corpus.per_operator.jsonl`.
 
 **Steps 1-3 of #26 (research, filtering, cross-check) need no Lean and are
 unblocked.** Step 4 (formalization) waits on PleaNP #102. #26 carries no
