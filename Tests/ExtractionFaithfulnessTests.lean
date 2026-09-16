@@ -153,15 +153,6 @@ def testGraphDifference (env : Environment) (name1 name2 : String) : Option Test
     pure $ TestResult.fail s!"{name1} and {name2}" s!"Expected different graphs but they were identical"
 
 /--
-Helper to run a test that depends on the environment.
--/
-def runEnvTest (env : Environment) (name : String) (condition : Bool) (msg : String) : TestResult :=
-  if condition then
-    TestResult.pass name msg
-  else
-    TestResult.fail name msg
-
-/--
 Helper to run a graph property test.
 -/
 def runGraphTest (env : Environment) (name : String) (declName : String) 

@@ -3111,3 +3111,41 @@ status is a decision rather than a default. The exit-code choice is the subtle p
 encoding "some candidate failed" in a batch's exit status would make normal,
 expected search outcomes look like tool failures.
 
+### DEC-053 — Gate 5 Tier 1b (binder/lethality) promoted from advisory to blocking (#38) (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `.github/workflows/ci.yml`, `Tests/ExtractionFaithfulnessTests.lean`,
+`docs/TOOLCHAIN_AND_CI.md`, `docs/AGENT_HANDOFF.md`.
+
+**Decision:** The binder/lethality scan ran with `continue-on-error: true` since
+adoption, with an in-file note to promote it "once clean". It had exactly one
+VIOLATION keeping it advisory: `runEnvTest` in
+`Tests/ExtractionFaithfulnessTests.lean`, a dead helper whose `env : Environment`
+parameter was never used (zero call sites; `Tests/Harness.lean`'s `runTest`
+already covers the same ground without an environment parameter).
+
+The helper is removed and the step is now blocking (no `continue-on-error`), so a
+new unused-parameter regression fails CI. That is the point of Tier 1b: it is the
+mechanical check for non-load-bearing binders — the "parameter that looks
+load-bearing but is inert" hole the gate suite exists to catch.
+
+**Deliberately NOT `--strict`.** The 34 remaining items are REVIEWs, not
+violations: almost all are entry points (`runAll*`, `main`, `default*`) unreferenced
+by construction. Triaging those is a separate, larger task; this promotion is on
+the *violation* criterion the CI comment named. The one REVIEW worth a follow-up
+under `--strict` is the `discarded_let` at `Maith/CorpusSerializer.lean:126`.
+
+**Verification:**
+- Scan now exits 0: `0 violation(s), 34 review item(s)` (was 1 violation, exit 1).
+- Non-vacuous: planting an unused parameter in `Tests/Harness.lean` makes the scan
+  exit 1 — so the promotion genuinely fails CI on a regression, rather than being
+  a decorative gate.
+- The scanner self-test still detects the planted case8 fixture (`DecidesLike`'s
+  unused `M`/`t`) — the promotion did not weaken the fixture check.
+- `lake build tests` + the suite pass (26/26) with the helper gone.
+
+**Rationale:** A gate that cannot fail its build is documentation, not a gate.
+Leaving Tier 1b advisory meant the class of defect it targets could reappear
+silently; the cost of closing it was deleting one dead function.
+

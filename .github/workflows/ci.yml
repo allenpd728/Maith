@@ -79,12 +79,13 @@ jobs:
       - name: Vacuity scan (Gate 5 Tier 1 — no dishonest placeholders)
         run: python3 tooling/gates/vacuity_scan.py Maith Tests Scripts
 
-      # Advisory on adoption: this surfaced one pre-existing dead helper
-      # (runEnvTest in Tests/ExtractionFaithfulnessTests.lean — unused `env`
-      # parameter). Non-blocking until the library's entry points are
-      # triaged; flip to blocking (remove continue-on-error) once clean.
-      - name: Binder-usage / lethality scan (Gate 5 Tier 1b — advisory)
-        continue-on-error: true
+      # Blocking since #38. Gate 5 Tier 1b catches non-load-bearing binders (the
+      # "a parameter that is never used" integrity hole). It was advisory while one
+      # pre-existing dead helper (runEnvTest, unused `env`) remained; that helper is
+      # removed, so the scan is clean (0 violations) and a NEW violation now fails
+      # CI instead of going green. The 34 REVIEW items are advisory and do not fail
+      # (deliberately not `--strict`; see #38's scope boundary).
+      - name: Binder-usage / lethality scan (Gate 5 Tier 1b)
         run: |
           python3 tooling/gates/binder_usage_scan.py \
             --allow-unreferenced '^(run(All|Env|Graph)?[A-Za-z]*|main)$' \

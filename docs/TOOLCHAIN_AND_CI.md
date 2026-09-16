@@ -141,15 +141,19 @@ git checkout main && git merge --no-ff dev && git push origin main
 
 ## 6. Known advisory items (as of 2026-09-15)
 
-The gates surfaced, on adoption, one real pre-existing issue plus review noise:
+**Gate 5 Tier 1b (binder/lethality) is now BLOCKING (issue #38, 2026-09-16).**
+The one VIOLATION it surfaced on adoption — the dead `runEnvTest` helper (unused
+`env` parameter, zero call sites) — has been removed, so the scan exits 0 and a
+*new* unused-parameter regression now fails CI rather than going green. The
+remaining items are REVIEWs and deliberately do not fail the build (not
+`--strict`; see #38).
 
-- **VIOLATION** `Tests/ExtractionFaithfulnessTests.lean` `runEnvTest` â€” unused
-  `env` parameter; the helper is dead (zero call sites). `assertNotEqual`
-  (`Tests/Harness.lean`) is likewise unreferenced. The lethality scan runs
-  advisory in CI until these are triaged.
-- **REVIEW** ~34 unreferenced declarations (47 before allow-listing) â€” almost all are entry points
+- **REVIEW** ~34 unreferenced declarations (47 before allow-listing) — almost all are entry points
   (`runAll*`, `main`, `default*`) that are unreferenced by construction. These
-  are whitelisted via `--allow-unreferenced` rather than chased.
+  are whitelisted via `--allow-unreferenced` rather than chased. One worth a
+  follow-up if `--strict` is ever considered: the `discarded_let` at
+  `Maith/CorpusSerializer.lean:126` (`let _ := config` in
+  `trainingExampleToJsonLine`).
 
 ### Test-harness exit code (RESOLVED — issue #25, 2026-09-16)
 
