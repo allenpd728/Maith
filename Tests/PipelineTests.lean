@@ -46,7 +46,7 @@ def graphTypeTests : List TestResult := [
 -- Run all pipeline tests
 -- ============================================
 
-def runAllPipelineTests : IO Unit := do
-  runTestSuite "Graph Type Tests" graphTypeTests
+def runAllPipelineTests : IO Nat := do
+  runTestSuiteCounted "Graph Type Tests" graphTypeTests
 
 end Tests.Pipeline

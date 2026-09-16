@@ -94,9 +94,10 @@ def corpusSerializerTests : List TestResult := [
   testStatsSerialization
 ]
 
-def runAllCorpusSerializerTests : IO Unit := do
-  runTestSuite "Corpus Serializer Tests" corpusSerializerTests
+def runAllCorpusSerializerTests : IO Nat := do
+  let unexpected ← runTestSuiteCounted "Corpus Serializer Tests" corpusSerializerTests
   let result ← testPersistCorpusToDisk
   printTestResult result
+  return unexpected + countFailures [result]
 
 end Tests.CorpusSerializer
