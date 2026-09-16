@@ -260,6 +260,14 @@ def cmd_run(args) -> int:
     finally:
         h.cleanup()
 
+    if args.record:
+        try:
+            cid = record(spec, results, Path(args.record))
+            print(f"recorded {cid} to {args.record}")
+        except Exception as e:  # LedgerError and friends: surface, do not swallow
+            print(f"ERROR: could not record to ledger: {e}", file=sys.stderr)
+            return 2
+
     if args.json:
         print(json.dumps({"spec": spec.candidate_id, "results": [
             {"gate": r.gate, "name": r.name, "outcome": r.outcome,
@@ -284,6 +292,61 @@ def cmd_list(args) -> int:
     return 0
 
 
+def candidate_from_run(spec: Spec, results: list[GateResult],
+                                   compression: Optional[dict] = None):
+    """Build a `candidates.Candidate` from a harness run (issue #29 follow-up).
+
+    This is the bridge that was missing when #29 closed: the harness validated
+    specs, but nothing wrote the outcome to the ledger, so a run left no record.
+
+    The ledger enforces its own rules on append (see
+    `axiom-rewrite/candidates.py:validate`), so this function does NOT re-implement
+    them -- it passes through what the harness found and lets the ledger accept or
+    reject. That matters: if the two disagreed, the ledger's check would be the
+    authority, and a divergence would surface as a `LedgerError` rather than
+    silently.
+
+    `compression` is only forwarded when gate 3 passed; passing it otherwise would
+    make the ledger reject the record, which is the correct outcome but obscures
+    *why* at the call site.
+    """
+    # Import lazily: `candidates` lives alongside this module and importing at
+    # module scope would couple the harness to the ledger for users who only run
+    # specs.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from candidates import Candidate  # noqa: E402
+
+    by_gate = {r.gate: r.outcome for r in results}
+    transfer_passed = by_gate.get(3) == "pass"
+    return Candidate(
+        candidate_id=spec.candidate_id,
+        target_structure=spec.target_structure,
+        domain=spec.domain,
+        phi=spec.phi,
+        provenance=spec.provenance or "(unspecified)",
+        gates=dict(by_gate),
+        compression=compression if transfer_passed else None,
+        reusable=(by_gate.get(5) == "pass"),
+        note=(spec.note + (f" | harness: {r.detail}" if (r := next(
+            (x for x in results if x.outcome == "fail"), None)) else "")).strip(" |"),
+    )
+
+
+def record(spec: Spec, results: list[GateResult], ledger: Path,
+           compression: Optional[dict] = None) -> str:
+    """Persist a harness run to the candidate ledger. Returns the candidate id.
+
+    Raises whatever the ledger raises on a bad record -- deliberately not caught,
+    because a rejected record is information the caller needs.
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from candidates import append_candidate  # noqa: E402
+
+    cand = candidate_from_run(spec, results, compression)
+    append_candidate(Path(ledger), cand)
+    return cand.candidate_id
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="five-gate validation harness (#29)")
     sub = ap.add_subparsers(dest="command", required=True)
@@ -291,6 +354,10 @@ def main() -> int:
     p_run.add_argument("spec", help="spec file (path or name under specs/)")
     p_run.add_argument("--json", action="store_true")
     p_run.add_argument("--timeout", type=int, default=600)
+    p_run.add_argument("--record", default=None, metavar="LEDGER",
+                       help="append the outcome to this ledger (e.g. "
+                            "axiom-rewrite/candidates.jsonl). Defaults to not "
+                            "recording, so a dry run changes nothing.")
     p_run.set_defaults(func=cmd_run)
     sub.add_parser("list", help="list available specs").set_defaults(func=cmd_list)
     args = ap.parse_args()
