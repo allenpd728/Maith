@@ -3006,3 +3006,48 @@ dev→main merges, not third-party work.
 with the harness step running **in the Lean job**; `#36`'s guard-lib tests 5/5 and
 both migrated guards pass. Tier-1 gates clean; no stray `.lean` scratch or
 `__pycache__` left (`-B` used deliberately).
+
+### DEC-051 — Corpus filename encodes the bucket mode (#35): the builder/consumer contract, and an overwrite footgun closed (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `Maith/MathlibCorpusBuilder.lean`, `Tests/CorpusPipelineTests.lean`,
+`python/check_ir_build.py`, `python/test_corpus_filename_contract.py` (new),
+`.github/workflows/ci.yml`, `AGENTS.md`, `docs/AGENT_HANDOFF.md`,
+`docs/reference/PIPELINE_QUALITY_GATES.md`,
+`docs/reference/STRUCTURAL_SIMILARITY.md`, `docs/experiments/KNOWN_ISSUES.md`.
+
+**Decision:** `buildCorpus` encoded the bucket mode in *how* it built but not in
+*what* it wrote: both modes wrote `Corpus/corpus.jsonl`. Meanwhile the consumers
+(`check_ir_build.py`, `structural_similarity.py`) default to
+`Corpus/corpus.per_operator.jsonl`. So the documented command
+(`lake exe buildCorpus --per-operator`, required by #28's DoD) produced an artifact
+the documented gate could not find, and — worse — because both modes shared a path,
+a per-operator build silently overwrote the module-mode corpus. That second half is
+KNOWN_ISSUES #3 / AUDIT_2026_08_10 P0-2: the on-disk corpus stopped matching the v2
+manifest because a `--per-operator` run had replaced it.
+
+The mode is now in the filename: `corpusFileNameForMode` maps `.module` to
+`corpus.jsonl` and `.per_operator` to `corpus.per_operator.jsonl`, applied in both
+`buildMathlibIRCorpus` and `buildMathlibIRCorpusWithTrace`. Consumers' defaults
+become correct as a consequence, so the documented command now feeds the documented
+gate; the explicit `--corpus` escape remains as the override.
+
+Option 2 from the issue (require an explicit `--corpus` everywhere) was rejected:
+it leaves the two modes sharing a path, so it does not fix the overwrite, and it
+contradicts every doc that already names `corpus.per_operator.jsonl`.
+
+**Verification (real Lean build; toolchain v4.31.0 + restored Mathlib cache):**
+- `buildCorpus --per-operator` writes `Corpus/corpus.per_operator.jsonl` (4029 examples)
+- `buildCorpus` (module) writes `Corpus/corpus.jsonl` (4029 examples)
+- **Both files coexist afterward** — the overwrite can no longer happen.
+- `manage.py gate ir` and `structural_similarity.py` now find the corpus with no
+  `--corpus` (G1-1/G1-2/G1-3 PASS; G1-4 remains the DEC-032 accepted warning).
+- Lean test `testCorpusFileNameForMode` (26/26 suite green) plus the new
+  `python/test_corpus_filename_contract.py` (5 checks, CI-wired) pin the contract;
+  both were confirmed to FAIL when the mapping or its application is reverted.
+
+**Rationale:** A filename is a contract between two languages, and the bug was that
+nothing tested the contract. The cross-language test binds the Lean mapping to the
+Python defaults, so renaming one side cannot silently break the gate again.
+
