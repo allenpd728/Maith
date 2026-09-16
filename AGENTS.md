@@ -90,6 +90,7 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | `docs/decisions/LOG.md` | Chronological experiment record (DEC-001 through DEC-036) |
 | `docs/experiments/AXIOM_DISCOVERY.md` | **Active research track** — search for a kernel-checked structure-preserving map φ (supersedes toy-model training) |
 | `docs/experiments/BENCHMARK_CORPUS_PLAN.md` | Companion: how the circuit-complexity benchmark corpus (transfer targets + conservativity corpus) is built and signed off |
+| `docs/experiments/TRANSFER_TARGETS.md` | The Part 2 target list (T1–T10 + N1/N2 screening results) — drafted, awaiting maintainer filtering + cross-check |
 | `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-`dev`-branch protocol (ported from PleaNP) |
 | `docs/MULTI_AGENT_WORKFLOW.md` | **Multi-agent task protocol** — run-ids, atomic claims, sweeps, `blocked by` lineages, done-evidence (ported from PleaNP); includes the known gate-model gaps |
 | `docs/AGENT_HANDOFF.md` | **New-agent entry point** — pick-up protocol, current state, open issues, upstream dependency, constraints |
