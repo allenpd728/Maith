@@ -2331,3 +2331,61 @@ change (to that list or to its discovery mechanism).
 **Verification:** the import experiment was run end-to-end (clone, shim, Mathlib
 cache restore, dependency build, consumer build, `#check` of four PleaNP
 definitions); scratch dirs removed afterward and the Maith working tree left clean.
+
+---
+
+### DEC-041 — Search/proposal refinements filed as #32-#34; #28 extended to candidate dedup (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** Axiom-discovery search/proposal loop; issue tracking
+
+**Decision:** Record the maintainer's four search-loop refinements as tracked
+issues, **without starting them**. Per the maintainer's explicit priority note,
+none of this reorders the queue — the transfer-target list (#26) remains the
+unblocked next step, and these land once #28-#30 are underway.
+
+**Filed:**
+
+| Issue | Refinement |
+|---|---|
+| **#32** | `failure_mode` on the ledger — a fixed enum (`not_homomorphism`, `degenerate_collapse`, `target_too_weak`, `no_replication`), not free text, so gate 1-5 failures are groupable. Three open questions raised in-issue: gate 4 may be non-failing (the doc calls it bookkeeping), singular-vs-plural (the pipeline is admission-controlled, so the first failure is the meaningful one), and required-vs-optional (recommended required, else it drifts to free text). |
+| **#33** | Retrieve prior failures by (structure-family, sub-domain) before proposing, and feed their `failure_mode` into the proposal prompt. Depends on #32. **Flagged as under-scoped in the original phrasing**: the ledger stores `target_structure` and `domain` as *free strings*, so "query by family/sub-domain" requires a schema addition (a `structure_family` field or a mapping), not merely a query. |
+| **#34** | **Gate 6** — adversarial significance check via 2+ genuinely distinct external models with mirrored for/against prompts. Filed `status:blocked-needs-input` because the maintainer asked to confirm scope first. Scope boundary written in-issue: IN = one small script (prompt template, 2-3 API calls, ledger writes); OUT = any orchestration, retry/queue layer, caching service, or harness change. Four open questions: which providers (available: `GOOGLE_API_KEY`, `NVIDIA_BUILD_KEY`, `OPENHANDS_API_KEY`), whether gate 6 gates `reusable` or is purely a signal, cost/volume cap, and the result schema. |
+
+**#28 extended, not forked.** The candidate-dedup proposal is folded into #28 as
+instructed, since it is the same fingerprinting machinery on a second input.
+Written in-issue as two phases:
+
+- **Phase 1 (original scope, Mathlib `corpus.jsonl`)** — remains **claimable**. The
+  extension was written so it does not make #28 unactionable.
+- **Phase 2 (candidate φ dedup)** — genuinely blocked, and the reasons are recorded
+  rather than hand-waved: (i) fingerprinting an *elaborated* φ requires φ to exist
+  as a Lean term, but the ledger stores φ as a spec string — elaborating it is #29's
+  job; (ii) phase 2's input format is undefined, and getting anything new into
+  `corpus.jsonl` means extending `Scripts/BuildCorpus.lean`'s hardcoded module list.
+  So "same machinery, second corpus" needs the second corpus pinned first.
+
+The in-issue DoD for phase 2 requires a test using a pair that is *the same map
+under different names* — a text diff would miss it, which is the entire point — and
+requires that test in the done comment, so a dedupe that only catches textual
+repeats cannot pass.
+
+**Token issue recorded (environment).** `ALL_REPOs_GH_TOKEN` has **`repo` scope
+only**, so pushing any change under `.github/workflows/` is rejected with
+`refusing to allow a Personal Access Token to create or update workflow ... without
+workflow scope`. `GITHUB_TOKEN` has the workflow scope (and admin on this repo).
+Both authenticate as the same login. Workaround — swap the remote URL for pushes
+touching workflows, then restore — is now documented in `docs/AGENT_HANDOFF.md`
+§Commands so the next agent does not rediscover it by hitting a password prompt.
+
+**Rationale for filing rather than building:** the maintainer asked for scope
+confirmation on #34 and gave an explicit do-not-reorder instruction. Filing keeps
+the proposals from being lost while leaving the queue untouched. Two of the four
+items also turned out to need schema decisions the maintainer should make (#32's
+gate-4 question, #33's family/sub-domain fields), which is exactly what the
+blocker protocol exists for.
+
+**Verification:** #32-#34 exist (201) with the labels above; #28's body confirmed to
+carry the two-phase addendum and still labelled `status:available`; handoff queue
+table and Commands section updated; docs UTF-8 clean.
