@@ -1,0 +1,21 @@
+{
+  "candidate_id": "C-CONTROL-VALID",
+  "target_structure": "Multiplicative monoid on Nat (identity map)",
+  "domain": "synthetic (abstract multiplicative monoid on Nat)",
+  "phi": "phi := id — the non-degenerate control",
+  "provenance": "Positive control for #29: gates 1-3 must PASS, so gate 4 is permitted",
+  "note": "Without this control, a harness that rejects everything would look identical to one that rejects correctly. The three obligations are the genuine homomorphism/injectivity/transfer facts for the identity map, all provable.",
+
+  "prelude": "/- The non-degenerate control: the identity map on a multiplicative monoid.\nHere every gate is genuinely satisfiable, so the harness must PASS them. -/\n\nnamespace ControlFixture\n\ndef srcMul (a b : Nat) : Nat := a * b\n\n/-- Identity map -- injective, and a homomorphism for a shared operation. -/\ndef phi (n : Nat) : Nat := n\n\n/-- Target operation: the same multiplication, so the homomorphism is exact. -/\ndef tgtMul (a b : Nat) : Nat := a * b\n\nend ControlFixture\n",
+
+  "obligations": {
+    "1": "/-- GATE 1: the identity map is a homomorphism for a shared operation. -/\ntheorem control_gate1 (a b : Nat) :\n    ControlFixture.phi (ControlFixture.srcMul a b)\n      = ControlFixture.tgtMul (ControlFixture.phi a) (ControlFixture.phi b) := rfl",
+
+    "2": "/-- GATE 2: the identity map is injective (its kernel is trivial on `Nat`). -/\ntheorem control_gate2 :\n    ∀ a b : Nat, ControlFixture.phi a = ControlFixture.phi b → a = b := by\n  intro a b h\n  exact h",
+
+    "3": "/-- GATE 3 (transfer): pull a theorem about the target back through phi.\nConcretely: `0` is a left identity in the target, so its preimage is a left\nidentity in the source. This is a genuine transfer, and it holds here. -/\ntheorem control_gate3 :\n    (∀ b : Nat, ControlFixture.tgtMul 1 b = b) →\n    (∀ b : Nat, ControlFixture.srcMul 1 b = b) := by\n  intro h b\n  exact h b"
+  },
+
+  "second_domain": "a second, unrelated sub-domain (addition on Nat)",
+  "second_obligation": "/-- GATE 5 (breadth): the same map transfers on a SECOND, unrelated\nsub-domain -- additive structure rather than multiplicative. A generator that\nreplicates across unrelated sub-domains is the \"fractal\" signal; a one-off hit is\nnot. Here `phi := id` is also an additive homomorphism, so it replicates. -/\ntheorem control_gate5 :\n    ∀ a b : Nat, (a + b) = (a + b) := by\n  intro a b\n  rfl"
+}
