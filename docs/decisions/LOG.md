@@ -2752,3 +2752,60 @@ on committed datasets. CI run #36 green on `5ea8397`, including the new
 "Encoder-format invariants are not vacuous" step. The one checker failure
 (`corpus_format`, `Corpus/corpus.jsonl` absent) is pre-existing — confirmed unchanged
 by re-running with the change stashed.
+
+---
+
+### DEC-047 — manage.py gate/invariants path resolution (#24); all four known gaps closed (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `python/manage.py` gate commands; `MULTI_AGENT_WORKFLOW.md` known gaps
+
+**Decision:** `manage.py gate` and `manage.py invariants` now resolve every path
+argument through one `resolve_repo_path` helper. This closes the last of the four
+known gaps (#22-#25) recorded when the multi-agent protocol was ported.
+
+**The defect was subtler than the issue described.** The issue said "takes a
+`--datasets` path and otherwise falls back to a default", implying the fallback was
+the risk. It was not: the default was already correct (`DATASETS_DIR`, repo-anchored
+from `REPO = Path(__file__).resolve().parent.parent`). The three real problems:
+
+- `gate --datasets <relative>` used the value **verbatim**, so it resolved against
+  the **caller's cwd** and could gate a different tree.
+- `manage.py invariants` used bare `"datasets"` / `"runs"` as **both** the default
+  and the override — always cwd-relative, and inconsistent with `cmd_gate`.
+- Neither printed **which** tree was gated, so a transcript was not self-evidencing.
+
+**Fix:** relative paths anchor at `REPO` (stable meaning from any directory); a
+missing directory is a **hard error (exit 2) before any gate runs**; the resolved
+path is printed in a `GATE TARGET` header alongside the tree's provenance
+(`representation_id`, `encoderVersion`, `seed`, train/eval counts) read from
+`representation_manifest.json`.
+
+**Why error rather than fall back:** the entire point is to prevent gating the wrong
+tree. A silent fallback to the default is exactly the contamination class
+`RUN_REGISTRY.md` guards against, so failing loudly is the safe behaviour.
+
+**Two mistakes of my own, both caught before shipping** — recorded because the
+classes recur:
+
+1. `describe_dataset_dir` first read `train_manifest.json` assuming a summary dict.
+   It is a **per-example list**; the summary is `representation_manifest.json`. The
+   first version printed `manifest=unreadable` on correct data. Fixed, and both file
+   shapes are now documented in the function.
+2. The first `cmd_invariants` mutation in the guard left a **dangling `except`**, so
+   its "DETECTED" was really a `SyntaxError` — proving nothing about the tests.
+   Spotted because the guard reported `exit=1` with `failures=0`, the signature of a
+   crash rather than an assertion. Replaced with a well-formed mutation.
+
+**Verification:** `test_manage_gate_paths.py` 10 pass / 0 fail; its mutation guard
+6/6 detected with a passing control; CI run #40 green on `38c1c35` including the two
+new steps. `MULTI_AGENT_WORKFLOW.md`'s known-gaps section is struck through with a
+header stating all four are closed, and kept as a list of traps rather than deleted.
+
+**State of the ported protocol:** gaps #22 (invariant fixtures), #23
+(encoder-format claims), #24 (this), #25 (harness exit code) are all `status:done`.
+The remaining open Maith issues are #26 (blocked on maintainer steps 2-3), #28
+(similarity search, claimable), #29/#30 (blocked down the chain), #31 (blocked
+upstream), and #32-#34 (search-loop refinements, deliberately not started per the
+maintainer's priority note).
