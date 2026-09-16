@@ -23,6 +23,8 @@ Run: python3 axiom-rewrite/test_harness.py
 import json
 import shutil
 import sys
+import tempfile
+from argparse import Namespace
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -265,6 +267,116 @@ def test_recording_declines_compression_for_a_failed_transfer():
     print("PASS: test_recording_declines_compression_for_a_failed_transfer")
 
 
+# ---------------------------------------------------------------------------
+# (#37) the batch runner
+# ---------------------------------------------------------------------------
+
+def _stub_discharge(monkeypatch_pass: bool, monkeypatch_ok: list):
+    """Replace Harness.discharge so batch tests need no Lean toolchain.
+
+    Records each label it was asked for in `monkeypatch_ok`, returns a fixed
+    verdict. Keeps the batch tests independent of the toolchain while still
+    exercising the real `run`/`run_one`/`cmd_batch` control flow.
+    """
+    def _fake(self, source, label):
+        monkeypatch_ok.append(label)
+        return monkeypatch_pass, "stub"
+    return _fake
+
+
+def _batch(target: str, ledger: str | None = None, as_json: bool = False) -> int:
+    """Invoke the real `cmd_batch` with a parsed-args stand-in."""
+    return H.cmd_batch(Namespace(batch=target, record=ledger, timeout=600,
+                                 json=as_json))
+
+
+def test_collect_specs_dir_glob_and_file():
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        (d / "a.json").write_text("{}")
+        (d / "b.json").write_text("{}")
+        (d / "note.txt").write_text("x")
+        names = [p.name for p in H.collect_specs(str(d))]
+        assert names == ["a.json", "b.json"], names
+        assert [p.name for p in H.collect_specs(str(d / "a.json"))] == ["a.json"]
+        assert [p.name for p in H.collect_specs(str(d / "*.json"))] == ["a.json", "b.json"]
+        assert H.collect_specs(str(d / "nope")) == [], "missing target must be empty"
+    print("PASS: test_collect_specs_dir_glob_and_file")
+
+
+def test_batch_records_every_spec_and_a_failure_does_not_abort():
+    """A spec that FAILS a gate is data, not an error: batch continues, exit 0."""
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        ledger = d / "candidates.jsonl"
+        # one passing spec, one failing spec -- both must be recorded.
+        shutil.copy(SPECS / "control_valid.json", d / "control.json")
+        shutil.copy(SPECS / "fixture_unit_collapse.json", d / "collapse.json")
+        calls = []
+        orig = H.Harness.discharge
+        H.Harness.discharge = _stub_discharge(True, calls)
+        try:
+            rc = _batch(str(d), str(ledger))
+        finally:
+            H.Harness.discharge = orig
+        assert rc == 0, f"batch exit code should be 0 even with a failing spec, got {rc}"
+        rows = [json.loads(l) for l in ledger.read_text().splitlines()]
+        ids = {r["candidate_id"] for r in rows}
+        assert ids == {"C-CONTROL-VALID", "C-FIXTURE-UNIT-COLLAPSE"}, ids
+        # The control spec has gates 1-3 plus a gate-5 obligation (4 Lean
+        # discharges); the collapse fixture has gates 1-2 only (2). Total 6.
+        assert len(calls) == 6, f"expected 6 Lean discharges, got {len(calls)}"
+    print("PASS: test_batch_records_every_spec_and_a_failure_does_not_abort")
+
+
+def test_batch_missing_target_is_a_usage_error():
+    with tempfile.TemporaryDirectory() as td:
+        rc = _batch(str(Path(td) / "no_such_dir"), None)
+        assert rc == 2, f"a missing batch target must exit 2, got {rc}"
+    print("PASS: test_batch_missing_target_is_a_usage_error")
+
+
+def test_batch_malformed_spec_is_a_usage_error_but_others_still_run():
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        (d / "broken.json").write_text("{ not json")
+        shutil.copy(SPECS / "control_valid.json", d / "good.json")
+        calls = []
+        orig = H.Harness.discharge
+        H.Harness.discharge = _stub_discharge(True, calls)
+        try:
+            rc = _batch(str(d), None)
+        finally:
+            H.Harness.discharge = orig
+        assert rc == 2, f"a malformed spec must exit 2, got {rc}"
+        assert calls, "the good spec must still have been run"
+    print("PASS: test_batch_malformed_spec_is_a_usage_error_but_others_still_run")
+
+
+def test_ledger_is_tracked_with_union_merge():
+    """#37's VCS policy: the ledger is committed and appends are union-merged.
+
+    The policy decision is that `axiom-rewrite/candidates.jsonl` is version-
+    controlled (like `docs/decisions/LOG.md`), and `.gitattributes` gives it
+    `merge=union` so two agents appending between the same commits compose instead
+    of conflicting. This pins both halves, plus that the CLI's default ledger is
+    that same path — a policy that named a different file would be no policy.
+    """
+    ga = REPO / ".gitattributes"
+    assert ga.exists(), ".gitattributes must exist to carry the merge policy"
+    rule = [l for l in ga.read_text().splitlines()
+            if l.split("#")[0].strip().startswith("axiom-rewrite/candidates.jsonl")]
+    assert rule, ".gitattributes must map the ledger"
+    assert "merge=union" in rule[0], f"ledger must be merge=union: {rule[0]!r}"
+
+    import candidates as C
+    assert C.DEFAULT_LEDGER == HERE / "candidates.jsonl", C.DEFAULT_LEDGER
+    # Committed, not gitignored: the reader must be able to verify "we tried this".
+    assert C.DEFAULT_LEDGER.exists(), \
+        "the ledger path must exist in the repo (tracked), not be generated"
+    print("PASS: test_ledger_is_tracked_with_union_merge")
+
+
 def main() -> int:
     tests = [
         test_spec_loads_and_reports_every_gate,
@@ -280,6 +392,12 @@ def main() -> int:
         test_run_records_to_ledger_with_the_ledgers_own_rules,
         test_control_records_as_reusable,
         test_recording_declines_compression_for_a_failed_transfer,
+        # #37: the batch runner
+        test_collect_specs_dir_glob_and_file,
+        test_batch_records_every_spec_and_a_failure_does_not_abort,
+        test_batch_missing_target_is_a_usage_error,
+        test_batch_malformed_spec_is_a_usage_error_but_others_still_run,
+        test_ledger_is_tracked_with_union_merge,
     ]
     passed = failed = 0
     for t in tests:

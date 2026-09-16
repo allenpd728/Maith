@@ -40,9 +40,12 @@ failed gate 3 gets NO compression number, rather than a plausible-looking one.
 
 Usage:
     python3 axiom-rewrite/harness.py run <spec.json> [--json]
+    python3 axiom-rewrite/harness.py batch <dir|glob> [--json] [--record LEDGER]
     python3 axiom-rewrite/harness.py list
 
-Exit codes: 0 all gates the spec ran passed, 1 a gate failed, 2 usage/spec error.
+Exit codes: `run` 0 if all gates the spec ran passed, else 1; `batch` 0 when every
+spec was processed (per-spec verdicts are output, not exit codes) — a gate failure
+is data, not an error; 2 on usage/spec error.
 """
 
 from __future__ import annotations
@@ -241,11 +244,41 @@ def render(spec: Spec, results: list[GateResult]) -> str:
     return "\n".join(lines)
 
 
+def _resolve_spec(name: str) -> Optional[Path]:
+    """Resolve a spec argument to a file: as given, else under `specs/`."""
+    path = Path(name)
+    if path.exists():
+        return path
+    candidate = SPECS_DIR / name
+    return candidate if candidate.exists() else None
+
+
+def run_one(spec: Spec, ledger: Optional[Path], timeout: int) -> tuple[
+        list[GateResult], Optional[str], Optional[str]]:
+    """Run one spec and optionally record it.
+
+    Returns `(results, recorded_candidate_id, record_error)`. A recording failure
+    is returned rather than raised so a batch can continue past one bad record --
+    but it is never silently swallowed (the caller prints it).
+    """
+    h = Harness(timeout=timeout)
+    try:
+        results = h.run(spec)
+    finally:
+        h.cleanup()
+    recorded: Optional[str] = None
+    record_error: Optional[str] = None
+    if ledger is not None:
+        try:
+            recorded = record(spec, results, ledger)
+        except Exception as e:  # LedgerError and friends: surface, do not swallow
+            record_error = str(e)
+    return results, recorded, record_error
+
+
 def cmd_run(args) -> int:
-    path = Path(args.spec)
-    if not path.exists():
-        path = SPECS_DIR / args.spec
-    if not path.exists():
+    path = _resolve_spec(args.spec)
+    if path is None:
         print(f"ERROR: spec not found: {args.spec}", file=sys.stderr)
         return 2
     try:
@@ -254,19 +287,13 @@ def cmd_run(args) -> int:
         print(f"ERROR: malformed spec {path}: {e}", file=sys.stderr)
         return 2
 
-    h = Harness(timeout=args.timeout)
-    try:
-        results = h.run(spec)
-    finally:
-        h.cleanup()
-
-    if args.record:
-        try:
-            cid = record(spec, results, Path(args.record))
-            print(f"recorded {cid} to {args.record}")
-        except Exception as e:  # LedgerError and friends: surface, do not swallow
-            print(f"ERROR: could not record to ledger: {e}", file=sys.stderr)
-            return 2
+    ledger = Path(args.record) if args.record else None
+    results, recorded, record_error = run_one(spec, ledger, args.timeout)
+    if recorded:
+        print(f"recorded {recorded} to {args.record}")
+    if record_error:
+        print(f"ERROR: could not record to ledger: {record_error}", file=sys.stderr)
+        return 2
 
     if args.json:
         print(json.dumps({"spec": spec.candidate_id, "results": [
@@ -290,6 +317,87 @@ def cmd_list(args) -> int:
         except Exception as e:
             print(f"{p.name}  UNREADABLE: {e}")
     return 0
+
+
+def collect_specs(target: str) -> list[Path]:
+    """Resolve a batch target to a sorted list of spec files.
+
+    Accepts a directory (all `*.json` inside), a glob, or a single file. Sorted so
+    a batch is deterministic and a re-run yields the same order.
+    """
+    p = Path(target)
+    if p.is_dir():
+        return sorted(p.glob("*.json"))
+    if any(ch in target for ch in "*?["):
+        # Anchor the glob at its own directory so absolute patterns work too:
+        # `Path("/a/b").glob("*.json")` is the supported form; `Path().glob("/abs/*.json")`
+        # raises "Non-relative patterns are unsupported".
+        wildcard = min((target.index(ch) for ch in "*?[" if ch in target), default=len(target))
+        base = Path(target[:wildcard] or ".").parent
+        pattern = target[len(str(base)) + 1:] if str(base) != "." else target
+        return sorted(base.glob(pattern))
+    return [p] if p.exists() else []
+
+
+def cmd_batch(args) -> int:
+    """Run every spec in a batch and record each outcome (#37).
+
+    One spec per invocation was #29's limit; a candidate batch (#30) wants a loop.
+    Design choices that matter for a batch:
+
+    * A spec that **fails a gate is data, not an error** -- the ledger keeps failed
+      candidates on purpose -- so a failing spec does not abort the batch and the
+      process still exits 0. Only a *usage* problem (no specs found, malformed
+      spec, unrecordable ledger row) is exit 2.
+    * Each spec is run and recorded independently, so one bad record cannot discard
+      the outcomes already written.
+    * Exit 0 when every spec was processed. The per-spec gate verdicts are in the
+      output and the ledger, not in the exit code -- a batch's job is coverage, and
+      "all specs failed" is a legitimate, informative result.
+    """
+    specs = collect_specs(args.batch)
+    if not specs:
+        print(f"ERROR: no specs found for: {args.batch}", file=sys.stderr)
+        return 2
+
+    ledger = Path(args.record) if args.record else None
+    rows = []
+    usage_errors = 0
+    for path in specs:
+        try:
+            spec = Spec.load(path)
+        except (KeyError, json.JSONDecodeError) as e:
+            print(f"ERROR: malformed spec {path}: {e}", file=sys.stderr)
+            usage_errors += 1
+            continue
+        results, recorded, record_error = run_one(spec, ledger, args.timeout)
+        if record_error:
+            print(f"ERROR: could not record {spec.candidate_id}: {record_error}",
+                  file=sys.stderr)
+            usage_errors += 1
+        summary = Harness.summary(results)
+        rows.append({
+            "spec": spec.candidate_id,
+            "file": path.name,
+            "summary": summary,
+            "recorded": recorded,
+        })
+        if not args.json:
+            print(render(spec, results))
+            print()
+
+    if args.json:
+        print(json.dumps({"batch": args.batch, "n": len(rows),
+                          "runs": rows}, indent=2))
+    else:
+        passed = sum(1 for r in rows if r["summary"]["all_passed"])
+        print(f"batch: {len(rows)} spec(s) processed, {passed} passed all gates, "
+              f"{len(rows) - passed} failed at least one"
+              + (f", {usage_errors} usage error(s)" if usage_errors else ""))
+        if ledger:
+            print(f"recorded to {ledger}")
+
+    return 2 if usage_errors else 0
 
 
 def candidate_from_run(spec: Spec, results: list[GateResult],
@@ -360,6 +468,16 @@ def main() -> int:
                             "recording, so a dry run changes nothing.")
     p_run.set_defaults(func=cmd_run)
     sub.add_parser("list", help="list available specs").set_defaults(func=cmd_list)
+    p_batch = sub.add_parser(
+        "batch", help="run every spec in a directory/glob and record each (#37)")
+    p_batch.add_argument("batch", help="a directory of specs, a glob, or one file")
+    p_batch.add_argument("--json", action="store_true")
+    p_batch.add_argument("--timeout", type=int, default=600)
+    p_batch.add_argument("--record", default=None, metavar="LEDGER",
+                         help="append each outcome to this ledger (e.g. "
+                              "axiom-rewrite/candidates.jsonl). Defaults to not "
+                              "recording, so a dry run changes nothing.")
+    p_batch.set_defaults(func=cmd_batch)
     args = ap.parse_args()
     return args.func(args)
 
