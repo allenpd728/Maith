@@ -2809,3 +2809,78 @@ The remaining open Maith issues are #26 (blocked on maintainer steps 2-3), #28
 (similarity search, claimable), #29/#30 (blocked down the chain), #31 (blocked
 upstream), and #32-#34 (search-loop refinements, deliberately not started per the
 maintainer's priority note).
+
+---
+
+### DEC-048 — Structural similarity over IR graphs, phase 1 (#28); mutation-guard bytecode hazard fixed (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `python/structural_similarity.py`; `#28`; all five mutation guards
+
+**Decision:** `#28` phase 1 lands — canonical structural fingerprints over IR graphs
+plus a documented graded similarity for ranking. `Maith/GraphEquivalence.lean` is
+exact *equality* for testing; this is *similarity* for candidate discovery.
+Phase 2 (candidate dedup) stays blocked, per the issue's own addendum.
+
+**What "similar" means, decided explicitly.** Three candidate notions: exact identity
+(trivial, already covered), alpha-equivalence modulo naming/ordering (decidable —
+implemented), and semantic similarity (needs human judgement, no ground truth). Only
+the middle one is claimed. Per `AXIOM_DISCOVERY.md`'s filter-not-generator constraint,
+this ranks and prunes; it never asserts two graphs *mean* the same thing.
+
+**Fingerprint invariance (presentation) vs sensitivity (content).** Invariant to
+declaration name, bound-scope strings, positional indices, ordering, and polarity.
+Sensitive to row kinds, relation direction and operator, attribute keys/values,
+operation identity and arity, and **free-variable names**.
+
+**A design boundary pinned by a test.** `ENCODER_FORMAT.md` calls free-variable names
+(`Eq`, `HMul.hMul`) "semantically stable… real vocab", so they are content: changing
+one must **not** match. My first fixture asserted the opposite ("rename `Eq` to `Iff`,
+must still match") and failed — **the code was right and the fixture was wrong**.
+`test_free_variable_name_change_must_not_match` records the decision so it is not
+later "fixed" into a regression.
+
+**The `--per-operator` constraint, now measured.** The module *errors* on a
+module-bucketed corpus rather than warning. On two unrelated real graphs: **0.18**
+per-operator vs **0.54** module-bucketed — ~3× inflation from losing operator
+identity alone. The silent quality loss `#28`'s addendum warned about is now visible.
+
+**Real corpus results (4,029 graphs):** 3,167 distinct fingerprints, 539 shared by
+more than one graph, 1,401 graphs in a shared group. Largest groups are genuine
+families (`CancelMonoid`/`CommMonoid`/`SubNegMonoid` at 51×).
+
+**Three gaps found by mutation testing, all in my own fixtures:**
+
+1. **Relation direction** unprotected — the fixture varied only the *operator*, so
+   collapsing `src`/`tgt` left every test passing.
+2. **Operation arity** unprotected — the existing fixture coincidentally also added
+   an entity, so it did not isolate arity.
+3. **Only detectable in the CI condition** — with `Corpus/corpus.jsonl` absent (it is
+   gitignored), the "operation identity ignored" mutation went undetected because its
+   only catcher was corpus-dependent. Added synthetic fixtures so the guard is
+   corpus-independent. A guard whose detection depends on a gitignored artifact is
+   not a guard.
+
+**A serious hazard found and fixed in the same change set: mutation guards could
+leave stale bytecode, corrupting the module under test.** A guard writes a *mutated*
+module to disk, runs tests, then restores the source — but the mutated build's `.pyc`
+survived the restore and was loaded by **later** processes. `axiom-rewrite` loaded
+`open("w")` instead of `open("a")` and *truncated the ledger*. It surfaced as
+`test_candidates.py` failing 3 tests hours after passing, with `git diff` showing no
+source change. Proven by disassembling the cached bytecode (`LOAD_CONST 'w'`).
+
+All five guards now purge the target module's bytecode after restoring, via a shared
+`_purge_bytecode` helper. Verified: all five pass, leave no stale `.pyc`, and
+`test_candidates.py` passes *after* the guards run. Also fixed a false-GAP in the
+`manage.py` guard (it mutated only `cmd_invariants`, leaving `cmd_gate`'s
+runs-resolution intact, so the CLI still errored and the guard misreported).
+
+**Verification:** 19 structural-similarity tests pass, verified corpus-independent by
+moving `Corpus/corpus.jsonl` away (the CI condition); mutation guard 9/9 detected with
+and without the corpus; full local CI suite 17/17; CI run #43 green on `1979702` with
+the two new steps passing.
+
+**Also:** `#29` unblocked (`status:available`) now that `#28` is done, per protocol
+step 7. Noted on it that only phase 1 of `#28` landed, so phase 2's dependency on
+elaborated φ remains — arguably `#29` territory.
