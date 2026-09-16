@@ -2561,3 +2561,69 @@ consistent with the IR gates' expectations.
 `lake build PleaNP.Circuits.Basic` (8558 jobs) and `lake build tests` (8564 jobs)
 green with the root file present; PleaNP hygiene/vacuity/unicode gates clean on all
 changed paths; Maith tree clean after reverting the temporary dependency.
+
+---
+
+### DEC-044 — PleaNP CI enabled on dev; two environment-shaped defects found; #105 open (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** PleaNP CI coverage; implications for the Maith-side PleaNP dependency
+
+**Decision:** PleaNP now runs CI on `dev` pushes (not only `main`), and `dev` is
+green. Done because `dev` was 116 commits ahead of `main` with the build/test
+workflow **never having run on it** — so any defect accumulated silently.
+
+**Result: CI run #99 on `dev` (`7e5c08a`) — 40/40 steps, 0 skipped.**
+`main` remains triggered; PRs to `main` remain the review gate.
+
+**The first run failed, and that is the useful part.** Run #98 (`7eba75c`) failed
+at the Gate 8 unicode step with **645 violations** — every one inside
+`lean/.lake/packages/{mathlib,aesop,batteries}` (9341 vendored `.lean` files).
+`unicode_scan.scan()` walked with `rglob("*")` and had no vendored-tree exclusion,
+so it scanned upstream code as if it were PleaNP's.
+
+**That defect was invisible to every local check**, including a full 37-step local
+rehearsal run earlier in this same session that reported the step PASS. `.lake` does
+not exist until `lake exe cache get` runs; the scan had nothing upstream to find.
+A real CI checkout materialises it. Fixed in `7e5c08a`, verified both ways against a
+tree with `.lake` actually present (without the exclusion: 645 violations; with it:
+clean, exit 0); `unicode_scan`'s 21 unit tests still pass.
+
+**A second, structurally-disqualifying defect was found in the Galaxy regen smoke
+step** (filed as PleaNP #103, fixed). `metadata.repo` embedded an absolute path
+(`str(repo_root)`), so `cmp` could never match in CI regardless of staleness — the
+step was *incapable of passing* there. Made location-independent; verified
+byte-identical when regenerated from a different checkout directory. Its stale
+NaturalProofs row was fixed in the same pass.
+
+**Both defects were environment-shaped** — one path-dependent, one
+vendored-tree-dependent — and neither was reachable from a clean local tree. The
+lesson recorded upstream: a local rehearsal is not CI, and to rehearse meaningfully
+the environment differences must be reproduced deliberately (materialise `.lake`,
+run from a CI-like path), not assumed away.
+
+**Filed and still open: PleaNP #105** — `main` and `dev` have **diverged**. `main`
+carries 4 commits not in `dev` (PRs #99/#100: README "At a glance" + agentic-AI
+disclosure), both touching only `README.md`. Until back-merged, a `dev` -> `main`
+merge is a merge of divergent lines and those README changes could be lost. Same
+class of divergence as this repo's DEC-036.
+
+**Implications for Maith (relevant to #26 step 4):**
+
+- **The PleaNP dependency is safer than it was.** `dev` now has CI on push, so a
+  break introduced upstream is visible rather than silent. This does not remove the
+  need to pin a SHA (DEC-043) — CI greenness is not a stability guarantee — but it
+  materially lowers the risk of consuming a broken revision.
+- **`main` is not branch-protected**, so PleaNP's review-before-merge discipline is
+  convention, not enforcement. Recorded upstream; not a Maith decision.
+
+**Method note (recorded because it cost a cycle).** The earlier local rehearsal
+reported "36/37, effectively green" and I relayed that as the expected first-run
+result. The first genuine run was red. The doc's caveat ("a local reproduction is
+not CI") was already written; applying it is the hard part. Concretely: reproduce
+the environment before believing a rehearsal.
+
+**Verification:** CI #99 green on `dev` at `7e5c08a` (40/40 steps, verified by
+enumerating job steps rather than reading the run conclusion); PleaNP #103, #104,
+#106 closed with evidence; #105 filed and open.
