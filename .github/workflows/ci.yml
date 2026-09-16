@@ -151,3 +151,12 @@ jobs:
 
       - name: Gate path resolution not vacuous (mutation check)
         run: python3 python/test_manage_gate_paths_guard.py
+
+      # #28 phase 1: structural similarity over IR graphs. The real-corpus tests
+      # SKIP when Corpus/corpus.jsonl is absent (it is gitignored); the synthetic
+      # tests and the mutation guard always run.
+      - name: Structural similarity tests
+        run: python3 python/test_structural_similarity.py
+
+      - name: Structural similarity not vacuous (mutation check)
+        run: python3 python/test_structural_similarity_guard.py

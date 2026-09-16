@@ -62,8 +62,8 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
 | **#22–#25** | Four gate-model gaps (`priority:high`) | #22, #23, #25 **done**; **#24** `status:available` (the last one) |
 | **#27** | Candidate ledger + coverage-map tooling (`axiom-rewrite/`) | ✅ **done** |
 | **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | **(a) decided**; steps 1-3 unblocked, formalization blocked on PleaNP #102 |
-| **#28** | Structural similarity search (does not exist yet — real work) | **`status:available`** — phase 2 (candidate dedup) blocked |
-| **#29** | Shared metaprogramming harness (spec-in, gates-out) | blocked by #28 |
+| **#28** | Structural similarity search | ✅ **done (phase 1)**; phase 2 (candidate dedup) still blocked on #29 + corpus format |
+| **#29** | Shared metaprogramming harness (spec-in, gates-out) | **`status:available`** (unblocked by #28) |
 | **#30** | First candidate batch, log all outcomes | blocked by #26, #27, #29 |
 | **#31** | Conservativity corpus (corpus plan Part 1) | **blocked** upstream (`status:blocked-needs-input`) |
 | **#32–#34** | Search/proposal refinements (failure-mode enum, failure retrieval, gate 6) | filed 2026-09-16; **explicitly not the current priority** — do not reorder to start them |
@@ -262,6 +262,13 @@ with a guard that disables the check and asserts it can fail:
 `python/test_mutation_guard.py` (#22), `python/test_invariants_8_9_guard.py` (#23 —
 reports DETECTED / REDUNDANT / GAP so defence-in-depth is not mistaken for failure),
 `axiom-rewrite/test_mutation_guard.py` (#27). Add one when you add a check.
+
+> **Guards must purge bytecode after restoring.** A guard writes a *mutated*
+> module to disk and restores it; the mutated `.pyc` could otherwise be loaded by
+> a *later* process. That once corrupted `axiom-rewrite/candidates.py`
+> (`open("w")` instead of `"a"`, truncating the ledger) and surfaced as
+> unrelated test failures hours later with a clean `git diff`. All five guards now
+> call `_purge_bytecode(SRC)` after restoring — copy that pattern.
 
 ```bash
 # bootstrap (any sandbox/CI runner; no bespoke machine)
