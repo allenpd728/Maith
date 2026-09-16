@@ -186,6 +186,13 @@ passes (DeepSeek + a second LLM pass) need no Lean, and statement formalization
 needs only the circuit-model definitions that already exist. Part 2 should
 proceed first (issue #26).
 
+> **Update 2026-09-16:** the Part 2 list is drafted — see
+> [`TRANSFER_TARGETS.md`](TRANSFER_TARGETS.md) (T1–T10 plus N1/N2 screening
+> results). Research pass executed with web research (Tavily) because DeepSeek was
+> not available; **step 2 filtering and step 3 cross-check remain for the
+> maintainer**. Formalization (step 4) is blocked on PleaNP #102, and two of the
+> targets (T8/T9, proof complexity) likely need substrate PleaNP does not have.
+
 **Part 2 constraint — RESOLVED: formalize in Maith (option (a)), 2026-09-16.**
 
 Maith extracts IR from elaborated `Expr` inside a running Lean process, and
