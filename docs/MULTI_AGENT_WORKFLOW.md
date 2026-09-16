@@ -206,6 +206,12 @@ has been updated since the file was written; if resolved, rename it to
 
 ## Known gaps in the current gate model (agents must know these)
 
+> **All four are now closed (2026-09-16).** #22, #23, #24, #25 are `status:done`.
+> They are kept below, struck through, rather than deleted — each records a
+> specific way a "green check" was weaker than it looked, and the *reason* it was
+> weak is worth retaining even after the fix. Read them as a list of traps, not as
+> outstanding work.
+
 Porting the protocol surfaced places where a "green check" is weaker than it
 looks. Per §Task definition ("one task = one signal"), these must be closed
 before the corresponding station can be trusted as done-evidence. Filed as
@@ -242,10 +248,25 @@ before the corresponding station can be trusted as done-evidence. Filed as
    string-absence), and the IR grammar applies to IR-token variants only
    (B/C/B-small are BPE, `flat` is the SLOT ablation — checking them against it
    produced ~113k spurious reports on the first attempt).
-3. **Repository-wide gate consistency.** (#24) `manage.py gate` takes a `--datasets`
-   path; agents must confirm it operates on the intended versioned directory
-   (see `docs/experiments/RUN_REGISTRY.md` contamination rules) rather than
-   defaulting silently.
+3. ~~**Repository-wide gate consistency.**~~ **RESOLVED (#24, 2026-09-16).**
+   `manage.py gate` and `manage.py invariants` now resolve every path argument
+   through one `resolve_repo_path` helper: a relative path anchors at **REPO**,
+   not the caller's cwd; a missing directory is a **hard error (exit 2) before any
+   gate runs**; and the gate header prints the resolved absolute path plus the
+   tree's provenance (`representation_id`, `encoderVersion`, `seed`,
+   train/eval counts) so a transcript is self-evidencing.
+
+   The original defect was subtler than "a silent default": the *default* was
+   correct, but a user-supplied relative `--datasets datasets` was used verbatim
+   and resolved against cwd — and `cmd_invariants` used bare `"datasets"` as both
+   default and override. Tests + mutation guard in
+   `python/test_manage_gate_paths*.py` (10 tests; 6/6 mutations detected).
+
+   (Two of my own mistakes while fixing this, recorded because the class recurs:
+   the first `describe_dataset_dir` read `train_manifest.json`, which is a
+   per-example **list**, not a summary, and printed `manifest=unreadable`; and the
+   first mutation for `cmd_invariants` left a dangling `except`, so the guard was
+   detecting a SyntaxError rather than the behaviour change. Both fixed.)
 4. ~~**The Lean test harness exits 0 on failure.**~~ **RESOLVED (#25,
    2026-09-16).** The harness now sums per-suite unexpected failures and exits
    non-zero; the CI `lean` job is a hard gate with no grep workaround.

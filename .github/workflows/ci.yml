@@ -142,3 +142,12 @@ jobs:
 
       - name: Candidate ledger validation not vacuous (mutation check)
         run: python3 axiom-rewrite/test_mutation_guard.py
+
+      # #24: manage.py gate/invariants path resolution. Pins that a relative
+      # --datasets resolves against REPO (not the caller's cwd), that a missing
+      # dir fails early, and that the gate header shows the resolved tree.
+      - name: Gate path resolution tests
+        run: python3 python/test_manage_gate_paths.py
+
+      - name: Gate path resolution not vacuous (mutation check)
+        run: python3 python/test_manage_gate_paths_guard.py
