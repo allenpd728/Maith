@@ -59,13 +59,15 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
 
 | Issue | Task | State |
 |---|---|---|
-| **#22–#25** | Four gate-model gaps (`priority:high`) | **`status:available`** |
-| **#27** | Candidate ledger + coverage-map tooling (`axiom-rewrite/`) | **`status:available`** |
-| **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | unlabeled — **(a) decided**; step 4 blocked on PleaNP #102 |
-| **#28** | Structural similarity search (does not exist yet — real work) | blocked by #27 |
+| **#22–#25** | Four gate-model gaps (`priority:high`) | #22, #25 **done**; #23, #24 **`status:available`** |
+| **#27** | Candidate ledger + coverage-map tooling (`axiom-rewrite/`) | ✅ **done** |
+| **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | **(a) decided**; steps 1-3 unblocked, formalization blocked on PleaNP #102 |
+| **#28** | Structural similarity search (does not exist yet — real work) | **`status:available`** — phase 2 (candidate dedup) blocked |
 | **#29** | Shared metaprogramming harness (spec-in, gates-out) | blocked by #28 |
 | **#30** | First candidate batch, log all outcomes | blocked by #26, #27, #29 |
 | **#31** | Conservativity corpus (corpus plan Part 1) | **blocked** upstream (`status:blocked-needs-input`) |
+| **#32–#34** | Search/proposal refinements (failure-mode enum, failure retrieval, gate 6) | filed 2026-09-16; **explicitly not the current priority** — do not reorder to start them |
+| — | PleaNP **#102** (root lakefile) | external blocker for #26's formalization step |
 
 CI is green on both `main` and `dev` (3 jobs: Lean build+test, Tier-1 gates,
 stdlib-only Python tests). `main` and `dev` are content-identical.
@@ -204,6 +206,22 @@ holds that blocker.
   fail (see the four filed gaps, #22–#25).
 
 ## Commands
+
+> **Token gotcha (2026-09-16).** `ALL_REPOs_GH_TOKEN` has **`repo` scope only** —
+> pushing any change under `.github/workflows/` fails with
+> `refusing to allow a Personal Access Token to create or update workflow ... without
+> workflow scope`. `GITHUB_TOKEN` **does** have workflow scope (and admin on this
+> repo). So when a commit touches `.github/workflows/`:
+>
+> ```bash
+> git remote set-url origin "https://${GITHUB_TOKEN}@github.com/allenpd728/Maith.git"
+> git push origin dev
+> git remote set-url origin "https://${ALL_REPOs_GH_TOKEN}@github.com/allenpd728/Maith.git"  # restore
+> ```
+>
+> Both tokens authenticate as the same login, so this changes nothing else. A push
+> that appears to hang asking for a password means the remote URL lost its token —
+> re-set it rather than typing anything.
 
 ```bash
 # bootstrap (any sandbox/CI runner; no bespoke machine)
