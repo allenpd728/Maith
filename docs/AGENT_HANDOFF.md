@@ -64,6 +64,40 @@ The human maintainer is **not** Lean-literate and will not read Lean code — se
 | **#26** | Circuit-complexity **transfer-target list** (corpus plan Part 2) | **(a) decided**; steps 1-3 unblocked, formalization blocked on PleaNP #102 |
 | **#28** | Structural similarity search | ✅ **done (phase 1)**; phase 2 (candidate dedup) still blocked on #29 + corpus format |
 | **#29** | Shared metaprogramming harness (spec-in, gates-out) | **`status:available`** (unblocked by #28) |
+
+### #29 starter (so the next session does not re-derive it)
+
+**Scope split, worth knowing before claiming.** The DoD's fixture is a φ that passes
+gate 1 and fails gate 2 (a Unit-collapse: vacuously a homomorphism by mapping
+everything to `Unit`). That is statable over abstract types, so **the DoD is
+satisfiable without importing PleaNP**. But the harness's *purpose* — running real
+candidates from the ledger, e.g. φ over circuit-complexity objects — does need
+`PleaNP.Circuits`, which needs the permanent Maith-side dependency deliberately
+deferred in DEC-043. So: do not assume you need the dependency to close the DoD, and
+do not quietly add it either. Same shape as #28 (synthetic fixtures always run; real
+data skipped when absent).
+
+**Expected shape:**
+
+- A spec format (one candidate φ: target structure, domain, φ as Lean source,
+  provenance) — reuse `axiom-rewrite/candidates.py`'s record shape rather than
+  inventing a second one.
+- Gate dispatch 1→5, each emitting *the Lean obligation it discharged*.
+- A visible ordering rule: gates 1-3 are real obligations; gate 4 **refuses** to
+  record compression unless gate 3 passed (the ledger already enforces this on
+  append — `axiom-rewrite/test_candidates.py::test_compression_requires_gate3`);
+  gate 5 is the breadth check.
+- `lake build` integration for the obligation check, and its output in the done
+  comment (the DoD requires it).
+
+**Budget warning.** The DoD wants a real `lake build` result, so the harness must
+elaborate. That means the Lean toolchain — and this sandbox **loses it between
+sessions** (elan install + `lake exe cache get` ≈ 5 min before any Lean work).
+Budget for that, and see `docs/TOOLCHAIN_AND_CI.md` for the bootstrap.
+
+**Reusable pattern from the guards.** Whatever check the harness adds, ship a
+mutation guard with it that purges bytecode after restoring (see the warning above
+in §Commands).
 | **#30** | First candidate batch, log all outcomes | blocked by #26, #27, #29 |
 | **#31** | Conservativity corpus (corpus plan Part 1) | **blocked** upstream (`status:blocked-needs-input`) |
 | **#32–#34** | Search/proposal refinements (failure-mode enum, failure retrieval, gate 6) | filed 2026-09-16; **explicitly not the current priority** — do not reorder to start them |
