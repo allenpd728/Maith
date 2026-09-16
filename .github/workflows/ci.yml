@@ -160,3 +160,8 @@ jobs:
 
       - name: Structural similarity not vacuous (mutation check)
         run: python3 python/test_structural_similarity_guard.py
+
+      # #35 (python half): the gate's missing-corpus message names what IS present
+      # and its mode, instead of implying nothing is there.
+      - name: Missing-corpus diagnostic tests
+        run: python3 python/test_ir_build_missing_corpus.py
