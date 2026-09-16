@@ -211,16 +211,21 @@ looks. Per §Task definition ("one task = one signal"), these must be closed
 before the corresponding station can be trusted as done-evidence. Filed as
 `priority:high` tasks — do not paper over them:
 
-1. **Most `must_match` fields are declared but unexercised.** (#22)
-   `check_invariants.py` requires `representation_id`, `seed`, `train_examples`,
-   `eval_examples`, and `epochs` to match for a comparison to be valid, but
-   `test_invariants.py` contains only an **epoch**-mismatch fixture
-   (`test_comparison_validity_catches_epoch_mismatch`). A mismatch in `seed`,
-   `train_examples`, `eval_examples`, or `representation_id` has no failing
-   fixture, so those constraints are asserted by code nobody has proven can
-   fail. **One fixture per `must_match` field** — each asserting the check
-   reports a failure — closes this. Until then, treat an "Invariant 5 passed"
-   claim as covering only the epoch axis.
+1. ~~**Most `must_match` fields are declared but unexercised.**~~
+   **RESOLVED (#22, 2026-09-16).** `test_invariants.py` now has a table-driven
+   fixture per `must_match` field per claim
+   (`test_comparison_validity_catches_each_must_match_field`), each asserting the
+   checker fires *and* names the field, with an unmutated control per claim. The
+   `must_differ` direction is covered too
+   (`test_comparison_validity_catches_must_differ_violation`), and the constraint
+   set is pinned **per claim** in both directions
+   (`test_comparison_claims_all_constraints_exercised`) so a field cannot be
+   dropped from one claim while surviving in another — mutation testing caught
+   that my first, union-level pin missed exactly that. Guarded by
+   `python/test_mutation_guard.py`.
+
+   An "Invariant 5 passed" claim can now be read as covering all declared axes,
+   not just `epochs`.
 2. ~~**No invariant covers losslessly-verifiable representation claims.**~~
    **RESOLVED (#23, 2026-09-16).** `ENCODER_FORMAT.md`'s testable claims are now
    **Invariant 8** (`check_grammar_arity`: graph envelope, row headers, row
