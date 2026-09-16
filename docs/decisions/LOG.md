@@ -3051,3 +3051,63 @@ contradicts every doc that already names `corpus.per_operator.jsonl`.
 nothing tested the contract. The cross-language test binds the Lean mapping to the
 Python defaults, so renaming one side cannot silently break the gate again.
 
+### DEC-052 — Candidate batch runner + ledger VCS policy (#37) (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `axiom-rewrite/harness.py`, `axiom-rewrite/test_harness.py`,
+`axiom-rewrite/README.md`, `.gitattributes` (new),
+`axiom-rewrite/candidates.jsonl` (now tracked).
+
+**Decision:** #29's harness ran **one spec per invocation** and wrote nothing on
+its own; the #29 follow-up added the ledger bridge but still one spec at a time.
+A candidate batch (#30) needs a loop, and the ledger needed a decided VCS status
+before #30 produces entries. Both are settled here.
+
+**1. Batch runner.** `harness.py batch <dir|glob> [--json] [--record LEDGER]`
+runs every spec in a target and records each outcome. Three deliberate choices:
+
+- A spec that **fails a gate is data, not an error** — the ledger keeps failed
+  candidates on purpose — so a failing spec does not abort the batch and the
+  process exits 0. Only a *usage* problem exits 2 (no specs found, malformed spec,
+  unrecordable row). A batch's job is coverage; "all specs failed" is a legitimate
+  result, so per-spec verdicts live in the output and the ledger, not the exit code.
+- Each spec is run and recorded **independently**, so one bad record cannot discard
+  outcomes already written.
+- `collect_specs` accepts a directory, a glob (absolute or relative), or a file,
+  sorted for determinism.
+
+`cmd_run` was refactored onto a shared `run_one`, so the single-spec and batch
+paths cannot drift apart.
+
+**2. Ledger VCS policy: commit it, with `merge=union`.** `axiom-rewrite/candidates.jsonl`
+is now tracked (it existed only as a local artifact). Rationale: it is append-only
+history of the same kind as `docs/decisions/LOG.md` (committed), and #30's results
+are a reproducibility claim — an uncommitted ledger makes "we tried this"
+unverifiable for a reader. The repo runs parallel agents, so two can append between
+the same two commits; `.gitattributes` gives the ledger `merge=union` (a git
+builtin), and concurrent appends compose instead of conflicting on the final line.
+Order is then not meaningful, which is fine: the ledger is read by `candidate_id`
+and `coverage` does not depend on position. Verified by simulating two concurrent
+appends across branches — both rows survived the merge.
+
+The file is committed **empty**, so the tracked path exists before #30 writes to it
+(#30 owns producing entries; this issue owns the mechanism).
+
+**Verification:**
+- `axiom-rewrite/test_harness.py` 18/18 (5 new: `collect_specs` dir/glob/file,
+  batch records every spec and a gate failure does not abort, missing target exits
+  2, malformed spec exits 2 while good specs still run, ledger is tracked with
+  `merge=union`). The batch tests stub `Harness.discharge`, so they exercise the
+  real control flow without needing the toolchain.
+- Non-vacuity: reverting the exit-code semantics to "1 on any failure" fails the
+  batch test; the union-merge claim is backed by an actual two-branch merge.
+- Real Lean run: `batch axiom-rewrite/specs --record /tmp/...` processed 3 specs,
+  recorded 3 rows (`passed_gate_5`, `failed_gate_3`, `failed_gate_2`), exit 0.
+- Ledger tests 16/16, mutation guard 7/7, Tier-1 gates clean.
+
+**Rationale:** #30 is now one command away from a recorded batch, and the ledger's
+status is a decision rather than a default. The exit-code choice is the subtle part:
+encoding "some candidate failed" in a batch's exit status would make normal,
+expected search outcomes look like tool failures.
+

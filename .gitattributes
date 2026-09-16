@@ -1,0 +1,11 @@
+# Append-only data files: concurrent appends must not conflict.
+#
+# `axiom-rewrite/candidates.jsonl` is the candidate ledger — the same kind of
+# artifact as `docs/decisions/LOG.md` (append-only history) and is committed for
+# the same reason: a reader must be able to verify "we tried this" without
+# trusting a local file. Under the repo's parallel-agent model two agents can
+# append between the same two commits, and a normal 3-way merge would conflict on
+# the final line. `merge=union` (a git builtin) keeps both sides' added lines, so
+# parallel appends compose instead of colliding. Order within the file is then
+# whatever each side wrote; the ledger is read by `candidate_id`, not position.
+axiom-rewrite/candidates.jsonl merge=union

@@ -1,24 +1,34 @@
-# `axiom-rewrite/` — candidate ledger and coverage map
+# `axiom-rewrite/` — candidate ledger, coverage map, and gate harness
 
 Tooling for the axiom-discovery track (`docs/experiments/AXIOM_DISCOVERY.md`).
-Issue #27.
+Issues #27 (ledger), #29 (harness), #37 (batch runner + ledger VCS policy).
 
-> **Scope.** This directory currently holds **only the tracking data structures** —
-> the ledger and the derived coverage map. The shared **metaprogramming harness**
-> (the thing that runs a candidate through the five gates) is issue #29 and is
-> *not* here. Nothing in this directory elaborates Lean or validates a candidate;
-> it records what was tried and what happened.
+> **Scope.** This directory holds the **tracking data structures** (the ledger and
+> the derived coverage map) *and* the **five-gate harness** that runs a candidate
+> through the gates (`harness.py`). It does not *propose* candidates — that is
+> #30/#33 — and it never asserts that a candidate is interesting: it records what
+> was tried and what the kernel discharged.
 
 ## The two structures
 
 | Thing | Where | Nature |
 |---|---|---|
-| **Candidate ledger** | `candidates.jsonl` | Append-only. One record per candidate φ. Failed candidates are **kept** — the search history is itself data (which regions of the space are exhausted). |
+| **Candidate ledger** | `candidates.jsonl` | Append-only. One record per candidate φ. Failed candidates are **kept** — the search history is itself data (which regions of the space are exhausted). **Committed to git** (see §Ledger VCS policy). |
 | **Coverage map** | *derived* | Computed from the ledger on every read, never stored. Per benchmark declaration: how many candidates were tried and how they fared. |
 
 The coverage map is deliberately **not** a stored file. A second copy would be a
 second source of truth that can drift; the ledger is append-only, so deriving is
 cheap and always consistent.
+
+## Ledger VCS policy (decided in #37)
+
+The ledger **is version-controlled**, like `docs/decisions/LOG.md`, and for the
+same reason: a reader must be able to verify "we tried this" from the repo rather
+than trusting a local file. Because the repo runs parallel agents, two of them can
+append between the same two commits — so `.gitattributes` gives the ledger
+`merge=union`, and concurrent appends compose instead of conflicting on the last
+line. Order within the file is then not meaningful; the ledger is read by
+`candidate_id`, and `read_ledger`/`coverage` do not depend on position.
 
 ## Record schema
 
@@ -60,6 +70,30 @@ The tests for these rules are themselves mutation-tested
 it. A check that cannot fail is not a check.
 
 ## Usage
+
+### The five-gate harness (`harness.py`)
+
+A candidate is a **spec** (JSON, one per candidate, in `specs/`): a prelude plus one
+Lean obligation per gate. The harness elaborates each obligation with
+`lake env lean` under `warningAsError`, so a `sorry` fails rather than passes.
+
+```bash
+python3 axiom-rewrite/harness.py list                 # available specs
+python3 axiom-rewrite/harness.py run control_valid.json
+
+# A candidate batch (#30): one command over a directory or glob, recording each.
+python3 axiom-rewrite/harness.py batch axiom-rewrite/specs \
+    --record axiom-rewrite/candidates.jsonl
+
+# Or one spec, recording it:
+python3 axiom-rewrite/harness.py run control_valid.json --record axiom-rewrite/candidates.jsonl
+```
+
+A spec that **fails a gate is data, not an error**: `batch` records it and keeps
+going (exit 0). Only a usage problem — no specs found, a malformed spec, an
+unrecordable row — exits 2. `run` exits 1 when its own spec fails a gate.
+
+### The ledger CLI (`candidates.py`)
 
 ```bash
 # Record a candidate that got through the transfer gate.
