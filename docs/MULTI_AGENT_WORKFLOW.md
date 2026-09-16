@@ -221,10 +221,22 @@ before the corresponding station can be trusted as done-evidence. Filed as
    fail. **One fixture per `must_match` field** — each asserting the check
    reports a failure — closes this. Until then, treat an "Invariant 5 passed"
    claim as covering only the epoch axis.
-2. **No invariant covers losslessly-verifiable representation claims.** (#23) The
-   correctness claims in `docs/reference/ENCODER_FORMAT.md` (e.g. injectivity)
-   should become named invariants with a fixture per claim, so they are graded by
-   a check that can fail rather than by prose.
+2. ~~**No invariant covers losslessly-verifiable representation claims.**~~
+   **RESOLVED (#23, 2026-09-16).** `ENCODER_FORMAT.md`'s testable claims are now
+   **Invariant 8** (`check_grammar_arity`: graph envelope, row headers, row
+   arities, `IN_N`/`OUT_N` caps) and **Invariant 9** (`check_c1_polarity_absence`,
+   role-based). Each has fixtures that can fail, and the doc carries a
+   claim → invariant → fixture table plus an explicit list of claims that are
+   *deliberately* not machine-checked (rationale prose, historical measurements,
+   corpus statistics that would drift). Mutation-guarded:
+   `python/test_invariants_8_9_guard.py` reports 6 detected / 3 redundant /
+   **0 gaps**.
+
+   Two traps worth knowing before extending this: `neg` is both the polarity
+   marker and the arithmetic op token (so C1 must be role-based, not
+   string-absence), and the IR grammar applies to IR-token variants only
+   (B/C/B-small are BPE, `flat` is the SLOT ablation — checking them against it
+   produced ~113k spurious reports on the first attempt).
 3. **Repository-wide gate consistency.** (#24) `manage.py gate` takes a `--datasets`
    path; agents must confirm it operates on the intended versioned directory
    (see `docs/experiments/RUN_REGISTRY.md` contamination rules) rather than
