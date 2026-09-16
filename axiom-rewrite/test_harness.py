@@ -191,6 +191,80 @@ def test_true_also_does_not_pass_when_obligation_is_false():
     print("PASS: test_true_also_does_not_pass_when_obligation_is_false")
 
 
+def test_run_records_to_ledger_with_the_ledgers_own_rules():
+    """The harness -> ledger bridge (the gap left when #29 first closed).
+
+    Records the DoD fixture and asserts the ledger's rules held: no compression for
+    a candidate that did not pass gate 3, and not reusable without gate 5.
+    """
+    if not LEAN_AVAILABLE:
+        print("SKIP: test_run_records_to_ledger_with_the_ledgers_own_rules (no lake)")
+        return
+    import tempfile, json as _json
+    sys.path.insert(0, str(HERE))
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "candidates.jsonl"
+        spec = H.Spec.load(SPECS / "fixture_unit_collapse.json")
+        h = H.Harness(timeout=600)
+        try:
+            results = h.run(spec)
+        finally:
+            h.cleanup()
+        H.record(spec, results, ledger)
+
+        rec = _json.loads(ledger.read_text().strip())
+        assert rec["gates"]["2"] == "fail", rec["gates"]
+        assert rec["compression"] is None, \
+            f"compression recorded for a candidate that failed gate 3: {rec['compression']}"
+        assert rec["reusable"] is False, "marked reusable without gate 5"
+        assert rec["status"] == "failed_gate_2", rec["status"]
+    print("PASS: test_run_records_to_ledger_with_the_ledgers_own_rules")
+
+
+def test_control_records_as_reusable():
+    if not LEAN_AVAILABLE:
+        print("SKIP: test_control_records_as_reusable (no lake)")
+        return
+    import tempfile, json as _json
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "candidates.jsonl"
+        spec = H.Spec.load(SPECS / "control_valid.json")
+        h = H.Harness(timeout=600)
+        try:
+            results = h.run(spec)
+        finally:
+            h.cleanup()
+        H.record(spec, results, ledger)
+        rec = _json.loads(ledger.read_text().strip())
+        assert rec["reusable"] is True, \
+            "a gate-5 survivor should be marked reusable"
+        assert rec["status"] == "passed_gate_5", rec["status"]
+    print("PASS: test_control_records_as_reusable")
+
+
+def test_recording_declines_compression_for_a_failed_transfer():
+    """A candidate that failed gate 3 cannot carry compression, even if offered."""
+    if not LEAN_AVAILABLE:
+        print("SKIP: test_recording_declines_compression_for_a_failed_transfer (no lake)")
+        return
+    import tempfile, json as _json
+    with tempfile.TemporaryDirectory() as d:
+        ledger = Path(d) / "candidates.jsonl"
+        spec = H.Spec.load(SPECS / "fixture_transfer_fails.json")
+        h = H.Harness(timeout=600)
+        try:
+            results = h.run(spec)
+        finally:
+            h.cleanup()
+        # Offer a compression number the caller should not get to record.
+        H.record(spec, results, ledger, compression={"nodes_before": 10, "nodes_after": 3})
+        rec = _json.loads(ledger.read_text().strip())
+        assert rec["compression"] is None, (
+            "compression was recorded despite gate 3 failing -- the bridge must "
+            f"not forward it: {rec['compression']}")
+    print("PASS: test_recording_declines_compression_for_a_failed_transfer")
+
+
 def main() -> int:
     tests = [
         test_spec_loads_and_reports_every_gate,
@@ -203,6 +277,9 @@ def main() -> int:
         test_gate4_permits_after_gate3_passes,
         test_sorry_does_not_pass_a_gate,
         test_true_also_does_not_pass_when_obligation_is_false,
+        test_run_records_to_ledger_with_the_ledgers_own_rules,
+        test_control_records_as_reusable,
+        test_recording_declines_compression_for_a_failed_transfer,
     ]
     passed = failed = 0
     for t in tests:
