@@ -186,12 +186,48 @@ passes (DeepSeek + a second LLM pass) need no Lean, and statement formalization
 needs only the circuit-model definitions that already exist. Part 2 should
 proceed first (issue #26).
 
-**One further constraint for Part 2:** Maith extracts IR from elaborated `Expr`
-inside a running Lean process, and `Scripts/BuildCorpus.lean` enumerates only
-modules it can import — there is no mechanism yet to add an external repo's
-modules to that graph. Formalizing a target *statement* is therefore not the
-same as getting it into Maith's pipeline. See `docs/AGENT_HANDOFF.md` for the
-(a)-formalize-in-Maith vs (b)-formalize-in-PleaNP decision.
+**Part 2 constraint — RESOLVED: formalize in Maith (option (a)), 2026-09-16.**
+
+Maith extracts IR from elaborated `Expr` inside a running Lean process, and
+`Scripts/BuildCorpus.lean` enumerates only modules it can import — so a target
+statement formalized in PleaNP would not reach Maith's pipeline. The two options
+were (a) formalize in Maith, importing PleaNP's circuit definitions, or (b)
+formalize in PleaNP and defer Maith-side extraction. **(a) chosen.**
+
+(a) was *verified feasible*, not assumed. Cross-repo Lean imports work; the only
+blocker was that PleaNP's Lake package lives at `lean/`, so a downstream
+`require` fails at `no configuration file with a supported extension`. A scratch
+consumer depending on PleaNP at `3e74ae6` (with a root shim added) built and
+resolved real definitions:
+
+```
+✔ Built PleaNP.Circuits.Basic (21s)      # dependency
+✔ Built Maith.Probe (52s)                # consumer
+PleaNP.Circuits.BoolGate : ℕ → Type
+PleaNP.Circuits.IsPPoly : CircuitFamily → Prop
+PleaNP.Circuits.Largeness : PropertyFamily → Prop
+PleaNP.Circuits.NaturalProperty : PropertyFamily → Prop
+```
+
+Both repos pin Lean `v4.31.0` / Mathlib `v4.31.0` — no toolchain drift.
+
+**External blocker for the formalization step: PleaNP #102** (root `lakefile`
+shim). Steps 1–3 of Part 2 (research, filtering, cross-check) need no Lean and can
+start now; step 4 (formalization) waits on #102. Tracked in Maith #26.
+
+Two findings from the verification, both relevant to any consumer:
+
+- A shim alone is not sufficient — the dependency must also be **built**, or the
+  consumer fails with `unknown module prefix 'PleaNP'` (Lake resolves the path but
+  finds no oleans).
+- `PleaNP.Circuits.Basic` begins with `import Mathlib`, so consumers inherit the
+  full Mathlib closure; and PleaNP's *full-tree* `lake build` fails on two
+  documented pending-sorry modules, so a consumer must build the `Circuits` target
+  specifically.
+
+**Separate, not covered by #26:** `Scripts/BuildCorpus.lean` hardcodes its module
+list, so getting `Maith/Benchmark/` declarations into the IR corpus is its own
+change to that list (or to its discovery mechanism).
 
 *This table is the doc-coherence fix required by the corpus plan having been
 written against `complexitylib`, which will never be imported. Maith's
