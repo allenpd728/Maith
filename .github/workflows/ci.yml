@@ -131,6 +131,14 @@ jobs:
             echo "::endgroup::"
           done
 
+      # #36: the mutation guards mutate a real source file and restore it. This
+      # pins that restore AND bytecode purge happen on every exit path, including
+      # a mid-guard crash -- without it, a stale mutated .pyc corrupts a later
+      # process (it once truncated the candidate ledger). Runs FIRST, so a stale
+      # cache cannot contaminate the guards below.
+      - name: Mutation guards restore cleanly and leave no stale bytecode (#36)
+        run: python3 tooling/test_mutation_guard_lib.py
+
       # A test that passes on a broken checker is not a test. This mutates
       # check_invariants.py (one declared constraint at a time), asserts the
       # invariant-5 fixtures DETECT each mutation, and restores the file.

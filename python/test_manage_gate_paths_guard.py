@@ -8,32 +8,11 @@ python/test_invariants_8_9_guard.py, axiom-rewrite/test_mutation_guard.py).
 Run: python3 python/test_manage_gate_paths_guard.py
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
-
-def _purge_bytecode(module_path):
-    """Remove cached bytecode for `module_path` after restoring its source.
-
-    A guard writes a MUTATED module to disk, runs the tests, then restores it. If
-    the mutated build was imported, its `.pyc` can survive and be loaded by a LATER
-    process even though the source is correct -- which is how a guard silently
-    corrupted `axiom-rewrite/candidates.py` (loaded `open("w")` instead of `"a"`,
-    truncating the ledger). Purging after every restore closes that.
-    """
-    import shutil
-    from pathlib import Path as _P
-    p = _P(module_path)
-    cache = p.parent / "__pycache__"
-    if not cache.exists():
-        return
-    try:
-        shutil.rmtree(cache)
-    except OSError:
-        pass
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tooling"))
+from mutation_guard_lib import guarded_source, run_python  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "python" / "manage.py"
@@ -72,9 +51,8 @@ MUTATIONS = [
 
 
 def main() -> int:
-    original = SRC.read_text()
     results = []
-    try:
+    with guarded_source(SRC) as original:
         for name, old, new in MUTATIONS:
             if old not in original:
                 print(f"  [MISS] {name}: anchor not found")
@@ -84,19 +62,16 @@ def main() -> int:
             # both cmd_gate and cmd_invariants, and the property must be exercised
             # in both.
             SRC.write_text(original.replace(old, new))
-            r = subprocess.run([sys.executable, str(TEST)],
-                               capture_output=True, text=True, cwd=str(REPO))
+            r = run_python([str(TEST)], capture_output=True, text=True,
+                           cwd=str(REPO))
             detected = r.returncode != 0
             n = r.stdout.count("FAIL:") + r.stdout.count("ERROR:")
             print(f"  [{'DETECTED' if detected else 'MISSED'}] {name} "
                   f"(exit={r.returncode}, failures={n})")
             results.append((name, detected))
-    finally:
-        SRC.write_text(original)
-    _purge_bytecode(SRC)
 
-    control = subprocess.run([sys.executable, str(TEST)], capture_output=True,
-                             text=True, cwd=str(REPO)).returncode == 0
+    control = run_python([str(TEST)], capture_output=True,
+                         text=True, cwd=str(REPO)).returncode == 0
     print(f"\n  [{'PASS' if control else 'FAIL'}] control: unmutated tests pass")
 
     missed = [n for n, ok in results if not ok]
