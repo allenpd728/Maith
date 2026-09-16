@@ -97,12 +97,28 @@ PleaNP.Circuits.NaturalProperty : PropertyFamily → Prop
 
 Both repos pin Lean `v4.31.0` / Mathlib `v4.31.0` — no toolchain drift.
 
-**Upstream blocker CLEARED (2026-09-16): PleaNP #102 landed** (PleaNP commits
-`1037101` + `da0f7f0` on its `dev`). Maith can now `require PleaNP`; verified
-end-to-end including `PleaNP.Circuits.AC0`. See DEC-043. Two constraints come with
-it: **pin a SHA, not `@ "dev"`** (a PleaNP push would otherwise break Maith's
-build), and **PleaNP `dev` is not CI-verified** (`ci.yml` triggers on `main` only;
-a `dev`->`main` PR is the route to CI).
+**Upstream blocker CLEARED (2026-09-16): PleaNP #102 landed and is now merged to
+`main`.** Maith can `require PleaNP`; verified end-to-end against **`@ "main"`**
+including `PleaNP.Circuits.AC0` and `PleaNP.Circuits.MonotoneApprox`. See DEC-043
+and DEC-044.
+
+**Prefer pinning `@ "main"` over `@ "dev"`.** Three reasons, all now true:
+
+1. **`main` is where CI has always run**, and `dev` is trigger-covered only since
+   2026-09-16. Pinning `main` rests on the longer-verified line.
+2. **`main` and `dev` are content-identical** (2026-09-16, PleaNP `a4aae01`; the
+   only difference is the merge commit). So pinning `main` loses nothing today.
+3. **A `dev`-pinned build can break from an unrelated upstream push.** `dev` is the
+   working branch and moves freely; `main` moves only past review.
+
+**Still pin a SHA, not a branch, for a reproducible build** — a branch moves, and
+"it worked yesterday" should be reproducible. The branch name is acceptable while
+step 4 is exploratory; a SHA is required once any result is cited.
+
+**Historical note (why the earlier guidance said `@dev`):** at the time of DEC-043
+`main` did not yet carry the circuits work or the root lakefile — those were
+`dev`-only — so `@dev` was the only working pin. The `dev` -> `main` merge on
+2026-09-16 removed that constraint.
 
 Three things to know if you wire this up:
 
@@ -156,10 +172,10 @@ Maith's benchmark corpus depends on PleaNP's circuit-complexity substrate.
   §"Cross-repo imports" above.
 - **Also open:** PleaNP #101 (comment corruption — see the escalation above), and PleaNP **#105** (`main`/`dev` divergence: 4 README commits on `main` not
   in `dev`, so a `dev`->`main` merge could lose them).
-- **PleaNP CI is now green on `dev`** (run #99, 40/40 steps, 0 skipped). `dev`
-  pushes have been trigger-covered since 2026-09-16, so an upstream break is
-  visible rather than silent — which lowers, but does not remove, the risk of
-  the PleaNP dependency. Still pin a SHA (DEC-043). See DEC-044.
+- **PleaNP CI is green on both branches**: `dev` (run #99, 40/40) and `main`
+  (run #101, 40/40, after the `dev` -> `main` merge `a4aae01`). `dev` pushes have
+  been trigger-covered since 2026-09-16, so an upstream break is visible rather
+  than silent. `main` and `dev` are content-identical. See DEC-044.
 
 **Independent verification of all five Circuits modules (2026-09-15).** A
 separate reviewer checked `Basic`, `AC0`, `Monotone`, `MonotoneApprox`, and
