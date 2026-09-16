@@ -23,6 +23,29 @@ import sys
 import tempfile
 from pathlib import Path
 
+
+def _purge_bytecode(module_path):
+    """Remove cached bytecode for `module_path` after restoring its source.
+
+    A guard writes a MUTATED module to disk, runs the tests, then restores it. If
+    the mutated build was imported, its `.pyc` can survive and be loaded by a LATER
+    process even though the source is correct -- which is how a guard silently
+    corrupted `axiom-rewrite/candidates.py` (loaded `open("w")` instead of `"a"`,
+    truncating the ledger). Purging after every restore closes that.
+    """
+    import shutil
+    from pathlib import Path as _P
+    p = _P(module_path)
+    cache = p.parent / "__pycache__"
+    if not cache.exists():
+        return
+    try:
+        shutil.rmtree(cache)
+    except OSError:
+        pass
+
+
+
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "python" / "check_invariants.py"
 TEST = REPO / "python" / "test_invariants.py"
@@ -110,6 +133,7 @@ def main() -> int:
             print(f"  [{rows[-1][1]:<10}] {label}")
     finally:
         SRC.write_text(original)
+    _purge_bytecode(SRC)
 
     control = not suite_fails()
     print(f"\n  [{'PASS' if control else 'FAIL'}] control: unmutated suite passes")
