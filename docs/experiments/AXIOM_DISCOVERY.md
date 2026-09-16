@@ -237,17 +237,19 @@ integration into the shared corpus.
 
 ## Tracking candidates and search space
 
-- **Candidate ledger** (`axiom-rewrite/candidates.jsonl` or similar):
-  one record per candidate, containing the spec (above), which gate it
-  passed/failed, compression numbers if applicable, and provenance.
-  Append-only — failed candidates are kept, not deleted, so the search
-  history itself becomes data (which regions of the space are
-  exhausted/unproductive).
-- **Coverage map over the benchmark domain**: track, per declaration in
-  the circuit-complexity benchmark corpus, how many candidate φ's have
-  been tried against it and with what outcome. Used to bias proposal
-  toward under-explored declarations (see targeting, below) rather than
-  re-testing the same easy wins.
+- **Candidate ledger** (`axiom-rewrite/candidates.jsonl`) — **built** (issue #27;
+  see `axiom-rewrite/README.md`). One record per candidate: the spec, which gate it
+  passed/failed, compression numbers when applicable, and provenance. Append-only —
+  failed candidates are kept, not deleted, so the search history itself becomes data.
+  Two gate rules from §"Validation pipeline" are **enforced on append** (compression
+  requires gate 3; `reusable` requires gate 5), and validated by mutation-tested
+  fixtures.
+- **Coverage map over the benchmark domain** — **built** (issue #27), *derived* from
+  the ledger rather than stored, so it cannot drift: per benchmark declaration, how
+  many candidate φ's have been tried and with what outcome. Passing the full
+  benchmark list (`coverage --domains <file>`) shows declarations with **zero
+  attempts** first, which is what biases proposal toward under-explored
+  declarations rather than re-testing the same easy wins.
 - **DEC log entries** for anything crossing gate 3 (a real result) or
   anything informative about the search process itself (a proposal
   strategy that's consistently unproductive is as worth recording as one
@@ -359,12 +361,12 @@ Ordering reflects the reconciliation note above (what actually exists vs not),
 and the dependency in `BENCHMARK_CORPUS_PLAN.md` §Dependencies.
 
 1. **Build the circuit-complexity "transfer targets" list (Part 2 of the corpus
-   plan).** This is not blocked: the research and plain-English filtering passes
-   need no Lean, and target-statement formalization needs only the circuit-model
-   definitions that already exist. Do this first.
-2. **Stand up the candidate ledger and coverage-map tooling** (`axiom-rewrite/`
-   directory). Plain data plumbing; gates the *proposal* step, and must not
-   depend on the metaprogramming harness existing.
+   plan).** Steps 1-3 of the plan (research, filtering, cross-check) need no Lean;
+   only statement formalization needs PleaNP imports.
+2. **Stand up the candidate ledger and coverage-map tooling** — ✅ **done**
+   (issue #27; `axiom-rewrite/`). Append-only ledger with the two §"Validation
+   pipeline" gate rules enforced on append, plus a derived coverage map that
+   surfaces zero-attempt declarations first.
 3. **Build the structural similarity search.** This was claimed as existing
    infrastructure and is not — it is the search mechanism itself, so it is real
    work, not reuse.
@@ -380,8 +382,8 @@ filed as `status:available` tasks with explicit `Blocked by` lineages:
 
 | Step | Issue | Blocked by |
 |---|---|---|
-| 1. Transfer-target list (corpus Part 2) | #26 | — (start here) |
-| 2. Candidate ledger + coverage map | #27 | — |
+| 1. Transfer-target list (corpus Part 2) | #26 | steps 1-3 unblocked; formalization blocked on **PleaNP #102** |
+| 2. Candidate ledger + coverage map | #27 | ✅ **done** |
 | 3. Structural similarity search | #28 | #27 |
 | 4. Shared metaprogramming harness | #29 | #28 |
 | 5. First candidate batch | #30 | #26, #27, #29 |
