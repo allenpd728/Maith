@@ -230,6 +230,61 @@ instead of `gen:Ring.neg_add_cancel` / `GEN_UNK` (C4).
 
 ---
 
+## Machine-checked claims (which of these are enforced, and by what)
+
+Prose is not a check. The claims in this document that are **mechanically
+verifiable over the committed datasets** are enforced as named invariants in
+`python/check_invariants.py`, each with a fixture in `python/test_invariants.py`
+that fails when the property is violated.
+
+| Claim (section) | Invariant | Fixture |
+|---|---|---|
+| Token grammar: every graph is `GRAPH_BEGIN … GRAPH_END` with `E`/`A`/`R`/`O` rows only | **Invariant 8** — `check_grammar_arity` | `test_grammar_arity_passes_on_valid_graph`, `test_grammar_arity_catches_each_break`, `test_grammar_arity_ignores_non_ir_variants` |
+| `E` row = 2 tokens; `A`, `R`, `O` rows = 4 tokens | **Invariant 8** (row arity) | same as above |
+| `<arity_token>` = `IN_N` (N ≤ 9) or `IN_MANY` | **Invariant 8** | `test_grammar_arity_catches_each_break` ("O-row arity over cap") |
+| `<output_token>` = `OUT_N` (N ≤ 63), `OUT_MANY`, or `OUT_VAR` | **Invariant 8** | `test_grammar_arity_catches_each_break` ("O-row output over cap", "O-row bad output token") |
+| C1: "No `neut`/`pos`/`neg` tokens appear in a v2.0.0 token stream" | **Invariant 9** — `check_c1_polarity_absence` | `test_c1_polarity_passes_with_arithmetic_neg`, `test_c1_polarity_catches_real_polarity_placement` |
+
+Both run in CI (`python/test_invariants.py` is in the stdlib-only job), and both
+are **mutation-guarded**: `python/test_invariants_8_9_guard.py` disables each check
+in turn and asserts the property is still rejected by *some* path, distinguishing
+`DETECTED` from `REDUNDANT` (defence in depth) from `GAP` (a real hole). Currently
+6 detected / 3 redundant / **0 gaps**.
+
+### Two traps these invariants exist to prevent
+
+**1. `neg` is ambiguous, so C1 cannot be a string-absence check.** `neg` is both a
+polarity marker *and* the arithmetic operation token (id 12). It appears **467
+times** in `train_A.jsonl` — every occurrence in an `O` row's op slot, i.e. as
+arithmetic negation, which v2 legitimately emits. A naive "assert no `neg` token"
+check would fail on correct data. Invariant 9 is therefore **role-based**: it
+asserts no polarity token appears where v2's grammar has no polarity slot (any
+row body position other than an `O`-row op slot).
+
+**2. The grammar describes the IR token stream only.** `B`/`C`/`B-small` are Qwen
+BPE, and `flat` is the DEC-024 SLOT ablation — different token spaces entirely.
+Checking the IR grammar against them is a category error that produced 10,114 and
+103,096 spurious "malformed" reports when first attempted. Both invariants discover
+which variants carry IR tokens from each record's `source` field, rather than a
+hardcoded list, so a future IR variant is covered without editing the check.
+
+### Claims deliberately NOT machine-checked
+
+So this table is not mistaken for exhaustive — these are prose, rationale, or
+history, and asserting them mechanically would either be vacuous or wrong:
+
+- The **rationale** paragraphs ("the declaration name in a bound scope is noise";
+  "these are real vocab") — design justification, not a testable property.
+- **"~21k unique tokens"**, **"~1,999 unique `gen:` tokens, ~64% ≤5 occurrences"**,
+  **"vocab 1,236 → 601"** — historical measurements at a point in time, not
+  invariants of the current format.
+- The **C4 frequency/bucket proportions** (`GEN_ALGEBRA` 5.36%, etc.) — corpus
+  statistics that will drift with any corpus change; recording them as invariants
+  would make them false the moment the corpus grows.
+- The **Lean↔Python `bucketFromModule` parity** claim — testable, but already
+  enforced by `python/test_c4_consistency.py`, which parses the Lean match arms.
+  Listed here for completeness rather than duplicated.
+
 ## Known design constraints
 
 ### Cross-graph positional identity

@@ -15,6 +15,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+REPO = Path(__file__).resolve().parent.parent
 from check_invariants import (
     check_split_integrity,
     check_variant_input_consistency,
@@ -22,6 +24,8 @@ from check_invariants import (
     check_checkpoint_results_consistency,
     check_comparison_validity,
     check_provenance_hash,
+    check_grammar_arity,
+    check_c1_polarity_absence,
     COMPARISON_CLAIMS,
 )
 from manifest import (
@@ -395,6 +399,138 @@ def test_comparison_claims_all_constraints_exercised():
     print("PASS: test_comparison_claims_all_constraints_exercised")
 
 
+
+# ---------------------------------------------------------------------------
+# Invariants 8 + 9 fixtures (issue #23)
+# ---------------------------------------------------------------------------
+# ENCODER_FORMAT.md states the token grammar and C1 (polarity absence) in prose.
+# These fixtures prove the invariant checks can FAIL, not merely pass.
+
+def _write_ir_dataset(tmp: Path, tokens: list[str], variant: str = "A",
+                      vocab: dict | None = None):
+    """Write a minimal IR dataset whose input_ids decode to `tokens`."""
+    if vocab is None:
+        base = sorted(set(tokens))
+        vocab = {tok: i for i, tok in enumerate(base)}
+    ids = [vocab[t] for t in tokens]
+    (tmp / f"vocab_{variant}.json").write_text(json.dumps(vocab))
+    for split in ("train", "eval"):
+        (tmp / f"{split}_{variant}.jsonl").write_text(
+            json.dumps({
+                "source": "A", "representation_id": "semantic_graph_ir_v2_0_0",
+                "example_id": f"{split}_0", "name": "t", "module": "M",
+                "input_ids": ids, "labels": ids, "seq_len": len(ids),
+            }) + "\n"
+        )
+    return vocab
+
+
+_VALID_GRAPH = ["GRAPH_BEGIN", "E", "FVAR_0", "R", "FVAR_0", "TERM_0", "eq",
+                "O", "IN_1", "OUT_0", "neg", "GRAPH_END"]
+
+
+def test_grammar_arity_passes_on_valid_graph():
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        _write_ir_dataset(tmp, _VALID_GRAPH)
+        res = check_grammar_arity(tmp)
+        assert res, "no results produced"
+        bad = [r for r in res if r["passed"] is False]
+        assert not bad, f"valid graph rejected: {bad}"
+    print("PASS: test_grammar_arity_passes_on_valid_graph")
+
+
+def test_grammar_arity_catches_each_break():
+    """One fixture per grammar break the doc specifies."""
+    cases = {
+        "missing GRAPH_BEGIN": ["E", "FVAR_0", "GRAPH_END"],
+        "missing GRAPH_END": ["GRAPH_BEGIN", "E", "FVAR_0"],
+        "bad row header": ["GRAPH_BEGIN", "X", "FVAR_0", "GRAPH_END"],
+        "A-row wrong arity": ["GRAPH_BEGIN", "A", "FVAR_0", "typeclass", "GRAPH_END"],
+        "R-row wrong arity": ["GRAPH_BEGIN", "R", "FVAR_0", "GRAPH_END"],
+        "O-row bad arity token": ["GRAPH_BEGIN", "O", "TWO", "OUT_0", "neg", "GRAPH_END"],
+        "O-row arity over cap": ["GRAPH_BEGIN", "O", "IN_10", "OUT_0", "neg", "GRAPH_END"],
+        "O-row bad output token": ["GRAPH_BEGIN", "O", "IN_1", "OUTPUT_0", "neg", "GRAPH_END"],
+        "O-row output over cap": ["GRAPH_BEGIN", "O", "IN_1", "OUT_64", "neg", "GRAPH_END"],
+    }
+    for label, toks in cases.items():
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            _write_ir_dataset(tmp, toks)
+            res = check_grammar_arity(tmp)
+            bad = [r for r in res if r["passed"] is False]
+            assert bad, f"grammar break NOT caught: {label}"
+    print(f"PASS: test_grammar_arity_catches_each_break ({len(cases)} breaks)")
+
+
+def test_grammar_arity_ignores_non_ir_variants():
+    """B_small (BPE) and flat (SLOT) must NOT be checked against the IR grammar.
+
+    Regression guard for the category error found when these invariants were first
+    run: they reported 10114 and 103096 spurious 'malformed' graphs.
+    """
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        _write_ir_dataset(tmp, _VALID_GRAPH, variant="A")
+        # A BPE-ish dataset that is NOT IR: no GRAPH_BEGIN, arbitrary ids.
+        (tmp / "vocab_B_small.json").write_text(json.dumps({"x": 0}))
+        for split in ("train", "eval"):
+            (tmp / f"{split}_B_small.jsonl").write_text(
+                json.dumps({"source": "B_small", "example_id": f"{split}_0",
+                            "input_ids": [0, 0, 0]}) + "\n")
+        res = check_grammar_arity(tmp)
+        names = [r["name"] for r in res]
+        assert not any("B_small" in n for n in names),             f"non-IR variant was checked against the IR grammar: {names}"
+    print("PASS: test_grammar_arity_ignores_non_ir_variants")
+
+
+def test_c1_polarity_passes_with_arithmetic_neg():
+    """The trap: `neg` as an ARITHMETIC op in an O row is legitimate under C1."""
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        _write_ir_dataset(tmp, _VALID_GRAPH)   # contains O ... neg
+        res = check_c1_polarity_absence(tmp)
+        bad = [r for r in res if r["passed"] is False]
+        assert not bad, f"arithmetic 'neg' wrongly flagged as polarity: {bad}"
+    print("PASS: test_c1_polarity_passes_with_arithmetic_neg")
+
+
+def test_c1_polarity_catches_real_polarity_placement():
+    """Polarity tokens in a row body (where v2 has no slot) must fail."""
+    cases = {
+        "pos in E-row body": ["GRAPH_BEGIN", "E", "pos", "GRAPH_END"],
+        "neut in R-row body": ["GRAPH_BEGIN", "R", "FVAR_0", "neut", "GRAPH_END"],
+        "neg in A-row body": ["GRAPH_BEGIN", "A", "FVAR_0", "neg", "value", "GRAPH_END"],
+        "pos in O-row arity slot": ["GRAPH_BEGIN", "O", "pos", "OUT_0", "add", "GRAPH_END"],
+        "neut in O-row output slot": ["GRAPH_BEGIN", "O", "IN_1", "neut", "add", "GRAPH_END"],
+    }
+    for label, toks in cases.items():
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            _write_ir_dataset(tmp, toks)
+            res = check_c1_polarity_absence(tmp)
+            bad = [r for r in res if r["passed"] is False]
+            assert bad, f"C1 violation NOT caught: {label}"
+    print(f"PASS: test_c1_polarity_catches_real_polarity_placement ({len(cases)} cases)")
+
+
+def test_c1_polarity_on_real_datasets():
+    """The committed datasets must satisfy C1 today."""
+    res = check_c1_polarity_absence(REPO / "datasets")
+    bad = [r for r in res if r["passed"] is False]
+    assert not bad, f"committed datasets violate C1: {bad}"
+    assert res, "no IR datasets found -- fixture is vacuous"
+    print(f"PASS: test_c1_polarity_on_real_datasets ({len(res)} checks)")
+
+
+def test_grammar_arity_on_real_datasets():
+    res = check_grammar_arity(REPO / "datasets")
+    bad = [r for r in res if r["passed"] is False]
+    assert not bad, f"committed datasets violate the grammar: {bad}"
+    assert res, "no IR datasets found -- fixture is vacuous"
+    print(f"PASS: test_grammar_arity_on_real_datasets ({len(res)} checks)")
+
+
 def test_manifest_verify_catches_missing_fields():
     bad_manifest = {"artifact_type": "results", "variant": "A"}
     errors = verify_manifest(bad_manifest)
@@ -440,6 +576,13 @@ def main():
         test_vocab_range_catches_out_of_range,
         test_comparison_validity_matched_size,
         test_comparison_validity_catches_epoch_mismatch,
+        test_grammar_arity_passes_on_valid_graph,
+        test_grammar_arity_catches_each_break,
+        test_grammar_arity_ignores_non_ir_variants,
+        test_c1_polarity_passes_with_arithmetic_neg,
+        test_c1_polarity_catches_real_polarity_placement,
+        test_grammar_arity_on_real_datasets,
+        test_c1_polarity_on_real_datasets,
         test_comparison_validity_catches_each_must_match_field,
         test_comparison_validity_catches_must_differ_violation,
         test_comparison_validity_missing_field_is_lenient,
