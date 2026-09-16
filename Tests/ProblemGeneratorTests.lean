@@ -112,7 +112,7 @@ def problemGeneratorTests : List TestResult := [
   testGeneratedEquationSolutions
 ]
 
-def runAllProblemGeneratorTests : IO Unit := do
-  runTestSuite "Problem Generator Tests" problemGeneratorTests
+def runAllProblemGeneratorTests : IO Nat := do
+  runTestSuiteCounted "Problem Generator Tests" problemGeneratorTests
 
 end Tests.ProblemGenerator

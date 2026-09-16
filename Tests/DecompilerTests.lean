@@ -424,19 +424,18 @@ def decompilerTests : List TestResult := [
   decompTest12
 ]
 
-def runAllDecompilerTests : IO Unit := do
+def runAllDecompilerTests : IO Nat := do
   -- Run sync tests
-  runTestSuite "Decompiler Tests" decompilerTests
-  
-  -- Run IO test (Lean validity check)
+  let syncFailures ← runTestSuiteCounted "Decompiler Tests" decompilerTests
+
+  -- Run IO test (Lean validity check). Routed through printTestResult so the
+  -- known-failure list applies and the count propagates (issue #25).
   IO.println ""
   IO.println "=== Lean Validity Check ==="
-  let testResult <- decompTest8
-  match testResult with
-  | TestResult.pass name msg => 
-    IO.println s!"✓ {name}"
-    if not msg.isEmpty then IO.println s!"  {msg}"
-  | TestResult.fail name msg =>
-    IO.println s!"✗ {name}: {msg}"
+  let testResult ← decompTest8
+  printTestResult testResult
+  let ioFailures := countFailures [testResult]
+
+  return syncFailures + ioFailures
 
 end Tests.Decompiler

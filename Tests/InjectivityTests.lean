@@ -189,7 +189,7 @@ def injectivityTests : List TestResult := [
   testBatchInjectivity
 ]
 
-def runAllInjectivityTests : IO Unit := do
-  runTestSuite "Injectivity Tests" injectivityTests
+def runAllInjectivityTests : IO Nat := do
+  runTestSuiteCounted "Injectivity Tests" injectivityTests
 
 end Tests.Injectivity

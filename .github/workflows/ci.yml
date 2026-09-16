@@ -46,18 +46,17 @@ jobs:
       - name: Build test target
         run: lake build tests
 
-      # The test harness currently exits 0 even when individual assertions fail
-      # (a known gap — see docs/TOOLCHAIN_AND_CI.md §6). We surface the failure
-      # count rather than block, because 4 failures are documented pre-existing
-      # (2 decoder round-trip format, 1 injectivity non-commutative, 1 Lean
-      # validity) and unrelated to CI. Widen this to a hard gate once they are
-      # resolved, so "CI green" cannot hide a regression.
-      - name: Run Lean test suite (failures surfaced, not yet blocking)
-        run: |
-          ./.lake/build/bin/tests | tee /tmp/tests.out
-          if grep -q "Some tests failed" /tmp/tests.out; then
-            echo "::warning::Lean tests report failures. 4 are pre-existing and documented in docs/experiments/V2_NEXT_STEPS.md."
-          fi
+      # Hard gate since #25: the harness now exits non-zero on any unexpected
+      # failure. Pre-existing failures are listed explicitly in
+      # Tests.Harness.knownFailures (with their tracking notes) and are reported
+      # as SKIP; anything else fails the build. This replaces the previous
+      # grep-the-output workaround, which could not distinguish a clean run from
+      # a broken one.
+      #
+      # Run under `lake env` so the `lean` binary the decompiler validity test
+      # shells out to is on PATH.
+      - name: Run Lean test suite
+        run: lake env ./.lake/build/bin/tests
 
   gates:
     name: Integrity gates (Tier 1)

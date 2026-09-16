@@ -328,73 +328,74 @@ def testScopedBinderInjectivity : Bool :=
 /--
 Run all corpus pipeline tests.
 -/
-def runAllCorpusPipelineTests : IO Unit := do
+def runAllCorpusPipelineTests : IO Nat := do
   IO.println ""
   IO.println "  Testing Corpus Pipeline..."
-
+  let mut failures := 0
   if testDataStructuresCompile then
     IO.println "    ✓ Data structures compile"
   else
-    IO.println "    ✗ Data structures FAILED"
-
+    IO.println "    ✗ Data structures compile FAILED"
+    failures := failures + 1
   if testTranspilerFormatting then
     IO.println "    ✓ Transpiler formatting"
   else
     IO.println "    ✗ Transpiler formatting FAILED"
-
+    failures := failures + 1
   if testProcessingResult then
     IO.println "    ✓ ProcessingResult type works"
   else
-    IO.println "    ✗ ProcessingResult type FAILED"
-
+    IO.println "    ✗ ProcessingResult type works FAILED"
+    failures := failures + 1
   if testGraphNormalization then
     IO.println "    ✓ Graph normalization"
   else
     IO.println "    ✗ Graph normalization FAILED"
-
+    failures := failures + 1
   if testInjectivityCheck then
     IO.println "    ✓ Injectivity checking"
   else
     IO.println "    ✗ Injectivity checking FAILED"
-
+    failures := failures + 1
   if testEnumerationConfig then
     IO.println "    ✓ Enumeration configuration"
   else
     IO.println "    ✗ Enumeration configuration FAILED"
-
+    failures := failures + 1
   if testSerializationConfig then
     IO.println "    ✓ Serialization configuration"
   else
     IO.println "    ✗ Serialization configuration FAILED"
-
+    failures := failures + 1
   if testForallBodyWithOps then
     IO.println "    ✓ Forall body with arithmetic ops (non-trivial graph)"
   else
-    IO.println "    ✗ Forall body with arithmetic ops FAILED"
-
+    IO.println "    ✗ Forall body with arithmetic ops (non-trivial graph) FAILED"
+    failures := failures + 1
   if testCreateDeclarationMetadata then
     IO.println "    ✓ Metadata extraction (real assertions)"
   else
-    IO.println "    ✗ Metadata extraction FAILED"
-
+    IO.println "    ✗ Metadata extraction (real assertions) FAILED"
+    failures := failures + 1
   if testProjectionExtracts then
     IO.println "    ✓ Projection extraction (struct field proj)"
   else
-    IO.println "    ✗ Projection extraction FAILED"
-
+    IO.println "    ✗ Projection extraction (struct field proj) FAILED"
+    failures := failures + 1
   if testLetExpressionExtracts then
     IO.println "    ✓ Let expression extraction"
   else
     IO.println "    ✗ Let expression extraction FAILED"
-
+    failures := failures + 1
   if testHOFApplicationExtracts then
     IO.println "    ✓ HOF application extraction (variable-headed f x)"
   else
-    IO.println "    ✗ HOF application extraction FAILED"
-
+    IO.println "    ✗ HOF application extraction (variable-headed f x) FAILED"
+    failures := failures + 1
   if testScopedBinderInjectivity then
     IO.println "    ✓ Scoped binder injectivity"
   else
     IO.println "    ✗ Scoped binder injectivity FAILED"
-
+    failures := failures + 1
+  return failures
 end Tests.CorpusPipeline
