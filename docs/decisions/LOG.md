@@ -2627,3 +2627,68 @@ the environment before believing a rehearsal.
 **Verification:** CI #99 green on `dev` at `7e5c08a` (40/40 steps, verified by
 enumerating job steps rather than reading the run conclusion); PleaNP #103, #104,
 #106 closed with evidence; #105 filed and open.
+
+---
+
+### DEC-045 — PleaNP merged dev -> main; pin `@ "main"`; branches content-identical (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** Cross-repo dependency pin for #26 step 4; PleaNP branch state
+
+**Decision:** PleaNP's `dev` is merged to `main` (PleaNP `a4aae01`), and Maith should
+pin **`@ "main"`** rather than the `@ "dev"` that DEC-043 recommended.
+
+**Sequence, each step verified before the next:**
+
+1. **Back-merged `main` into `dev` first** (`dff52f7`) — closing PleaNP #105. `main`
+   carried 4 commits `dev` lacked (PRs #99/#100, `README.md` only: the "At a glance"
+   block and the agentic-AI disclosure). Without this step the `dev` -> `main` merge
+   would have been a merge of *divergent* lines and could have dropped them.
+   Verified: `At a glance` and `agentic AI tooling` each appeared 1x on `main` / 0x
+   on `dev` before; both present after.
+2. **CI green on that merge commit** — PleaNP run #100 at `dff52f7`.
+3. **Merged `dev` -> `main`** (`--no-ff`, `a4aae01`) and pushed.
+4. **CI green on `main`** — run #101 at `a4aae01`, **40/40 steps, 0 skipped**.
+   Verified by enumerating job steps, not by reading the run conclusion — a mistake
+   made earlier in this session.
+
+**`main` and `dev` are content-identical.** `git diff origin/main origin/dev` is
+empty; the sole `main`-only commit is the merge commit itself. So pinning `main`
+loses nothing.
+
+**Why `main` beats `dev` as the pin:**
+
+- `main` is where CI has run all along; `dev` only since 2026-09-16.
+- A `dev`-pinned downstream build can break from an unrelated upstream push, since
+  `dev` is the working branch and moves freely.
+
+**Still pin a SHA for reproducibility.** A branch moves. The name is acceptable
+while step 4 is exploratory; a SHA is required once a result is cited.
+
+**End-to-end verification against `main`** (the thing downstream actually pins):
+
+```
+require PleaNP from git "https://github.com/allenpd728/PleaNP.git" @ "main"
+✔ Built Demo.Probe (4.3s)
+PleaNP.Circuits.parity_notin_AC0 : Prop
+@PleaNP.Circuits.Reducer.approximate : {n : ℕ} → MonotoneGate n → ApproxSet n
+@PleaNP.Circuits.ApproxSet.sm_and_size_le : ∀ {n} (A B), (A.smAnd B).sizeOf ≤ A.sizeOf * B.sizeOf
+```
+
+**Correction to my own verification, recorded because the failure mode generalises.**
+The first consumer probe failed with `Unknown identifier
+PleaNP.Circuits.MonotoneApprox.Reducer.approximate`. I had built the path from the
+**filename**: the module is `MonotoneApprox` but the namespace is `Reducer`, so the
+name is `PleaNP.Circuits.Reducer.approximate` — and I had also omitted the import.
+Fixed by reading the actual `namespace` declarations in the file. The same
+name-from-filename guess would put a plausible-but-wrong declaration path into any
+downstream doc, which is the class of error the `#check` discipline exists to catch.
+Confirmed by `#check`, not by reading.
+
+**PleaNP CI status, both branches:** `dev` run #99 (40/40) and `main` run #101
+(40/40). Only #101 is on the long-verified line.
+
+**Verification:** PleaNP `main` and `dev` content-identical; CI green on both;
+consumer build against `@ "main"` succeeds and resolves real circuit definitions;
+the merge preserved both README additions; PleaNP #105 closed.
