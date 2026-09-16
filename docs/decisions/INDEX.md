@@ -107,6 +107,7 @@ IR pretraining), see `docs/history/PHASE_7_ROADMAP.md` and `docs/reference/IR_V2
 | **DEC-044** | ✅ Active (2026-09-16) — PleaNP CI enabled on **dev**; **#99 green (40/40)**. First run found two environment-shaped defects (unicode gate scanned vendored `.lake`; galaxy step path-dependent) — both invisible to local checks. Lowers risk of the Maith-side PleaNP dependency (still pin a SHA). **PleaNP #105 open**: main/dev divergence. |
 | **DEC-045** | ✅ Active (2026-09-16) — PleaNP `dev` merged to **`main`** (back-merged main->dev first, closing #105, so nothing was lost). **Pin `@ "main"`, not `@ "dev"`**; `main`/`dev` content-identical. CI 40/40 on both. Consumer build verified against `@ "main"`. Still pin a SHA for reproducibility. |
 | **DEC-046** | ✅ Active (2026-09-16) — `ENCODER_FORMAT.md`'s testable claims machine-enforced as **Invariant 8** (grammar/arity) and **Invariant 9** (C1 polarity, role-based). Two traps: `neg` is ambiguous (polarity vs arithmetic op), and the grammar applies to IR-token variants only. Mutation guard distinguishes DETECTED/REDUNDANT/GAP. Closes **#23**; known-gaps 1 and 2 now resolved. |
+| **DEC-047** | ✅ Active (2026-09-16) — `manage.py gate`/`invariants` resolve all path args explicitly: relative anchors at REPO (not cwd), missing dir is a hard error (exit 2) before any gate runs, and the header prints the resolved tree + provenance. Closes **#24**, the last of the four ported-protocol gaps (#22-#25 all done). |
 
 ---
 
