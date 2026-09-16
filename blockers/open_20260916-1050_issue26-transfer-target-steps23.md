@@ -27,7 +27,33 @@ which is *believed to require* the circuit lower bounds that are currently block
 That changes what a candidate φ could realistically reach, so it should be decided
 before targets are frozen, not discovered afterwards.
 
-### Gap 2 — Step 3 (cross-check): the plan says a second, independent model's pass
+### Gap 2 — Step 3 (cross-check): **OUT OF SCOPE — no second model available**
+
+**Decision (maintainer, 2026-09-16):** there is no second model to run this pass, so
+it is out of scope. The plan called it mandatory; the constraint is availability,
+not willingness, so the step is dropped rather than deferred indefinitely.
+
+**Residual risk, stated rather than waved away.** The target list therefore rests on
+a **single research pass**. The plan's own rationale for the step applies in full:
+"a single LLM pass can miss a recent result or misstate a theorem's actual status."
+This is not hypothetical — the primary-source checks already caught one real error
+in the drafting (see below), which is evidence the class of error is present here.
+
+**What therefore becomes more load-bearing:** the per-target `Verification:` notes.
+Since there is no second pass, primary-source confirmation is the only remaining
+check, and the three citations still resting on *secondary* summaries (T3's
+Arora–Barak addendum, T8's Feige–Filmus cross-reference, T10's Smolensky via the CKK
+survey) are the weakest points. They are marked as such in
+`TRANSFER_TARGETS.md`. Promoting them to primary sources is worth doing when each
+target is actually worked on, rather than up front.
+
+**Consequence for downstream use:** treat the list as *provisional*. Before a target
+is used to make a claim (i.e. cited in a DEC entry or a result), its status should be
+re-confirmed against the primary source at that point. That is a per-target check at
+the moment of use, which is cheaper than a full second pass and catches the same
+class of error where it matters.
+
+The original text of this gap, for the record:
 
 The plan is explicit that this is mandatory given how load-bearing the list is.
 
@@ -66,9 +92,14 @@ as such. A maintainer-run cross-check is the natural place to promote them to pr
 
 | Gap | Unblocked by |
 |---|---|
-| 1 (filtering) | maintainer applies the three criteria; decides OPEN-only vs open+resolved |
-| 2 (cross-check) | maintainer runs an independent model pass |
-| 3 (formalization) | PleaNP #102 lands **and** maintainer decides the proof/communication substrate question |
+| 1 (filtering) | maintainer applies the three criteria; decides OPEN-only vs open+resolved. **Still open — the only remaining blocker on #26.** |
+| 2 (cross-check) | **OUT OF SCOPE** — no second model available (2026-09-16); mitigated by per-target primary-source checks at time of use. **Closed as a blocker.** |
+| 3 (formalization) | **Cleared** — PleaNP #102 landed 2026-09-16 and the import was verified end-to-end (DEC-040/DEC-050). Remaining: the maintainer's decision on proof/communication substrate for T7/T8/T9 — a *scope* question, not a blocker on #26. |
+
+**Net: #26 now has exactly one blocker — step 2 filtering.** Step 3 is out of scope
+and step 4's upstream dependency cleared while this work was in flight. Once the
+filtering decision lands (including the OPEN-only question), #26 can be claimed and
+closed.
 
 ## Why this is a blocker and not an implementation detail
 

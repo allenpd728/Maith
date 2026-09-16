@@ -108,7 +108,16 @@ tried. Explicitly not P vs NP or NP vs P/poly.
    knowledge to apply this filter, only DeepSeek's own summary of each
    item.
 
-3. **Cross-check pass — second LLM opinion.** Run the filtered list past
+3. **Cross-check pass — second LLM opinion.** ⚠ **OUT OF SCOPE (2026-09-16): no
+   second model is available.** Dropped rather than deferred, so the list rests on a
+   single research pass — which is exactly the risk this step existed to cover. In
+   compensation: each target carries a `Verification:` note, and a target's status
+   should be re-confirmed against its **primary source at the moment it is used**
+   (cheaper than a full second pass, and it catches the same class of error where it
+   matters). Three citations resting on secondary summaries are flagged in
+   `TRANSFER_TARGETS.md` as the weakest points. The step's original text follows.
+
+   Run the filtered list past
    a second research pass (a different model, or a follow-up prompt
    asking specifically "is this list accurate and are these still open/
    hard as of [date]") before treating it as final — literature-audit

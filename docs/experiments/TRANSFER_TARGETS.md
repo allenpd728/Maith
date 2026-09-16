@@ -346,7 +346,18 @@ before #26 is called done.
 
 ---
 
-## Cross-check status (step 3)
+## Cross-check status (step 3) — OUT OF SCOPE
+
+> **Decision (maintainer, 2026-09-16): no second model is available, so this step is
+> out of scope.** The list rests on a single research pass. Treat it as
+> **provisional**: re-confirm a target's status against its primary source *at the
+> moment it is used* (before citing it in a DEC entry or a result). The per-target
+> `Verification:` notes below are therefore the only remaining check, and the three
+> citations flagged as resting on *secondary* summaries are the weakest points —
+> promote those to primary when their targets are actually worked on.
+>
+> This is a live risk, not a formality: primary-source checking during drafting
+> already caught one real misstatement (T6 below).
 
 The plan asks for a second, differently-prompted pass because "a single LLM pass can
 miss a recent result or misstate a theorem's actual status." Partial mitigation
