@@ -2884,3 +2884,53 @@ the two new steps passing.
 **Also:** `#29` unblocked (`status:available`) now that `#28` is done, per protocol
 step 7. Noted on it that only phase 1 of `#28` landed, so phase 2's dependency on
 elaborated φ remains — arguably `#29` territory.
+
+### DEC-049 — Mutation-guard bytecode hazard closed at the root (#36) (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** `tooling/mutation_guard_lib.py` (new), `tooling/test_mutation_guard_lib.py`
+(new), the five mutation guards, `.github/workflows/ci.yml`,
+`docs/AGENT_HANDOFF.md`.
+
+**Decision:** DEC-048 recorded that mutation guards could leave a stale mutated
+`.pyc` that a *later* process loads even after the source is restored — it once
+truncated the candidate ledger (`open("w")` surviving a restore of `open("a")`)
+and surfaced as unrelated test failures hours later. DEC-048's fix purged the
+bytecode cache, but placed the purge **outside** the guard's `try/finally`: the
+restore was protected, the purge was not. Any exception from inside the mutation
+loop — `KeyboardInterrupt`, or a `subprocess.TimeoutExpired` from the structural
+guard's `timeout=600` — restored the source and skipped the purge, leaving
+exactly the stale `.pyc` the fix existed to prevent. The five guards also
+duplicated the helper verbatim, which is where the divergence arose.
+
+The hazard is now closed at the root in a single shared module,
+`tooling/mutation_guard_lib.py`:
+
+* `guarded_source(SRC)` binds restore **and** purge into one `finally`, so no exit
+  path can skip either; it also purges on entry, so a stale `.pyc` from an earlier
+  crashed run cannot contaminate this one, and drops the module from `sys.modules`
+  so a re-import re-reads the restored source.
+* `run_python(...)` launches guard children with `-B` and
+  `PYTHONDONTWRITEBYTECODE=1`, so the mutated `.pyc` is not written in the first
+  place — the fix disables the cause, not just cleans up after it.
+* `sys.dont_write_bytecode = True` at import time covers the guard process itself
+  (the invariants 8/9 guard imports the mutated module in-process).
+
+All five guards now use the helper. The false docstring in
+`python/test_mutation_guard.py` ("temp copy via an import shim — the real source
+file is never modified") is corrected: the guard writes the **real** source, which
+is exactly why the restore/purge guarantees matter.
+
+**Verification:** `tooling/test_mutation_guard_lib.py` — 5 tests, including a
+positive control that reproduces the stale-`.pyc` load and two tests that fail
+when the old bug is reintroduced (purge moved outside the `finally`; entry purge
+removed). All five guards pass (4/4, 6 detected + 3 redundant, 7/7, 9/9, 7/7),
+leave no stale `.pyc`, and `test_candidates.py` passes afterwards. The new test is
+a CI step in the `python` job.
+
+**Rationale:** The convention's failure modes are all *silent* and surface in a
+*later* process, which is the most expensive shape to debug. A shared helper that
+makes the safe path the only path is worth more than five correct-but-copyable
+incantations — DEC-048's own note ("more delicate than it looks") was the warning;
+this is the structural answer to it.

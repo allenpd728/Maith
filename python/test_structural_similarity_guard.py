@@ -7,32 +7,11 @@ tests DETECT it. Same convention as the other guards in this repo.
 Run: python3 python/test_structural_similarity_guard.py
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
-
-def _purge_bytecode(module_path):
-    """Remove cached bytecode for `module_path` after restoring its source.
-
-    A guard writes a MUTATED module to disk, runs the tests, then restores it. If
-    the mutated build was imported, its `.pyc` can survive and be loaded by a LATER
-    process even though the source is correct -- which is how a guard silently
-    corrupted `axiom-rewrite/candidates.py` (loaded `open("w")` instead of `"a"`,
-    truncating the ledger). Purging after every restore closes that.
-    """
-    import shutil
-    from pathlib import Path as _P
-    p = _P(module_path)
-    cache = p.parent / "__pycache__"
-    if not cache.exists():
-        return
-    try:
-        shutil.rmtree(cache)
-    except OSError:
-        pass
-
-
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tooling"))
+from mutation_guard_lib import guarded_source, run_python  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "python" / "structural_similarity.py"
@@ -70,28 +49,24 @@ MUTATIONS = [
 
 
 def main() -> int:
-    original = SRC.read_text()
     rows = []
-    try:
+    with guarded_source(SRC) as original:
         for name, old, new in MUTATIONS:
             if old not in original:
                 print(f"  [MISS] {name}: anchor not found")
                 rows.append((name, "ANCHOR-MISSING"))
                 continue
             SRC.write_text(original.replace(old, new, 1))
-            r = subprocess.run([sys.executable, str(TEST)], capture_output=True,
-                               text=True, cwd=str(REPO), timeout=600)
+            r = run_python([str(TEST)], capture_output=True,
+                           text=True, cwd=str(REPO), timeout=600)
             detected = r.returncode != 0
             n = r.stdout.count("FAIL:") + r.stdout.count("ERROR:")
             status = "DETECTED" if detected else "GAP"
             print(f"  [{status:<10}] {name} (exit={r.returncode}, failures={n})")
             rows.append((name, status))
-    finally:
-        SRC.write_text(original)
-    _purge_bytecode(SRC)
 
-    control = subprocess.run([sys.executable, str(TEST)], capture_output=True,
-                             text=True, cwd=str(REPO)).returncode == 0
+    control = run_python([str(TEST)], capture_output=True,
+                         text=True, cwd=str(REPO)).returncode == 0
     print(f"\n  [{'PASS' if control else 'FAIL'}] control: unmutated tests pass")
 
     gaps = [n for n, s in rows if s in ("GAP", "ANCHOR-MISSING")]
