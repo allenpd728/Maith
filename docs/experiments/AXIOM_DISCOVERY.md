@@ -384,9 +384,28 @@ filed as `status:available` tasks with explicit `Blocked by` lineages:
 |---|---|---|
 | 1. Transfer-target list (corpus Part 2) | #26 | steps 1-3 unblocked; formalization blocked on **PleaNP #102** |
 | 2. Candidate ledger + coverage map | #27 | ✅ **done** |
-| 3. Structural similarity search | #28 | #27 |
+| 3. Structural similarity search | #28 | **claimable** (phase 1); phase 2 (candidate dedup) blocked |
 | 4. Shared metaprogramming harness | #29 | #28 |
 | 5. First candidate batch | #30 | #26, #27, #29 |
 | —. Conservativity corpus (corpus Part 1) | #31 | **blocked** on upstream `PleaNP.Circuits` |
+
+### Search-loop refinements (filed 2026-09-16 — not the current priority)
+
+Three refinements to the proposal/validation loop. **Filed, not started**, and
+deliberately not allowed to reorder the queue above.
+
+| Issue | Refinement |
+|---|---|
+| #32 | `failure_mode` on the ledger — a fixed enum, not free text, so gate 1-5 failures are groupable (`not_homomorphism`, `degenerate_collapse`, `target_too_weak`, `no_replication`). |
+| #33 | Before proposing, retrieve prior failures for the same (structure-family, sub-domain) pair and feed their `failure_mode` into the proposal prompt — so a dead end is not re-proposed under a new presentation. Depends on #32. |
+| #34 | **Gate 6** — for gate-5 survivors, ask 2+ genuinely distinct external models with mirrored for/against prompts; convergent "unremarkable" is a cheap early reject. Scope-bound to a small script (prompt template + 2-3 API calls), confirmed before implementation. |
+
+Plus a **scope extension folded into #28** rather than spun out: once the
+elaborated-term fingerprinting works on Mathlib declarations, point the same
+machinery at each candidate's elaborated φ definition to catch *structurally
+identical but textually different* proposals — which ledger text search misses.
+Two inputs, one mechanism; phase 1 (Mathlib) remains claimable, phase 2 (candidate
+dedup) is blocked on candidates existing as elaborated Lean terms (#29) and on
+`Scripts/BuildCorpus.lean`'s hardcoded module list being extended.
 
 Each candidate outcome is recorded as a DEC entry (pass and fail alike).
