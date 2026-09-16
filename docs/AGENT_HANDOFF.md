@@ -154,8 +154,12 @@ Maith's benchmark corpus depends on PleaNP's circuit-complexity substrate.
 - **Packaging blocker for the Maith side:** PleaNP **#102** (root `lakefile` shim)
   — needed before Maith can `require PleaNP` for #26's formalization step. See
   §"Cross-repo imports" above.
-- **Also open:** PleaNP #101 (cosmetic comment corruption in the Rung-5 calculus
-  files — comments only, no code or tooling affected).
+- **Also open:** PleaNP #101 (comment corruption — see the escalation above), and PleaNP **#105** (`main`/`dev` divergence: 4 README commits on `main` not
+  in `dev`, so a `dev`->`main` merge could lose them).
+- **PleaNP CI is now green on `dev`** (run #99, 40/40 steps, 0 skipped). `dev`
+  pushes have been trigger-covered since 2026-09-16, so an upstream break is
+  visible rather than silent — which lowers, but does not remove, the risk of
+  the PleaNP dependency. Still pin a SHA (DEC-043). See DEC-044.
 
 **Independent verification of all five Circuits modules (2026-09-15).** A
 separate reviewer checked `Basic`, `AC0`, `Monotone`, `MonotoneApprox`, and
@@ -229,6 +233,13 @@ holds that blocker.
 > Both tokens authenticate as the same login, so this changes nothing else. A push
 > that appears to hang asking for a password means the remote URL lost its token —
 > re-set it rather than typing anything.
+
+> **Rehearsing CI locally (2026-09-16).** A local run of CI's steps is *not* CI, and
+> the difference has bitten twice: PleaNP's galaxy step is path-dependent (fails only
+> under `actions/checkout`'s directory), and its unicode gate scanned vendored
+> `.lake/packages` — invisible locally because `.lake` did not exist until
+> `lake exe cache get` ran. Both looked green locally and failed in CI. To rehearse
+> meaningfully: materialise `.lake` first, and run from a CI-like path.
 
 ```bash
 # bootstrap (any sandbox/CI runner; no bespoke machine)
