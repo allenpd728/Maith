@@ -153,15 +153,17 @@ def graphTests : List TestResult := [
 -- Run all component tests
 -- ============================================
 
-def runAllComponentTests : IO Unit := do
-  runTestSuite "Polarity Tests" polarityTests
-  runTestSuite "EntityId Tests" entityIdTests
-  runTestSuite "Entity Tests" entityTests
-  runTestSuite "Attribute Tests" attributeTests
-  runTestSuite "RelationOp Tests" relationOpTests
-  runTestSuite "Relation Tests" relationTests
-  runTestSuite "OperationOp Tests" operationOpTests
-  runTestSuite "Operation Tests" operationTests
-  runTestSuite "Graph Tests" graphTests
+def runAllComponentTests : IO Nat := do
+  let mut unexpected := 0
+  unexpected := unexpected + (← runTestSuiteCounted "Polarity Tests" polarityTests)
+  unexpected := unexpected + (← runTestSuiteCounted "EntityId Tests" entityIdTests)
+  unexpected := unexpected + (← runTestSuiteCounted "Entity Tests" entityTests)
+  unexpected := unexpected + (← runTestSuiteCounted "Attribute Tests" attributeTests)
+  unexpected := unexpected + (← runTestSuiteCounted "RelationOp Tests" relationOpTests)
+  unexpected := unexpected + (← runTestSuiteCounted "Relation Tests" relationTests)
+  unexpected := unexpected + (← runTestSuiteCounted "OperationOp Tests" operationOpTests)
+  unexpected := unexpected + (← runTestSuiteCounted "Operation Tests" operationTests)
+  unexpected := unexpected + (← runTestSuiteCounted "Graph Tests" graphTests)
+  return unexpected
 
 end Tests.Components

@@ -151,24 +151,48 @@ The gates surfaced, on adoption, one real pre-existing issue plus review noise:
   (`runAll*`, `main`, `default*`) that are unreferenced by construction. These
   are whitelisted via `--allow-unreferenced` rather than chased.
 
-### Test-harness exit-code gap (important)
+### Test-harness exit code (RESOLVED — issue #25, 2026-09-16)
 
-`Tests/Main.lean` prints `⚠ Some tests failed!` but **exits 0 regardless**. As of
-adoption the suite reports 4 failing assertions:
+**Previously:** `Tests/Main.lean` printed `⚠ Some tests failed!` but **exited 0
+regardless**, so "CI green" could not distinguish all-pass from 3-failures. The CI
+`lean` job grepped the output and emitted a warning rather than a false green.
 
-1–2. Decoder round-trip format mismatch (2 tests) — decoder expects
-`inputs:FVAR_0`, encoder emits `IN_1` (v1.3.0/v2.0.0 format drift).
-3. Injectivity: `sub(a,b)` and `sub(b,a)` collapse to identical tokens.
-4. Decompiled Lean output fails to type-check.
+**Now:** each suite returns its count of *unexpected* failures, `main` sums them,
+and the process exits `1` if the total is non-zero. The CI `lean` job runs
+`lake env ./.lake/build/bin/tests` as a **hard gate** — no grep workaround.
 
-All four are documented pre-existing failures in
-`docs/experiments/V2_NEXT_STEPS.md` and are unrelated to the CI wiring. Because
-the harness exits 0, "CI green" cannot currently distinguish all-pass from
-4-failures. The CI `lean` job therefore greps the output and emits a warning
-rather than a false green; it is deliberately **not yet a hard gate**. Resolving
-the four failures and making the harness exit non-zero on failure is required
-before the test step can be treated as an oracle — a check that cannot fail is
-not a check.
+Pre-existing failures are **not** deleted or silently skipped. They are listed in
+`Tests.Harness.knownFailures`, each naming what tracks it (`V2_NEXT_STEPS.md`
+entries). A listed failure prints as `⊘ … SKIPPED (known failure: …)`; anything
+else prints `✗` and fails the build.
+
+The allowlist is **self-cleaning in both directions**: a listed test that starts
+*passing* prints `FIXED? … remove it from Tests.Harness.knownFailures` and also
+fails the build. So fixing a bug forces pruning the entry, and the list cannot rot
+into a dumping ground.
+
+Current known failures (3 — the earlier note said 4; see `V2_NEXT_STEPS.md`):
+
+1. Decoder round-trip, mixed FVAR/BVAR graph — decoder `inputs:FVAR_0` vs encoder
+   `IN_1` format drift.
+2. Injectivity: `sub(a,b)` and `sub(b,a)` collapse to identical tokens.
+3. Decompiled Lean output fails to type-check (`lean` exits 255).
+
+Note on the third: `Tests/DecompilerTests.lean` shells out to the `lean` binary, so
+the suite must run under `lake env` for that test to be meaningful. Run *without*
+`lean` on `PATH`, `IO.Process.output` throws an uncaught exception and the process
+aborts early — which also exits non-zero, but stops the suite before later suites
+run. Hence `lake env` in CI.
+
+**Verification that this gate can actually fail** (mutation-tested, not assumed):
+
+- Inject an unlisted failure in `EncoderTests` → exit `1`, failure named. ✅
+- Add a `knownFailures` entry for a test that passes → exit `1`, `FIXED?` printed. ✅
+- Clean state → exit `0`, 3 known failures skipped. ✅
+
+A check that cannot fail is not a check — and the first verification attempt at
+this *was* vacuous (`str.replace` silently no-ops on a missed anchor), so the
+probes now assert their mutation applied before trusting the result.
 
 ## References
 

@@ -45,7 +45,7 @@ def corpusTests : List TestResult := [
     "Statistics should reflect corpus contents"
 ]
 
-def runAllCorpusTests : IO Unit := do
-  runTestSuite "Training Corpus Tests" corpusTests
+def runAllCorpusTests : IO Nat := do
+  runTestSuiteCounted "Training Corpus Tests" corpusTests
 
 end Tests.TrainingCorpus
