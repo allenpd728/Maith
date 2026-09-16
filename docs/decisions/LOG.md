@@ -2247,3 +2247,87 @@ itself to.
 
 **Verification:** mermaid balanced (4/4); Tier-1 hygiene/vacuity clean; both files
 UTF-8 clean; #28 body confirmed to carry the addendum.
+
+---
+
+### DEC-040 — Cross-repo Lean imports: verified feasible; (a) chosen for transfer-target formalization (2026-09-16)
+
+**Date:** 2026-09-16
+**Status:** Active
+**Scope:** Axiom-discovery corpus plan Part 2; PleaNP packaging; Maith #26
+
+**Decision:** Formalize circuit-complexity transfer targets **in Maith** (option
+(a)), importing circuit-model definitions from PleaNP. Cross-repo import was
+verified feasible rather than assumed, and the one real blocker is filed upstream
+as PleaNP #102.
+
+**Why this needed deciding:** Maith extracts IR from elaborated `Expr` inside a
+running Lean process, and `Scripts/BuildCorpus.lean` enumerates only modules it
+can import. A target statement formalized in PleaNP would therefore not reach
+Maith's pipeline. The alternatives were (a) formalize in Maith, or (b) formalize
+in PleaNP and defer extraction.
+
+**Verified feasibility (not asserted).** A scratch consumer package depending on
+PleaNP at `3e74ae6`:
+
+```
+$ lake update
+error: PleaNP: no configuration file with a supported extension:
+  .lake/packages/PleaNP/lakefile.lean
+  .lake/packages/PleaNP/lakefile.toml
+```
+
+PleaNP's Lake package lives at `lean/`; Lake resolves a dependency's root at the
+repo root. With a root shim (`package «PleaNP» where srcDir := "lean"` plus the
+`lean_lib` declaration), both the dependency and the consumer built, and real
+definitions resolved:
+
+```
+✔ Built PleaNP.Circuits.Basic (21s)      # dependency
+✔ Built Maith.Probe (52s)                # consumer
+PleaNP.Circuits.BoolGate : ℕ → Type
+PleaNP.Circuits.IsPPoly : CircuitFamily → Prop
+PleaNP.Circuits.Largeness : PropertyFamily → Prop
+PleaNP.Circuits.NaturalProperty : PropertyFamily → Prop
+```
+
+Both repos pin Lean `v4.31.0` / Mathlib `v4.31.0`, so there is no toolchain drift
+to reconcile — unlike PleaNP #70, where the mismatch is what killed the
+`complexitylib` import.
+
+**Two findings that shape consumption:**
+
+1. **A shim alone is insufficient — the dependency must be built.** With the shim
+   present but PleaNP uncompiled, the consumer fails with `unknown module prefix
+   'PleaNP'`: Lake resolves the path but finds no oleans. Consumers must build the
+   `PleaNP.Circuits` closure (or consume the warm image).
+2. **`srcDir` handles layout, not target resolution.** Without the `lean_lib`
+   declaration in the root file, `lake build PleaNP.Circuits.Basic` is `unknown` —
+   so the shim duplicates the library declarations. Flagged as a duplication for
+   PleaNP to resolve deliberately.
+
+**Correction recorded.** An earlier statement in this project held that
+re-exporting PleaNP's modules "would effectively require a mirror repo." That is
+**wrong** — it needs a ~10-line root lakefile upstream. The claim was made without
+testing; testing it took one experiment. Same failure mode as DEC-037's method
+note (assert from a description rather than the artifact).
+
+**Filed upstream:** PleaNP **#102** — root `lakefile` shim, with three options
+(A: shim + duplication; B: move package to root; C: extractable sub-package) left
+for the maintainer, plus the CI-coupling and import-weight consequences.
+
+**Maith side:** #26 body rewritten around option (a) and its DoD made explicit —
+statements live in `Maith/Benchmark/`, must type-check against PleaNP imports, and
+the done comment must include the `lake build` output. Steps 1-3 (research,
+filtering, cross-check) are unblocked and need no Lean; step 4 (formalization) is
+blocked on PleaNP #102. #26 carries **no** `status:available` label until then, and
+the external blocker is stated in-body because PleaNP #102 cannot be a native
+GitHub `blocked_by` edge across repos.
+
+**Also noted, not covered by #26:** `Scripts/BuildCorpus.lean` hardcodes its module
+list, so getting `Maith/Benchmark/` declarations into the IR corpus is a separate
+change (to that list or to its discovery mechanism).
+
+**Verification:** the import experiment was run end-to-end (clone, shim, Mathlib
+cache restore, dependency build, consumer build, `#check` of four PleaNP
+definitions); scratch dirs removed afterward and the Maith working tree left clean.
