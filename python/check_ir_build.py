@@ -82,7 +82,7 @@ def check_g1_3_format(args):
     """G1-3: Format consistency (no mixed gen:FullName and GEN_<BUCKET> tokens)."""
     corpus_path = Path(args.corpus)
     if not corpus_path.exists():
-        return _report("G1-3 format", False, f"corpus not found at {corpus_path}")
+        return _report("G1-3 format", False, _corpus_missing_detail(corpus_path))
 
     gen_named = 0
     gen_bucket = 0
@@ -119,7 +119,7 @@ def check_g1_4_seq_len(args):
     """G1-4: No sequences exceed max_seq_len."""
     corpus_path = Path(args.corpus)
     if not corpus_path.exists():
-        return _report("G1-4 seq_len", False, f"corpus not found at {corpus_path}")
+        return _report("G1-4 seq_len", False, _corpus_missing_detail(corpus_path))
 
     max_len = args.max_seq_len
     overlength = []
@@ -141,6 +141,60 @@ def check_g1_4_seq_len(args):
                         f"{len(overlength)} sequences exceed max_len={max_len} (worst: {worst[0]} at {worst[1]})")
     return _report("G1-4 seq_len", True,
                     f"all sequences within max_len={max_len} (max seen: {max_seen})")
+
+
+def _corpus_missing_detail(corpus_path: Path) -> str:
+    """Explain a missing corpus, naming the alternative that IS present.
+
+    Issue #35: `buildCorpus` writes `Corpus/corpus.jsonl` regardless of
+    `--per-operator`, while this gate defaults to `Corpus/corpus.per_operator.jsonl`.
+    The bare "corpus not found" message therefore appears while a corpus sits right
+    there under the other name, which is misleading rather than actionable.
+
+    This helper does not change *which* file is read (that is #35's fix decision);
+    it only makes the failure legible, and it reports the detected mode so the
+    operator can tell whether the corpus present is even the right one.
+    """
+    parent = corpus_path.parent
+    if not parent.exists():
+        return f"corpus not found at {corpus_path} (and {parent} does not exist)"
+    others = sorted(p for p in parent.glob("corpus*.jsonl") if p != corpus_path)
+    if not others:
+        return f"corpus not found at {corpus_path} (no corpus*.jsonl in {parent})"
+    bits = []
+    for other in others:
+        bits.append(f"{other.name} [{_detect_corpus_mode(other)}]")
+    return (f"corpus not found at {corpus_path} — but present: "
+            f"{', '.join(bits)}. "
+            f"buildCorpus writes corpus.jsonl regardless of --per-operator (#35); "
+            f"pass --corpus explicitly to select one.")
+
+
+def _detect_corpus_mode(path: Path, sample: int = 200) -> str:
+    """Best-effort mode label for a corpus file: per_operator / module / unknown.
+
+    Reads only the first `sample` lines — enough to see op tokens, cheap on a
+    60MB file.
+    """
+    perop = module = 0
+    try:
+        with open(path) as f:
+            for i, line in enumerate(f):
+                if i >= sample:
+                    break
+                if '"op:' in line:
+                    perop += 1
+                elif '"GEN_' in line:
+                    module += 1
+    except OSError:
+        return "unreadable"
+    if perop and not module:
+        return "per_operator"
+    if module and not perop:
+        return "module"
+    if perop and module:
+        return "mixed"
+    return "unknown"
 
 
 def main():
