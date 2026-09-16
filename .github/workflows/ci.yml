@@ -58,6 +58,15 @@ jobs:
       - name: Run Lean test suite
         run: lake env ./.lake/build/bin/tests
 
+      # #29: the five-gate harness. It discharges REAL Lean obligations via
+      # `lake env lean`, so it belongs in the Lean job, not the Python one.
+      # It skips gate-executing tests cleanly when `lake` is absent, so this is
+      # safe either way -- but here the toolchain is present and warm.
+      - name: Five-gate harness tests (#29)
+        run: |
+          export PATH="$HOME/.elan/bin:$PATH"
+          python3 axiom-rewrite/test_harness.py
+
   gates:
     name: Integrity gates (Tier 1)
     runs-on: ubuntu-latest

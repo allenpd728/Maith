@@ -1,0 +1,21 @@
+{
+  "candidate_id": "C-FIXTURE-TRANSFER-FAILS",
+  "target_structure": "Multiplicative monoid on Nat (`phi := id`, admissible)",
+  "domain": "synthetic (abstract multiplicative monoid on Nat)",
+  "phi": "phi := id, but the transfer claim is FALSE",
+  "provenance": "DoD fixture for #29: gates 1-2 PASS, gate 3 FAILS, so gate 4 must refuse",
+  "note": "The DoD specifically requires that gate 4 refuse a compression number for a candidate that failed gate 3. This fixture isolates that: the homomorphism and injectivity obligations are genuine and provable, but the transfer claim is false, so the candidate dies at gate 3 and compression must be refused THERE -- not merely because an earlier gate failed.",
+
+  "prelude": "/- Admissible map (passes gates 1-2) whose TRANSFER step is false. -/\n\nnamespace TransferFailFixture\n\ndef srcMul (a b : Nat) : Nat := a * b\n\ndef phi (n : Nat) : Nat := n\n\ndef tgtMul (a b : Nat) : Nat := a * b\n\nend TransferFailFixture\n",
+
+  "obligations": {
+    "1": "/-- GATE 1 passes: phi = id is a homomorphism for the shared operation. -/\ntheorem tf_gate1 (a b : Nat) :\n    TransferFailFixture.phi (TransferFailFixture.srcMul a b)\n      = TransferFailFixture.tgtMul (TransferFailFixture.phi a) (TransferFailFixture.phi b) := rfl",
+
+    "2": "/-- GATE 2 passes: phi = id is injective. -/\ntheorem tf_gate2 :\n    ∀ a b : Nat, TransferFailFixture.phi a = TransferFailFixture.phi b → a = b := by\n  intro a b h\n  exact h",
+
+    "3": "/-- GATE 3 FAILS. The claim pulled back here is deliberately FALSE: that every\nnatural number is a left identity in the SOURCE, which is not true (1 * 2 = 2 but\n1 * 3 = 3 is fine; the false step is asserting it for all b regardless of which\nelement we started from -- see the proof attempt). This obligation will not\nelaborate, so the candidate dies at transfer and gate 4 must refuse a compression\nnumber. -/\ntheorem tf_gate3_transfer :\n    ∀ b : Nat, TransferFailFixture.srcMul 0 b = b := by\n  intro b\n  -- Goal: `0 * b = b`, i.e. `0 = b` for arbitrary b. Unprovable: rejected here.\n  exact rfl"
+  },
+
+  "second_domain": null,
+  "second_obligation": null
+}
