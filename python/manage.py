@@ -35,6 +35,61 @@ REPO = Path(__file__).resolve().parent.parent
 RUNS_DIR = REPO / "runs"
 DATASETS_DIR = REPO / "datasets"
 CORPUS_DIR = REPO / "Corpus"
+
+
+def resolve_repo_path(value, *, kind: str) -> Path:
+    """Resolve a CLI path argument against REPO, and require it to exist.
+
+    Relative paths are anchored at REPO, not the caller's cwd, so `--datasets
+    datasets` means the same thing from anywhere. A missing directory is a hard
+    error: silently falling back to a default is how the wrong tree gets gated
+    (the contamination class RUN_REGISTRY.md guards against).
+    """
+    raw = Path(value)
+    path = raw if raw.is_absolute() else (REPO / raw)
+    path = path.resolve()
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{kind} directory not found: {value!r} -> {path}\n"
+            f"  (relative paths resolve against the repo root {REPO}; "
+            f"pass an explicit path or run from the repo)"
+        )
+    if not path.is_dir():
+        raise NotADirectoryError(f"{kind} path is not a directory: {path}")
+    return path
+
+
+def describe_dataset_dir(path: Path) -> str:
+    """One-line provenance for a datasets dir: manifest + corpus hash if present.
+
+    Makes the gate header self-evidencing, so a transcript shows *which* tree was
+    gated rather than only that something was.
+
+    NOTE on file shapes (verified, not assumed -- my first attempt read the wrong
+    files and reported "manifest=unreadable"):
+      - `representation_manifest.json` is the SUMMARY (a dict): representation_id,
+        encoderVersion, seed, train_examples, eval_examples. This is the file with
+        the fields worth printing.
+      - `train_manifest.json` / `eval_manifest.json` are per-example LISTS, not
+        summaries -- they do not carry representation_id.
+      - The provenance hash lives per-dataset under `datasets/`, not in the
+        representation manifest.
+    """
+    bits = [f"datasets={path}"]
+    summary = path / "representation_manifest.json"
+    if summary.exists():
+        try:
+            m = json.loads(summary.read_text())
+            for key in ("representation_id", "encoderVersion", "seed",
+                        "train_examples", "eval_examples"):
+                if m.get(key) is not None:
+                    bits.append(f"{key}={m[key]}")
+        except Exception:
+            bits.append("representation_manifest=unreadable")
+    else:
+        bits.append("representation_manifest=absent")
+    return "  ".join(bits)
+
 AUDIT_PATH = REPO / "docs" / "experiments" / "AUDIT_2026_08_10.md"
 LAUNCH_RUN = REPO / "python" / "launch_run.py"
 CHECK_INVARIANTS = REPO / "python" / "check_invariants.py"
@@ -628,9 +683,17 @@ def cmd_grid(args):
 
 def cmd_invariants(args):
     """Run the invariant checker and show a formatted pass/fail report."""
-    ds = args.datasets or "datasets"
-    rs = args.runs or "runs"
-    return run_invariant_check(ds, rs)
+    # issue #24: was bare "datasets"/"runs" (always cwd-relative). Anchor at REPO
+    # and require existence, consistent with cmd_gate.
+    try:
+        ds_path = resolve_repo_path(args.datasets or DATASETS_DIR, kind="datasets")
+        rs_path = resolve_repo_path(args.runs or RUNS_DIR, kind="runs")
+    except (FileNotFoundError, NotADirectoryError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 2
+    print(f"  {describe_dataset_dir(ds_path)}")
+    print(f"  runs={rs_path}")
+    return run_invariant_check(str(ds_path), str(rs_path))
 
 
 def cmd_logs(args):
@@ -1081,8 +1144,23 @@ def cmd_gate(args):
     station = args.station
     py = sys.executable
     repo = str(REPO)
-    ds = args.datasets or str(DATASETS_DIR)
-    runs = args.runs or str(RUNS_DIR)
+    # Resolve explicitly (issue #24). Defaults are repo-anchored; a user path is
+    # anchored at REPO too, and must exist. Resolve BEFORE building any gate so a
+    # bad path fails before a single check runs.
+    try:
+        ds_path = resolve_repo_path(args.datasets or DATASETS_DIR, kind="datasets")
+        runs_path = resolve_repo_path(args.runs or RUNS_DIR, kind="runs")
+    except (FileNotFoundError, NotADirectoryError) as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 2
+    ds = str(ds_path)
+    runs = str(runs_path)
+
+    print(f"\n{'='*60}")
+    print("GATE TARGET")
+    print(f"{'='*60}")
+    print(f"  {describe_dataset_dir(ds_path)}")
+    print(f"  runs={runs_path}")
 
     gates = []
 
