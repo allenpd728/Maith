@@ -3303,3 +3303,53 @@ candidate, ledger record, or experiment.
 training-cutoff caveat; section 9.7 records the challenge-stage question and marks the
 recovery gap as partly resolved; the active-track reference block contains the two
 time-cut benchmark citations.
+
+### DEC-056 — Time-cut validation is the LBD replication protocol; target selection is a bias source (2026-09-18)
+
+**Date:** 2026-09-18
+**Status:** Active
+**Scope:** `docs/reference/PRIOR_ART.md` (section 9.5.2, active-track references).
+
+**Carried over from the sibling repo's oracle-problem review (Ephapse DEC-013).**
+Adopted in part; the causal-instrument half of that decision is Ephapse-internal and
+does not apply here.
+
+**The point.** The time-cut design recorded in DEC-055 (§9.5.1) is not an LLM-era
+invention. Literature-based discovery has used the same **replication** protocol for
+decades: given a known discovery at time *t*, supply the pre-*t* literature, produce a
+ranked candidate list, and score the system by how highly the known target ranks.
+Swanson's fish-oil / Raynaud's syndrome (1986) and magnesium / migraine (1988) links
+are the canonical targets.
+
+**Two documented weaknesses of that protocol, now recorded in section 9.5.2:**
+
+1. **The target set is tiny.** LBD evaluation has relied on the same handful of
+   confirmed discoveries for over three decades. A Maith analogue must state its
+   target set and selection process rather than inheriting "a few famous hits" as
+   though that were a benchmark.
+2. **Target-selection bias.** The canonical discoveries were made by a researcher who
+   personally experienced the conditions involved - a documented concern about
+   scientific neutrality in the protocol. Target selection is a bias source, not a
+   neutral step.
+
+**Why this applies to Maith directly.** The active track's benchmark domain is circuit
+complexity and #26 builds a transfer-target list (T1-T10 plus screening results). Under
+this protocol that list *is* the target set, so the same two questions apply: how were
+the targets chosen, and could the selection make recovery easy or hard for reasons
+unrelated to the search mechanism?
+
+**The generalizable statement recorded in the section:** a time-cut benchmark measures
+the search mechanism only if the target set was not selected with knowledge of what the
+mechanism can find; otherwise it measures the selection. Same failure shape as the #28
+ground-truth gap (§9.2), one level up.
+
+**Not adopted:** the causal-intervention instruments (RAVEL Cause/Isolate, interchange
+intervention as a positive control). Those address Ephapse's problem - no kernel - and
+are irrelevant where a kernel already exists. Maith's gate 2 already discharges the
+structure-preservation obligation more strongly than an intervention score would.
+
+**Non-goal:** unchanged. No gate, candidate, ledger record, or experiment touched.
+
+**Verification:** section 9.5.2 exists with both documented weaknesses and the
+target-selection question applied to #26; the active-track reference block contains the
+Swanson, Smalheiser, ARROWSMITH, and LBD-evaluation-critique citations.

@@ -662,6 +662,36 @@ new one, and the design cannot rule out that the model is retrieving a near-sens
 paraphrase of the discovery rather than reasoning to it. Record it as a benchmark of
 recovery, not a demonstration of discovery. Both source benchmarks frame it this way.
 
+#### 9.5.2 The protocol is older than the LLM literature — and its known weaknesses transfer
+
+The time-cut design is not new to the LLM era. Literature-based discovery has used the
+**replication** method for decades: given a known discovery at time *t*, provide the
+literature available before *t*, produce a ranked candidate list, and score the system by
+how highly the known target ranks. Swanson's **fish-oil / Raynaud's syndrome** (1986) and
+**magnesium / migraine** (1988) links are the canonical targets and remain the most
+commonly used benchmark for LBD systems.
+
+Two documented weaknesses are worth importing rather than rediscovering:
+
+1. **The target set is tiny.** Evaluation has relied on the same handful of confirmed
+   discoveries for over three decades. Anyone building a Maith analogue must state the
+   target set and its selection process, not inherit "a few famous hits" as if it were a
+   benchmark.
+2. **Target-selection bias.** The canonical discoveries were made by a researcher who
+   personally experienced the conditions involved — a documented concern about scientific
+   neutrality in the protocol. Target selection is a source of bias, not a neutral step.
+
+**Why this matters for Maith specifically.** The active track's benchmark domain is
+circuit complexity, and #26 builds a transfer-target list (T1–T10 plus screening results).
+That list *is* a target set under this protocol, and the same question applies: how were
+the targets chosen, and could the selection make recovery easy or hard for reasons
+unrelated to the search mechanism? The LBD literature says to ask this explicitly.
+
+**The generalizable point.** A time-cut benchmark measures the *search mechanism* only if
+the target set was not selected with knowledge of what the mechanism can find. Otherwise
+it measures the selection. Same failure shape as the #28 ground-truth gap (§9.2), one
+level up.
+
 ### 9.6 Where the active track is distinct
 
 Following §6's pattern, and claiming only what the above supports:
@@ -848,3 +878,16 @@ Following §6's pattern, and claiming only what the above supports:
 - IdeaBench: benchmark dataset for LLM hypothesis generation — 2,374 target papers
   published after 2024-01-01 with ~23K filtered references, dated to prevent training
   leakage. PMC11923747 ("Embracing Foundation Models for Advancing Scientific Discovery").
+
+**Literature-based discovery / replication protocol (§9.5.2, added 2026-09-18)**
+- Swanson, D. R. (1986). Fish oil, Raynaud's syndrome, and undiscovered public knowledge.
+  *Perspectives in Biology and Medicine* 30(1), 7–18. doi:10.1353/pbm.1986.0087.
+- Swanson, D. R. (1988). Migraine and magnesium: eleven neglected connections.
+  (The second canonical LBD target.)
+- Smalheiser, N. R. (2017). Rediscovering Don Swanson: the past, present and future of
+  literature-based discovery. *Journal of Data and Information Science* 2(4), 43–64.
+  doi:10.1515/jdis-2017-0019.
+- "Literature-based discovery: addressing the issue of the subpar evaluation methodology."
+  PMC9945845. (The target-set and selection-bias critique cited in §9.5.2.)
+- ARROWSMITH two-node search interface — Smalheiser et al. (2006), *Journal of Biomedical
+  Discovery and Collaboration* 1(1).
