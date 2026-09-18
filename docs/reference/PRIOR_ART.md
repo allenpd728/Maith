@@ -4,6 +4,12 @@
 > closest prior art, and states honestly where Maith converges with existing work versus
 > where it occupies a gap. It is written to accompany the experimental record in
 > [`docs/decisions/LOG.md`](../decisions/LOG.md); decision IDs (DEC-0xx) refer to entries there.
+>
+> **Two tracks.** §1–8 cover the IR/training track (shelved as a research direction,
+> DEC-036; last revised 2026-08-16 — the DEC-031/032 invalidation caveat in §1 still
+> applies to those numbers). **§9 covers the active track, axiom discovery**, and was added
+> 2026-09-18 because the active track had inherited no grounding from the rest of the
+> document. If you are working on axiom discovery, read §9 first; §1–8 are background.
 
 ## 1. Maith's position in one paragraph
 
@@ -458,7 +464,204 @@ which is the misaligned case. A graph-native architecture is the aligned case, a
 theory predicts it should be where the IR's advantage appears. This dimension should be
 added to the matrix and tracked as an open experimental question.
 
-## 9. References
+## 9. The active track (axiom discovery) — added 2026-09-18
+
+> **Why this section exists.** Sections 1–8 were written for the IR/training track and
+> were last revised 2026-08-16. The active track was promoted on 2026-09-15 (DEC-036) and
+> inherited no grounding from them: on the pre-existing document, `homomorphism`,
+> `axiom discovery`, `transfer`, `conjecture`, `causal abstraction`, `analogy`, and
+> `circuit complexity` each had **zero** mentions, while `IR` had 96. This section is the
+> field check for the track that is actually running. It is not a novelty claim — per the
+> project's standing rule, nothing here authorizes calling anything novel.
+
+The active track (`docs/experiments/AXIOM_DISCOVERY.md`) searches for a map φ from a
+domain of interest into a known algebraic structure such that φ is a genuine
+homomorphism, φ is non-trivial (not a collapse), and pulling existing theorems back
+through φ yields new or substantially shorter proofs. Five gates check candidates, each a
+real Lean obligation. That shape has prior art on four fronts.
+
+### 9.1 Transport of structure — the classical lineage of φ
+
+The move "prove a structure-preserving map exists, then read theorems across it" is
+classical mathematics, not a new method:
+
+- **Transport of structure** (Bourbaki) — the standard practice of carrying a structure
+  across a bijection and re-deriving its theorems in the new carrier.
+- **Transfer principle / Łoś's theorem** — the model-theoretic case: a statement true in
+  one structure transfers to another under the appropriate elementary equivalence. This
+  is the closest classical analogue to "pull an existing theorem back through φ," and it
+  is also where the *collapse* failure mode is well characterized (the map must be
+  structure-embedding, not merely structure-preserving into a trivial target).
+- **Categorical / Morita equivalence** — the modern statement of when two structures have
+  the same theory, and the natural home of gate 2's "non-trivial, not a collapse"
+  condition.
+
+**Position.** Maith's specific instantiation is narrower: a *search* over candidate φ's,
+kernel-checked, on a fixed benchmark domain, with proof-size accounting. The general
+principle is standard mathematics. What is not standard is treating φ-discovery as a
+search problem with an admission-control pipeline; §9.4 is where that comparison belongs.
+
+### 9.2 Structure-mapping and analogical retrieval — the #28 layer
+
+`docs/reference/STRUCTURAL_SIMILARITY.md` (issue #28, phase 1) is a structural
+fingerprinting and ranking layer over IR graphs: alpha-equivalence modulo naming and
+ordering, plus a graded similarity score
+(`0.7 * weighted_jaccard(facts) + 0.3 * jaccard(ops)`). That is analogical *retrieval*
+and *mapping*, a field with decades of work and, importantly, established evaluation
+practice:
+
+- **Gentner, D. (1983). *Structure-mapping: A theoretical framework for analogy*** —
+  the foundational account of analogy as alignment of relational structure rather than
+  surface features. This is the closest cognitive-science ancestor of the homomorphism
+  obligation, and it supplies vocabulary Maith currently re-derives (the doc's own
+  "presentation vs. content" boundary is structure-mapping's *systematicity* and
+  *relational* emphasis).
+- **Kang et al. (2022), *Augmenting Scientific Creativity with an Analogical Search
+  Engine*** (ACM TOCHI 29(6), Article 57) — retrieval + mapping over scientific corpora,
+  with user studies on what makes a retrieved analogy useful. Directly relevant to
+  deciding what the #28 score should optimize.
+- **Literature-based discovery** — Swanson's **ABC model** and the **ARROWSMITH** system
+  (Smalheiser & Swanson), which take two disjoint corpora and surface *bridging terms*
+  for human assessment. Structurally the same candidate-surfacing shape as the
+  Ephapse-style handoff, and the parent of **bisociative** cross-domain discovery using
+  word embeddings (New Generation Computing, 2020).
+
+**The borrowable methodological point.** The #28 doc's own "Known limits" states:
+
+> **No ground truth for semantic similarity.** Structural identity is decidable and
+> tested; "these two graphs mean related things" is not claimed and is not tested. Any
+> future semantic notion needs its own labelled data.
+
+The analogy literature has already confronted this. The standard construction is to rank
+candidates by **surprise = structural_similarity x semantic_distance** — i.e. reward
+pairs that are structurally alike but semantically far apart — rather than by raw
+similarity, which favors trivially-similar pairs. Maith's current score has no
+distance term, so it would rank `CancelMonoid`/`CommMonoid`/`SubNegMonoid` (its own
+largest group, 51×) highly, which is correct for dedup but exactly wrong for *candidate
+generation*: the interesting φ is the one bridging unrelated structures, not the one
+joining near-identical ones. **This is a live design question for #28 phase 2, not a
+defect in phase 1**, but it should be decided against the prior art rather than
+re-derived.
+
+### 9.3 Automated conjecture generation with formal validation — the closest pipeline analogue
+
+The comparison that matters most for the active track's shape:
+
+- **LLM Framework for Discovering Major Mathematical Conjectures** (arXiv:2607.28632) —
+  a three-stage pipeline: region search from explicit local evidence modules →
+  reflective validation for foundationality/novelty/significance → formal validation in
+  Lean 4 + Mathlib. Reported: 20/20 candidates pass Lean parse and typecheck, 20/20 not
+  absorbed by `exact?`, 20/20 not discharged by `aesop`, no duplicates. That is Maith's
+  gate shape (search → admission control → kernel check → quality filter), with published
+  numbers.
+- **LeanConjecturer** (arXiv:2506.22005), **STP: Self-play LLM Theorem Provers with
+  Iterative Conjecturing and Proving** (ICML 2025), **ATG: Benchmarking Automated Theorem
+  Generation** (NAACL 2024 Findings), and the survey ***Automated Conjecturing and Theorem
+  Finding*** (JCST) — the broader conjecture-generation line.
+- **MOOSE-Chem** (ICLR 2025) — hypothesis *rediscovery* from background only, which is
+  the evaluation design discussed in §9.5.
+
+**Position.** Maith's distinguishing element here is not formal validation in Lean —
+that is now standard practice in this line — but that the generator is a *structural
+search over an IR graph*, with the map φ required to be a proven homomorphism rather
+than a conjectured-looking statement. The distinguishing claim is the search mechanism
+and the obligation, not the pipeline architecture.
+
+### 9.4 Causal abstraction — the rigorous form of the gates-1–2 question
+
+Gates 1–2 ask: does a map preserve structure, and is it non-trivial? That question has a
+formalized literature with a graded metric:
+
+- **Geiger et al. (2021), *Causal Abstractions of Neural Networks*** (NeurIPS 2021) —
+  alignment of neural representations with variables in an interpretable causal model,
+  verified by **interchange interventions**.
+- **Geiger et al. (2022), *Inducing Causal Structure for Interpretable Neural Networks***
+  (ICML 2022) — interchange intervention training.
+- **Geiger et al. (2023), *Finding Alignments Between Interpretable Causal Variables and
+  Distributed Neural Representations*** (arXiv:2303.02536) — **distributed alignment
+  search** (DAS), finding alignments by gradient descent, and introducing **interchange
+  intervention accuracy (IIA)** as a graded notion.
+- **Causal Abstraction in Model Interpretability: A Compact Survey** (arXiv:2410.20161).
+- **Sutter et al. (2025), *The Non-Linear Representation Dilemma*** (arXiv:2507.08802,
+  NeurIPS 2025 spotlight) — the boundary condition: if the alignment map is allowed to be
+  arbitrarily expressive, any network aligns to any algorithm, and the test goes vacuous.
+
+> **Correction to an earlier cross-repo note.** A sibling-repo review (Ephapse
+> `DEC-010`) initially flagged Sutter et al. as a risk to Maith's gate 1, on the reading
+> that a homomorphism obligation could be passed vacuously. **That was wrong and has been
+> corrected there.** Gate 1 is a written Lean term whose complexity is fixed by its
+> author; it is not a learned or capacity-selected map, so the Sutter vacuity result does
+> not apply to it. Gate 2 additionally rejects the Unit-collapse by name (see the #29
+> starter in `AGENT_HANDOFF.md`). The correct reading is the one used above: this
+> literature is a **strengthening to borrow**, not a defect in Maith's gates.
+
+**What is specifically borrowable.** IIA gives a *graded* answer to a question Maith
+currently answers binarily ("typechecks → pass"). More usefully, the Sutter boundary
+condition sharpens gate 2: for a non-injective φ into a target whose operations are weak
+enough that the homomorphism law holds for uninteresting reasons, "prove **or
+characterize** φ's kernel" is the only part of the gate doing real work. The
+causal-abstraction literature states precisely what such a characterization must
+establish for the pass to carry information.
+
+### 9.5 Evaluation design — the missing ground-truth recovery setting
+
+Every Maith gate evaluates a candidate that already exists. Nothing tests whether the
+*proposal mechanism* can find candidates that are known to be there. Adjacent work does:
+
+- **MOOSE-Chem** (ICLR 2025) recovers a known chemistry hypothesis from background alone —
+  a rediscovery setting with ground truth.
+- Mechanistic-interpretability practice injects a known correlation into a background
+  corpus and measures detector recovery against a naive baseline (method and numbers in
+  the sibling repo `allenpd728/ephapse`, `docs/reference/PRIOR_ART.md` §2).
+
+Without an equivalent, "the proposal mechanism ran and found no candidates" is
+**uninterpretable**: it cannot distinguish "no candidate φ exists on this benchmark" from
+"the structural search cannot see the ones that do." This is the same ground-truth gap
+the #28 doc admits for semantic similarity (§9.2), appearing at the level of the whole
+proposal step. A small injected-fixture design would close it — synthetic φ's planted in
+the corpus that the search is expected to recover — and is far cheaper than a full
+benchmark.
+
+### 9.6 Where the active track is distinct
+
+Following §6's pattern, and claiming only what the above supports:
+
+1. **The obligation is a kernel obligation, and it is the *first* gate.** The conjecture-
+   generation line filters for parseability, non-triviality via `exact?`/`aesop`, and
+   novelty; it does not require a proven structure-preserving map as the admission
+   condition for a candidate. Maith's gate 1 does. That is the closest thing to a
+   distinguishing methodological choice here, and it is a *strengthening of admission
+   control*, not a new result.
+2. **Search is over a canonical semantic IR graph**, with presentation-invariance pinned
+   by tests (and — importantly — a deliberate boundary: free-variable names are treated as
+   content, with `test_free_variable_name_change_must_not_match` guarding the boundary).
+   The analogy literature operates on text, embeddings, or knowledge graphs, not on an
+   elaboration-grounded canonical graph IR.
+3. Nothing here is claimed about *problem taste* or significance. The closest prior
+   pipeline (arXiv:2607.28632) explicitly targets "high problem taste"; Maith's stated
+   non-goals deliberately decline that target in favour of a falsifiable general method.
+   That is a scoping difference worth stating so it is not read as a capability gap.
+
+### 9.7 What the prior art does not resolve for the active track
+
+- **Whether homomorphism-first admission control is productive.** Requiring a proven
+  homomorphism before any transfer attempt is stricter than the conjecture line. The
+  prior art gives no evidence either way on whether that strictness costs more in
+  candidate yield than it gains in precision. This is the active track's central
+  untested methodological bet.
+- **Whether structural search over an IR graph finds anything the text-based line
+  misses.** No comparison exists. The `#28` results (4,029 graphs, 539 shared
+  fingerprints, real structural families recovered) show the mechanism runs and finds
+  families; they do not show it finds *transferable* φ's.
+- **What the correct ranking objective is** (see §9.2): similarity alone cannot
+  distinguish dedup from discovery, and no ground truth exists to calibrate a
+  surprise-style score on this corpus.
+- **How a found φ should be checked for significance** beyond typechecking — `#34`
+  ("adversarial significance check via independent external models") is the open question
+  here, and the causal-abstraction literature (§9.4) is the closest existing formal
+  treatment.
+
+## 10. References
 
 - Assran, M., Duval, Q., Misra, I., Bojanowski, P., Vincent, P., Rabbat, M., LeCun, Y., &
   Ballas, N. (2023). Self-Supervised Learning from Images with a Joint-Embedding Predictive
@@ -541,3 +744,49 @@ added to the matrix and tracked as an open experimental question.
 - "LLM Knowledge is Brittle: Truthfulness Representations Rely on Superficial
   Resemblance." arXiv:2510.11905 (2025).
 - Math information retrieval representation study. CEUR Vol-2696, paper_235.
+
+### References added by §9 (active track, 2026-09-18)
+
+**Transport of structure / transfer**
+- Bourbaki, N. *Éléments de mathématique* — transport of structure as standard practice.
+- Łoś, J. (1955). Quelques remarques, théorèmes et problèmes sur les classes définissables
+  d'algèbres. (Transfer principle for ultraproducts; the model-theoretic transfer case.)
+- Morita equivalence — the categorical statement of shared theory between structures.
+
+**Structure-mapping and analogical retrieval**
+- Gentner, D. (1983). Structure-mapping: A theoretical framework for analogy.
+  *Cognitive Science* 7(2), 155–170.
+- Kang, H. B., Qian, X., Hope, T., Shahaf, D., Chan, J., & Kittur, A. (2022). Augmenting
+  Scientific Creativity with an Analogical Search Engine. *ACM TOCHI* 29(6), Article 57.
+- Swanson, D. R. & Smalheiser, N. R. — the ABC model of literature-based discovery and
+  the ARROWSMITH system (bridging-term identification across disjoint corpora).
+- "Bisociative Literature-Based Discovery: Lessons Learned and New Word Embedding
+  Approach." *New Generation Computing* (2020). doi:10.1007/s00354-020-00108-w.
+
+**Automated conjecture generation with formal validation**
+- Wong, A., Zeng, Z., Tan, Y., Li, W., Chen, X., Lai, X., Shi, Y., Lu, L., & Chen, Y.
+  (2026). LLM Framework for Discovering Major Mathematical Conjectures: AI's Quest for
+  the Next Riemann Hypothesis. arXiv:2607.28632.
+- Onda, N., Kasaura, K., Oriike, Y., Taniguchi, M., Sannai, A., & Sonoda, S. (2025).
+  LeanConjecturer: Automatic generation of mathematical conjectures for theorem proving.
+  arXiv:2506.22005.
+- Dong, K. & Ma, T. (2025). STP: Self-play LLM Theorem Provers with Iterative Conjecturing
+  and Proving. *ICML 2025*, 14114–14136.
+- Lin, X., Cao, Q., Huang, Y., Yang, Z., Liu, Z., Li, Z., & Liang, X. (2024). ATG:
+  Benchmarking Automated Theorem Generation for Generative Language Models. *NAACL 2024
+  Findings*. doi:10.18653/V1/2024.FINDINGS-NAACL.279.
+- "Automated conjecturing and theorem finding: A survey." *JCST* (2026).
+  doi:10.1007/s11390-026-6040-0.
+- Yang, Z., Liu, W., et al. (2025). MOOSE-Chem: Large Language Models for Rediscovering
+  Unseen Chemistry Scientific Hypotheses. *ICLR 2025*.
+
+**Causal abstraction / interchange interventions**
+- Geiger, A., Lu, H., Icard, T., & Potts, C. (2021). Causal Abstractions of Neural
+  Networks. *NeurIPS 2021*.
+- Geiger, A., Wu, Z., Lu, H., Rozner, J., Kreiss, E., Icard, T., Goodman, N., & Potts, C.
+  (2022). Inducing Causal Structure for Interpretable Neural Networks. *ICML 2022*.
+- Geiger, A., Ibeling, D., Zur, A., et al. (2023). Finding Alignments Between
+  Interpretable Causal Variables and Distributed Neural Representations. arXiv:2303.02536.
+- "Causal Abstraction in Model Interpretability: A Compact Survey." arXiv:2410.20161.
+- Sutter, T., et al. (2025). The Non-Linear Representation Dilemma: Is Causal Abstraction
+  Enough for Mechanistic Interpretability? arXiv:2507.08802, *NeurIPS 2025* (spotlight).

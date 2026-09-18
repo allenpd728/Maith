@@ -34,7 +34,9 @@
 > superseding the shelved toy-model training path. See
 > [`AXIOM_DISCOVERY`](docs/experiments/AXIOM_DISCOVERY.md) and its companion
 > corpus plan, [`BENCHMARK_CORPUS_PLAN`](docs/experiments/BENCHMARK_CORPUS_PLAN.md).
-> The repo now runs the PleaNP-derived CI and two-tier integrity gates
+> Its prior-art grounding is [`PRIOR_ART` §9](docs/reference/PRIOR_ART.md)
+> (added 2026-09-18 — the active track began without one). The repo now runs the
+> PleaNP-derived CI and two-tier integrity gates
 > ([`TOOLCHAIN_AND_CI`](docs/TOOLCHAIN_AND_CI.md)) and develops on a single
 > `dev` branch.
 
