@@ -3230,3 +3230,76 @@ calling anything novel; the purpose is grounding, not priority.
 returns non-zero on `docs/reference/PRIOR_ART.md` after the change;
 `AXIOM_DISCOVERY.md` now contains a references-bearing section. No gate,
 candidate, ledger record, or experiment is touched by this decision.
+
+### DEC-055 — Active-track prior art: recovery-setting design, and a declined third repo (2026-09-18)
+
+**Date:** 2026-09-18
+**Status:** Active
+**Scope:** `docs/reference/PRIOR_ART.md` (section 9.5.1, 9.7, active-track references).
+
+**Carried over from a review of a general-purpose cross-domain hypothesis-generation
+pipeline.** That document proposed, among other things, a retrospective validation
+design and a challenge-before-admission stage. Two items were adopted; the pipeline
+itself was declined.
+
+**1. Adopted: retrospective time-cut validation as the preferred design for the
+missing ground-truth recovery setting (section 9.5.1).**
+
+The gap recorded in DEC-054 was that every Maith gate evaluates a candidate that
+already exists, so "the proposal mechanism ran and found no candidates" cannot be
+distinguished from "the search cannot see real candidates." The previously recorded
+answer was synthetic injected fixtures.
+
+The stronger, established answer is time-cut validation: freeze the knowledge base
+at time *t*, pose a then-open question, generate and rank using only pre-*t*
+evidence, and compare against what was later supported. This is the design in
+current use, not a proposal:
+
+- ProjectionBench (arXiv:2605.30284) - progressive information disclosure from a
+  paper's topic and research question, with hypotheses required at each stage.
+- IdeaBench (PMC11923747) - 2,374 target papers published after 2024-01-01 with
+  ~23K filtered references, dated specifically to prevent training leakage.
+
+**The load-bearing caveat, which the source document omitted.** The cut must be
+relative to the **model's training cutoff**, not to wall-clock recency. If the model
+has memorized the later discovery, the benchmark measures recall rather than
+hypothesis generation. Both source benchmarks select post-cutoff material for
+exactly this reason. A time-cut design without a stated cutoff and verified
+post-cutoff targets is not evidence, and this is recorded in the section so a future
+implementer cannot miss it.
+
+Ranked above the injected-fixture design because fixtures test sensitivity under
+conditions where candidates are shaped to be findable, whereas time-cut tests the
+same property against real structure. It is also the only design discussed that could
+support a claim about the *end* of the pipeline (whether gate-3 survivors correspond
+to what the field later valued), not just the search step. It still does not
+establish discovery - only recovery - and section 9.5.1 says so.
+
+**2. Recorded as an open question, not adopted: a pre-admission challenge stage
+(section 9.7).**
+
+The gates verify a candidate that already exists; nothing tries to defeat one before
+it enters. The nearest existing thing is #34, which operates only on gate-5
+survivors. The asymmetry worth noting: post-hoc verification is strong in this
+pipeline, pre-admission critique is thin. Filed as a candidate design, not a
+commitment.
+
+**3. Declined: the third repo.** Recorded here because the review crossed this repo.
+The pipeline is the same intellectual ancestor with a weaker search mechanism
+(prompted LLM over text dossiers, versus a proven homomorphism obligation) and no
+validation oracle; its blinded-panel and priority-scoring apparatus is the expensive
+substitute for the kernel oracle Maith already has. Building it while the active track
+has no first candidate batch (#30 not run) would repeat the infrastructure-ahead-of-
+results mistake this project has already made once. The sibling decision is recorded
+in full at Ephapse `docs/decisions/LOG.md` DEC-012, which also corrects the source
+document's NSF framing (NSF 26-512 is a data-readiness program, not a
+hypothesis-generation one; the relevant framing is the Genesis Mission DCL, NSF
+26-023, and for-profit organizations are eligible proposers).
+
+**Non-goal:** unchanged. Nothing here authorizes a novelty claim or touches a gate,
+candidate, ledger record, or experiment.
+
+**Verification:** `docs/reference/PRIOR_ART.md` section 9.5.1 exists and states the
+training-cutoff caveat; section 9.7 records the challenge-stage question and marks the
+recovery gap as partly resolved; the active-track reference block contains the two
+time-cut benchmark citations.
