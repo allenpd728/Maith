@@ -3149,3 +3149,84 @@ under `--strict` is the `discarded_let` at `Maith/CorpusSerializer.lean:126`.
 Leaving Tier 1b advisory meant the class of defect it targets could reappear
 silently; the cost of closing it was deleting one dead function.
 
+
+### DEC-054 — Prior art for the active track (#39): the axiom-discovery track had no grounding (2026-09-18)
+
+**Date:** 2026-09-18
+**Status:** Active
+**Scope:** `docs/reference/PRIOR_ART.md` (new section 9 + references),
+`docs/experiments/AXIOM_DISCOVERY.md` (new "Prior art and positioning"
+section), `README.md`.
+
+**Decision:** The axiom-discovery track was promoted to active on 2026-09-15
+(DEC-036) without carrying any literature grounding across. Measured on the
+document as it stood: `docs/reference/PRIOR_ART.md` (543 lines, last revised
+2026-08-16) had **zero** mentions of `homomorphism`, `axiom discovery`,
+`transfer`, `conjecture`, `causal abstraction`, `analogy`, or
+`circuit complexity`, while `IR` had 96 - the document covered only the
+shelved IR/training track. `AXIOM_DISCOVERY.md`, the active track's own spec,
+had zero citations of any kind (no arXiv reference, no "et al", no
+references section).
+
+A new **section 9** is added to `PRIOR_ART.md` scoped explicitly to the active
+track, with its own reference block, and a summary section is added to
+`AXIOM_DISCOVERY.md` pointing into it. The document header now states the
+two-track split so sections 1-8 are not mistaken for active-track grounding.
+
+**What the grounding establishes:**
+
+1. **The phi idea is classical.** Transport of structure (Bourbaki), the
+   transfer principle (Los), and categorical/Morita equivalence precede it.
+   The general principle is not a Maith contribution, and no document should
+   read as if it were.
+2. **The proposal step is analogical retrieval**, whose foundational account
+   is Gentner's structure-mapping (1983), with applied retrieval in Kang et al.
+   (ACM TOCHI 2022) and literature-based discovery (Swanson's ABC model /
+   ARROWSMITH). Consequence: the presentation-vs-content boundary in
+   `STRUCTURAL_SIMILARITY.md` is structure-mapping's relational emphasis,
+   re-derived.
+3. **The pipeline shape has a close published analogue** (arXiv:2607.28632:
+   region search -> semantic critic -> Lean 4 validation, 20/20
+   parse+typecheck, not `exact?`-absorbed, not `aesop`-discharged), plus
+   LeanConjecturer (arXiv:2506.22005), STP (ICML 2025), ATG (NAACL 2024).
+   Formal Lean validation is standard in this line, so it is not the
+   differentiator.
+4. **Gates 1-2 are the question causal abstraction formalizes** (Geiger et al.;
+   interchange intervention accuracy as a graded metric), with Sutter et al.
+   (arXiv:2507.08802) as the boundary condition.
+
+**Two substantive findings, not just citations:**
+
+- **The #28 ranking objective is right for dedup and wrong for discovery.**
+  `sim = 0.7*facts + 0.3*ops` has no semantic-distance term, so it ranks
+  near-identical structures highest - correct for phase-1 dedup, but the field
+  convention for cross-domain *candidate generation* is
+  `surprise = structural_similarity x semantic_distance`. Left as an open
+  design decision for #28 phase 2 (not changed here), now on the record rather
+  than re-derived.
+- **The proposal mechanism has no ground-truth recovery setting.** Every gate
+  evaluates a candidate that already exists; nothing tests whether search can
+  find candidates known to be present. A "mechanism ran, found nothing"
+  outcome is therefore uninterpretable - it cannot distinguish absence of
+  candidates from failure to see them. This is the same class of gap
+  `STRUCTURAL_SIMILARITY.md` already admits for semantic similarity, at the
+  level of the whole proposal step. Filed as an open question in sections
+  9.5/9.7, not resolved here.
+
+**Correction carried across repos.** A sibling-repo review (Ephapse `DEC-010`)
+initially flagged Sutter et al. as a risk to gate 1, on the reading that a
+homomorphism obligation could be passed vacuously. That was **wrong**: gate 1
+is a written Lean term whose complexity is fixed by its author, not a learned
+or capacity-selected map, so the vacuity result does not apply; and gate 2
+already rejects the Unit-collapse by name (see the #29 starter in
+`AGENT_HANDOFF.md`). Corrected in both repos. The causal-abstraction literature
+is a **strengthening to borrow** - specifically sharpening what gate 2's kernel
+characterization must establish - not a defect to defend against.
+
+**Non-goal:** no novelty claim. Per the standing rule, nothing here authorizes
+calling anything novel; the purpose is grounding, not priority.
+
+**Verification:** `grep -c` for each of the seven previously-absent terms
+returns non-zero on `docs/reference/PRIOR_ART.md` after the change;
+`AXIOM_DISCOVERY.md` now contains a references-bearing section. No gate,
+candidate, ledger record, or experiment is touched by this decision.

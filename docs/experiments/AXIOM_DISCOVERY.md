@@ -342,6 +342,86 @@ Two proposal heuristics, used to bias search rather than replace the gates:
   Randomness is used for tie-breaking exploration diversity within an
   already-informed region, not as the primary source of novelty.
 
+## Prior art and positioning (added 2026-09-18)
+
+> **Why this exists.** This document had zero citations before 2026-09-18 — no
+> arXiv reference, no "et al", no references section. The track was promoted to
+> active (DEC-036) without carrying the literature work across from the shelved
+> track's `docs/reference/PRIOR_ART.md`, which covers IR/training and mentions
+> none of `homomorphism`, `transfer`, `conjecture`, or `causal abstraction`.
+> The field check now lives in
+> [`docs/reference/PRIOR_ART.md`](../reference/PRIOR_ART.md) **§9**. Read that
+> section before refining the pipeline below; this is the summary.
+
+**The φ idea is classical.** "Prove a structure-preserving map, then read
+theorems across it" is transport of structure (Bourbaki), with the
+model-theoretic case being the transfer principle (Łoś) and the modern
+statement being categorical / Morita equivalence. The general principle is not
+a Maith contribution, and this document should not read as if it were.
+
+**Analogical search is the closest methodological ancestor.** The proposal
+mechanism (§"The pipeline", step 1) is analogical retrieval and mapping over a
+canonical IR. That field's foundational account is Gentner's structure-mapping
+(1983); its applied retrieval lineage includes Kang et al.'s analogical search
+engine (ACM TOCHI 2022) and literature-based discovery (Swanson's ABC model /
+ARROWSMITH). Two consequences:
+
+1. The **presentation-vs-content boundary** in
+   [`STRUCTURAL_SIMILARITY.md`](../reference/STRUCTURAL_SIMILARITY.md) is
+   structure-mapping's relational emphasis, re-derived. Worth knowing, not
+   wrong.
+2. **Ranking by similarity alone confuses dedup with discovery.** The field
+   convention for cross-domain *candidate generation* is
+   `surprise = structural_similarity x semantic_distance` — reward pairs that
+   are structurally alike but semantically far apart. The current #28 score has
+   no distance term, which is correct for phase-1 dedup and wrong for proposal.
+   This is an open design question for #28 phase 2, flagged here so it is
+   decided deliberately.
+
+**The pipeline shape has a close published analogue.** A three-stage conjecture
+pipeline — region search → semantic critic → formal Lean 4 / Mathlib validation
+— is published in arXiv:2607.28632, reporting 20/20 candidates passing Lean
+parse and typecheck, not absorbed by `exact?`, not discharged by `aesop`. The
+broader line includes LeanConjecturer (arXiv:2506.22005), STP (ICML 2025), and
+the ATG benchmark (NAACL 2024). Formal validation in Lean is therefore standard
+practice in this space, not a differentiator. What is closer to distinctive here
+is that **the generator is a structural search and gate 1 is a proven
+homomorphism obligation** — a strengthening of admission control rather than a
+new pipeline architecture.
+
+**Gates 1–2 are the question causal abstraction formalizes.** Whether a map
+preserves structure, and whether it is non-trivial, is studied with a graded
+metric — interchange intervention accuracy — in the causal-abstraction /
+interchange-intervention line (Geiger et al., NeurIPS 2021; ICML 2022;
+arXiv:2303.02536; survey arXiv:2410.20161). The borrowable point is the
+boundary condition from Sutter et al. (arXiv:2507.08802): a structure-
+preservation test goes vacuous when the map is unconstrained. That does **not**
+threaten gate 1 — a written Lean term's complexity is fixed by its author, not
+learned — but it sharpens what **gate 2** must establish. Where the homomorphism
+law can hold for uninteresting reasons (a non-injective φ into a target with
+weak operations), gate 2's "prove **or characterize** φ's kernel" is the only
+part of the gate doing real work.
+
+**A related correction.** A sibling repo (Ephapse) initially flagged Sutter et
+al. as a risk to gate 1. That was wrong and has been corrected in both repos;
+the causal-abstraction literature is a strengthening to borrow, not a defect to
+defend against.
+
+**The gap this document has and the prior art does not fill.** Every gate
+evaluates a candidate that already exists; nothing tests whether the *proposal
+mechanism* can find candidates known to be there. Without a ground-truth
+recovery setting — planted synthetic φ's the search is expected to recover — a
+"mechanism ran, found nothing" outcome cannot be distinguished from "the search
+cannot see real candidates." Compare MOOSE-Chem's rediscovery design (ICLR
+2025). This is the same class of gap `STRUCTURAL_SIMILARITY.md` already admits
+for semantic similarity, at the level of the whole proposal step.
+
+**Open questions the prior art does not resolve** (full list in
+`PRIOR_ART.md` §9.7): whether homomorphism-first admission control is productive
+or merely costly in yield; whether IR-graph search finds anything text-based
+analogy misses; what the correct ranking objective is; and how a found φ should
+be checked for significance beyond typechecking (#34).
+
 ## Non-goals (stated explicitly, to prevent scope drift)
 
 - Not attempting to resolve P vs NP. Any relevance to it is a possible
