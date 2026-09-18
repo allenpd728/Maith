@@ -622,6 +622,46 @@ proposal step. A small injected-fixture design would close it — synthetic φ's
 the corpus that the search is expected to recover — and is far cheaper than a full
 benchmark.
 
+#### 9.5.1 Preferred design: retrospective time-cut validation (added 2026-09-18)
+
+The injected-fixture design above tests whether the search mechanism can find *planted*
+candidates. A stronger and more established design tests whether it can anticipate *real*
+ones.
+
+**The method.** Freeze the knowledge base at time *t*. Pose a genuinely open question from
+time *t*. Generate and rank candidate hypotheses using only evidence available before *t*.
+Then compare the top-ranked candidates against what was later discovered or supported.
+Success is measured as: did the system recover, anticipate, or move measurably toward the
+later-supported mechanism?
+
+This is the standard design in the current literature, not a proposal:
+
+- **ProjectionBench** (arXiv:2605.30284) — progressive information disclosure, starting
+  from a paper's topic and research question and revealing technical detail in stages;
+  models must generate hypotheses at each stage.
+- **IdeaBench** (PMC11923747) — 2,374 target papers published after 2024-01-01, paired with
+  ~23K filtered references, explicitly chosen to postdate model training data.
+
+**The load-bearing caveat — and it is fatal if missed.** The cut must be relative to the
+**model's training cutoff**, not to wall-clock "recent." If a model has already memorized
+the later discovery, the benchmark measures recall, not hypothesis generation. Both
+benchmarks above select post-cutoff material specifically to prevent this; the leakage
+concern is why IdeaBench dates its targets rather than taking the most recent papers.
+Any Maith implementation must state the model's cutoff and verify candidate targets
+postdate it. A time-cut design without this check is not evidence.
+
+**Why this ranks above the injected-fixture design.** Planted fixtures test the search
+mechanism's sensitivity under controlled conditions. Time-cut validation tests the same
+property against real mathematical structure, where candidates are not shaped to be
+findable. It is also the only design here that could support a claim about the *end* of
+the pipeline — whether gate-3-surviving transfers correspond to anything the field later
+found valuable — rather than only about the search step.
+
+**What it still would not establish.** Anticipating a known result is not discovering a
+new one, and the design cannot rule out that the model is retrieving a near-sensitive
+paraphrase of the discovery rather than reasoning to it. Record it as a benchmark of
+recovery, not a demonstration of discovery. Both source benchmarks frame it this way.
+
 ### 9.6 Where the active track is distinct
 
 Following §6's pattern, and claiming only what the above supports:
@@ -660,6 +700,17 @@ Following §6's pattern, and claiming only what the above supports:
   ("adversarial significance check via independent external models") is the open question
   here, and the causal-abstraction literature (§9.4) is the closest existing formal
   treatment.
+- **Whether a challenge-before-admission stage is worth adding.** The gates verify a
+  candidate that already exists; there is no step that tries to *defeat* a candidate
+  before it enters. #34 is the nearest thing, and it operates only on gate-5 survivors.
+  A pre-admission critique stage ("is this a relabeled standard result? does the mapping
+  preserve the homomorphism or only the vocabulary? which preconditions are absent?") is
+  a candidate design, not a committed one. Note the ordering difference: post-hoc
+  verification is strong here, pre-admission critique is thin.
+- **Partly resolved by §9.5.1:** the recovery-setting gap now has a preferred design
+  (retrospective time-cut validation). What remains open is the training-cutoff question
+  — which model, and whether its cutoff can actually be established — plus the fact that
+  a recovery benchmark still would not demonstrate new discovery.
 
 ## 10. References
 
@@ -790,3 +841,10 @@ Following §6's pattern, and claiming only what the above supports:
 - "Causal Abstraction in Model Interpretability: A Compact Survey." arXiv:2410.20161.
 - Sutter, T., et al. (2025). The Non-Linear Representation Dilemma: Is Causal Abstraction
   Enough for Mechanistic Interpretability? arXiv:2507.08802, *NeurIPS 2025* (spotlight).
+
+**Retrospective / time-cut benchmark design (§9.5.1, added 2026-09-18)**
+- ProjectionBench: Evaluating Scientific Hypothesis Generation in LLMs Under Progressive
+  Information Disclosure. arXiv:2605.30284.
+- IdeaBench: benchmark dataset for LLM hypothesis generation — 2,374 target papers
+  published after 2024-01-01 with ~23K filtered references, dated to prevent training
+  leakage. PMC11923747 ("Embracing Foundation Models for Advancing Scientific Discovery").
