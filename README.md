@@ -1,44 +1,48 @@
 # Maith: Semantic IR for Lean Mathematics
 
-> **v2 era (2026-08-09).** Current IR: `semantic_graph_ir_v2_0_0` (C1 polarity removal,
-> C2 typeclass enrichment, C4 GEN module bucketing; vocab 601). The v2 control grid is
-> complete: Variant A v2 = perplexity **1.2361** / top-1 **90.0%**; B-small (size-matched
-> BPE control, DEC-027) = **1.1294** / **90.5%** — essentially tied with A at matched
-> params. The IR encodes real semantics (DEC-025: 62pp probe gap) but doesn't improve
-> prediction over BPE at toy scale (358M, 3.5K examples). Prediction metrics are
-> structurally biased against the IR's canonicalization goal (H11 ◐ — partly fundamental,
-> partly contingent on IR design quality) — the primary evaluation should be semantic-task
-> metrics (retrieval, ATP), which are untested.
+> **Active track: axiom discovery (2026-09-15 →).** The research direction has
+> moved to **axiom discovery** — searching for a structure-preserving map φ
+> that pulls existing theorems back into a new domain as kernel-checked
+> transfer results. Toy-model training is shelved, not deleted. See
+> [`AXIOM_DISCOVERY`](docs/experiments/AXIOM_DISCOVERY.md) and its companion
+> corpus plan, [`BENCHMARK_CORPUS_PLAN`](docs/experiments/BENCHMARK_CORPUS_PLAN.md);
+> prior-art grounding is [`PRIOR_ART` §9](docs/reference/PRIOR_ART.md)
+> (DEC-054/055). The repo runs the PleaNP-derived CI and two-tier integrity
+> gates ([`TOOLCHAIN_AND_CI`](docs/TOOLCHAIN_AND_CI.md)) and develops on a
+> single `dev` branch.
+>
+> **⚠ Prediction-era results are under a reset notice.** The v2 prediction
+> results headline the v1-era record (Variant A v2 perplexity 1.2361 / top-1
+> 90.0% vs B-small 1.1294 / 90.5%; the 62-pp DEC-025 probe gap), but
+> **DEC-031 (2026-08-12) invalidated the old comparison runs** —
+> split leakage, epoch confounds, and dataset contamination. Clean retrains
+> (A_v3_2ep, B_small_clean, flat_clean — all 3375/376, 2 epochs) are complete,
+> and the hypothesis tests re-run on clean embeddings came back
+> **ambiguous**: H6 retrieval disagrees between modes (DEC-034), and the H5
+> contrastive objective reliably beats the next-token baseline but by a small
+> margin far below the pretrained baseline (DEC-035). Read
+> [`HYPOTHESIS_GRID`](docs/experiments/HYPOTHESIS_GRID.md) for per-claim
+> status; treat any pre-invalidation number below as historical.
 >
 > Key docs: [`HYPOTHESIS_GRID`](docs/experiments/HYPOTHESIS_GRID.md) (sub-claim status) ·
 > [`V2_COMPARISON_MATRIX`](docs/experiments/V2_COMPARISON_MATRIX.md) (control grid) ·
+> [`H6_RESULTS`](docs/experiments/H6_RESULTS.md) (clean retrieval results) ·
 > [`EXPERIMENT_DESIGN`](docs/experiments/EXPERIMENT_DESIGN.md) (evaluation framework) ·
 > [`PRIOR_ART`](docs/reference/PRIOR_ART.md) (related work) ·
 > [`LITERATURE_REVIEW_2026_08`](docs/experiments/LITERATURE_REVIEW_2026_08.md) (field check of open sub-claims) ·
 > [`LEAN_PIPELINE_AUDIT_2026_08`](docs/experiments/LEAN_PIPELINE_AUDIT_2026_08.md) (Lean IR/corpus code audit) ·
-> [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-026/027).
+> [`DECISION_LOG`](docs/decisions/LOG.md) (DEC-001..DEC-056).
 
 ## At a glance
 
-- **Fully implemented pipeline**: extract → normalize → encode → train → decode → decompile, validated end-to-end (**2,554/2,554 declarations** round-trip cleanly).
-- **Structured experiments, honest results**: controlled grids (perplexity **1.236** / top-1 **90.0%**) with a size-matched BPE control and a documented 62-pp probe gap showing the IR encodes real semantics.
+- **Fully implemented pipeline**: extract → normalize → encode → train → decode → decompile, validated end-to-end (**2,554/2,554 declarations** round-trip cleanly on the 4-module corpus; the current v2 corpus is 4,029).
+- **Structured experiments, honest results**: controlled grids with a size-matched BPE control and a 62-pp probe gap showing the IR encodes real semantics — but the prediction results are **under DEC-031's reset notice**, and the clean re-runs (DEC-034/035) are ambiguous rather than positive.
 - **Open research practice**: hypothesis grid with per-claim status, experiment design, decision log (DEC-0xx), and prior-art review — so results are legible, not just reported.
+- **Active track**: axiom discovery, guarded by ported integrity gates.
 
 > Read the full background below, or jump to [hypotheses](docs/experiments/HYPOTHESIS_GRID.md) and [experiment design](docs/experiments/EXPERIMENT_DESIGN.md).
 
 > **Built with agentic AI tooling.** The author directed agent-based coding workflows to architect, implement, and validate this pipeline — breaking work into task specs, reviewing output, and running the experiments. Commit history on this repo reflects that process.
-
-> **New direction (2026-09-15).** The active research track has moved to
-> **axiom discovery** — searching for a structure-preserving map φ that pulls
-> existing theorems back into a new domain as kernel-checked transfer results —
-> superseding the shelved toy-model training path. See
-> [`AXIOM_DISCOVERY`](docs/experiments/AXIOM_DISCOVERY.md) and its companion
-> corpus plan, [`BENCHMARK_CORPUS_PLAN`](docs/experiments/BENCHMARK_CORPUS_PLAN.md).
-> Its prior-art grounding is [`PRIOR_ART` §9](docs/reference/PRIOR_ART.md)
-> (added 2026-09-18 — the active track began without one). The repo now runs the
-> PleaNP-derived CI and two-tier integrity gates
-> ([`TOOLCHAIN_AND_CI`](docs/TOOLCHAIN_AND_CI.md)) and develops on a single
-> `dev` branch.
 
 Maith is a Lean 4 project for extracting a canonical semantic representation of formal mathematics from elaborated Lean terms (`Expr`), then serializing that representation into token sequences for downstream language-model training.
 
@@ -71,7 +75,7 @@ High-level flow:
 - Decode tokens back to graph (`Decoder.lean`)
 - Decompile graph to Lean syntax (`Transpiler.lean` — `Decompile.decompileGraph`)
 
-The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/reference/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. The current v2 corpus covers 14 Mathlib modules (4,029 extracted examples; 3,491 train / 388 eval after filtering).
+The full pipeline is implemented and validated end-to-end: 2,554/2,554 declarations round-trip cleanly through encode → decode → decompile (see `python/validate_roundtrip.py` and `docs/reference/DECOMPILER_HANDOVER.md`), confirming token/graph losslessness and Lean syntax reconstruction. The current v2 corpus covers 14 Mathlib modules (4,029 extracted examples, 0 failures; clean split 3,375 train / 376 eval after DEC-031).
 
 ## 5) Why Not Train Directly on Lean Source?
 
@@ -227,7 +231,9 @@ Canonical experiment assumptions/interpretation decisions are tracked in
 
 The v2 corpus spans 14 Mathlib modules across algebra, order, and topology
 (`Mathlib.Algebra.*`, `Mathlib.Order.*`, `Mathlib.Topology.Basic`). Total declarations:
-**4,029** extracted; after filtering, **3,491 train / 388 eval** examples.
+**4,029** extracted, **0 failures**. The pre-DEC-031 split was 3,491 train / 388 eval;
+DEC-031 found that split leaky and the clean retrains use **3,375 / 376** (see
+`docs/experiments/H6_RESULTS.md`).
 
 The original 4-module extraction (2,554 declarations, 100% coverage) is preserved below
 for reference:
@@ -254,7 +260,11 @@ Non-trivial extracted examples:
 | `mul_one` | 11 | 3 | 6 |
 | `DivisionMonoid.mk` | 34 | 14 | 21 |
 
-Evidence artifact committed intentionally: [`Corpus/corpus.jsonl`](Corpus/corpus.jsonl) (current 7.2MB extraction output for the module above).
+Evidence artifact committed intentionally: `Corpus/corpus.jsonl` is gitignored (it is
+regenerable and large); the committed evidence is `Corpus/stats.json`,
+`Corpus/logs.txt`, and `Corpus/corpus_manifest.json` (which records the content hash
+and the regeneration command). Current extraction: 4,029 declarations, 0 failures,
+~985K tokens.
 
 ### Binder encoding
 
@@ -273,7 +283,15 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 - **Corpus scale.** All training results are on 14 Mathlib algebra/topology/order modules
   (~3.5K examples). IRCoder's positive IR-grounding results appear at millions of files
   and 1.1B+ parameters; whether Maith's null holds at larger corpus/model scale is open.
-- **Current v2 result (DEC-026/027, 2026-08-09).** Full control grid:
+- **Prediction-era results carry DEC-031's reset notice.** The table below is the
+  v2 record as published 2026-08-09; DEC-031 (2026-08-12) invalidated those runs for
+  split leakage, epoch confounds, and dataset contamination. Clean retrains exist
+  (A_v3_2ep, B_small_clean, flat_clean — 3375/376, 2 epochs), and the re-runs on
+  clean embeddings are **ambiguous**, not a clean negative: H6 retrieval disagrees
+  between modes (DEC-034), H5's contrastive objective beats next-token but stays far
+  below the pretrained baseline (DEC-035). See
+  `docs/experiments/H6_RESULTS.md` and `HYPOTHESIS_GRID.md` for current numbers.
+- **Legacy v2 control grid (DEC-026/027, 2026-08-09 — pre-DEC-031, historical):**
 
   | Variant | Representation | Vocab | Params | Perplexity | Top-1 Acc |
   |---|---|---|---|---|---|
@@ -282,24 +300,27 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
   | B (full BPE) | Raw BPE, full vocab | 151,643 | 494M | 1.107 | 91.7% |
   | C (AST BPE) | AST-split BPE, full vocab | 151,643 | 494M | 1.098 | 93.0% |
 
-  The A-vs-B/C gap is a **size effect** (B-small at matched params ties A), not a
-  representation deficit *under prediction-family metrics at this scale*. The IR encodes
-  real semantic content (DEC-025: 62pp probe gap vs. flat-IR), but that structure is not
-  rewarded by the next-token objective at this scale. Whether it helps under non-prediction
-  metrics (retrieval, ATP) is open (H6/H7). Cold-start (DEC-021) and model-size (DEC-027)
-  confounds are both ruled out *for the prediction-metric null*.
-  *(Epoch note: B and C are 3-epoch v1-era runs; A and B-small are 2-epoch v2 runs. The
-  A-vs-B-small comparison is epoch-matched and is the clean representation test; A-vs-B/C
-  is not. See `docs/experiments/V2_COMPARISON_MATRIX.md` for per-run epoch counts.)*
-- **Objective mismatch is the leading hypothesis for the null.** Next-token prediction may
-  not be the objective that rewards semantic structure; a downstream task (proof search,
-  completion) or a masked-reconstruction objective might. This is untested.
+  As published, the A-vs-B/C gap was read as a **size effect** (B-small at matched
+  params tied A), not a representation deficit *under prediction-family metrics at
+  this scale*. DEC-031 later invalidated these runs, so treat the row as the record
+  of what was claimed, not as current evidence.
+  *(Epoch note: B and C are 3-epoch v1-era runs; A and B-small are 2-epoch v2 runs —
+  the A-vs-B/C comparison was never epoch-matched.)*
+- **Objective mismatch is the leading hypothesis for the prediction-metric null.**
+  Next-token prediction may not be the objective that rewards semantic structure; a
+  downstream task (proof search, completion) or a masked-reconstruction objective
+  might. H5's clean re-run (DEC-035) partially supports this — contrastive training
+  beats the next-token baseline — but the effect is small.
 - **No downstream task evaluation yet.** Current evidence is perplexity, completion
-  accuracy, and probing — not theorem-proving success. See section 10.
+  accuracy, probing, and retrieval — not theorem-proving success. See section 10.
+- **Direction change (DEC-036, 2026-09-15).** The active track is now axiom
+  discovery on a circuit-complexity benchmark, guarded by the ported PleaNP
+  integrity gates. Toy-model training is shelved, not deleted. See
+  `docs/experiments/AXIOM_DISCOVERY.md`.
 - For the current authoritative experiment state, use:
-  - `docs/decisions/LOG.md` (DEC-026, DEC-027)
+  - `docs/decisions/LOG.md` (DEC-031, DEC-032, DEC-033, DEC-034, DEC-035)
   - `docs/experiments/V2_COMPARISON_MATRIX.md`
-  - `python3 python/compare_results.py --runs-dir runs/`
+  - `docs/experiments/H6_RESULTS.md`
 - `Transpiler.lean` provides both debug formatting and Lean syntax decompilation via
   `Decompile.decompileGraph`. See `docs/reference/DECOMPILER_HANDOVER.md`.
 
@@ -310,8 +331,8 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 3. **Phase 2.5: Stable encoder format + vocab** — ✅ done (v2.0.0, 601 tokens; decoder round-trip 2554/2554)
 4. **Phase 3: Build token vocabulary + dataset** — ✅ done (`python/build_dataset.py`, A/B/C splits, `vocab_A.json`)
 5. **Phase 4: Tokenizer fragmentation study** — ✅ done (1.69x BPE inflation on Lean source)
-6. **Phase 5–6: Run A/B/C training + v2 control grid** — ✅ complete (2026-08-09). Full grid in section 8. Representation hypothesis not yet supported on perplexity/completion; cold-start (DEC-021) and size (DEC-027) confounds ruled out.
-7. **Phase 7: IR-candidate search** — ✅ closed (DEC-027/028/034). The prediction-metric levers (corpus expansion, objective redesign, IR pretraining) do not recover a representation advantage at toy scale.
+6. **Phase 5–6: Run A/B/C training + v2 control grid** — ✅ ran (2026-08-09); **results invalidated by DEC-031** (split leakage / epoch confounds / contamination). Clean retrains (A_v3_2ep, B_small_clean, flat_clean) complete; see section 8 and `docs/experiments/H6_RESULTS.md`.
+7. **Phase 7: IR-candidate search** — ✅ closed (DEC-027/028/034). The prediction-metric levers (corpus expansion, objective redesign, IR pretraining) do not recover a representation advantage at toy scale; the H5 contrastive objective (DEC-035) beats next-token but by a small margin.
 8. **Phase 8+: Axiom discovery** — **active** (2026-09-15). The active track redirects the same IR-extraction machinery at a narrower, structurally rich domain (circuit complexity) and searches for a kernel-checked structure-preserving map φ that transfers existing theorems into new proofs. Toy-model training is shelved, not deleted. See [`docs/experiments/AXIOM_DISCOVERY.md`](docs/experiments/AXIOM_DISCOVERY.md) (track) and [`docs/experiments/BENCHMARK_CORPUS_PLAN.md`](docs/experiments/BENCHMARK_CORPUS_PLAN.md) (corpus). Claims from this track are guarded by the ported integrity gates — see [`docs/TOOLCHAIN_AND_CI.md`](docs/TOOLCHAIN_AND_CI.md).
 
 Related work is surveyed in [`docs/reference/PRIOR_ART.md`](docs/reference/PRIOR_ART.md); project terminology is defined in [`docs/reference/GLOSSARY.md`](docs/reference/GLOSSARY.md).
@@ -334,21 +355,22 @@ The core hypothesis is tested by training and comparing models on:
 
 Metrics:
 
-- Next-token prediction quality — ✅ run (v2 control grid, DEC-026/027)
+- Next-token prediction quality — ✅ run (v2 control grid, DEC-026/027) — **invalidated by DEC-031**; clean re-run pending
 - Linear-probe semantic content — ✅ run (DEC-025: IR encodes semantics, 62pp gap)
-- Completion accuracy (top-1) — ✅ run (DEC-026/027)
+- Completion accuracy (top-1) — ✅ run (DEC-026/027) — **invalidated by DEC-031**; clean re-run pending
+- Retrieval / embedding quality — ◐ run (H6; DEC-034: modes disagree — ambiguous)
+- Contrastive-objective training — ◐ run (H5; DEC-035: beats next-token, small effect)
 - Proof completion performance — ❌ not started
-- Automated theorem-proving success rate — ❌ not started
+- Automated theorem-proving success rate — ❌ not started (blocked: IR extracts statement types only, not proof terms — DEC-029)
 - Proof-search efficiency (time/steps) — ❌ not started
-- Embedding quality for mathematical similarity/retrieval — ❌ not started
 
-**Current evidence state:** next-token prediction, completion accuracy, and probing are
-complete. The representation hypothesis is **not yet supported** on these metrics: the IR
-encodes semantics (DEC-025) but does not outperform a size-matched BPE baseline (DEC-027).
-The leading interpretation is objective mismatch — next-token prediction may not reward
-semantic structure. Downstream theorem-proving evaluation (the actual research claim) is
-not started; it is the decisive test that would distinguish "the IR helps proving but not
-perplexity" from "the IR does not help." See [`docs/history/PHASE_7_ROADMAP.md`](docs/history/PHASE_7_ROADMAP.md).
+**Current evidence state:** the IR encodes semantic content (DEC-025, 62-pp probe gap vs
+flat-IR) — that stands. Everything downstream of it is unsettled: the prediction-metric
+runs were invalidated by DEC-031, and the clean re-runs are ambiguous (H6 retrieval
+disagrees between modes, DEC-034; H5 contrastive training beats the next-token baseline
+but far below the pretrained baseline, DEC-035). Downstream theorem-proving evaluation
+(the actual research claim) is not started and is blocked on proof-term extraction. See
+[`docs/experiments/HYPOTHESIS_GRID.md`](docs/experiments/HYPOTHESIS_GRID.md).
 
 ## 11) Building the Project
 
@@ -369,11 +391,14 @@ lake env ./.lake/build/bin/buildCorpus
 
 Outputs are written under `Corpus/`:
 
-- `Corpus/corpus.jsonl`
+- `Corpus/corpus.jsonl` — **gitignored** (large, regenerable); the bucket mode is
+  encoded in the filename, so module mode and `--per-operator` mode no longer overwrite each other
 - `Corpus/stats.json`
 - `Corpus/logs.txt`
+- `Corpus/corpus_manifest.json`
 
-This repository currently tracks these corpus artifacts intentionally so readers can inspect real output directly.
+The manifest, stats, and log are tracked intentionally so readers can inspect real
+output directly without carrying the full JSONL.
 
 ## 12) Repository Structure
 
@@ -411,7 +436,7 @@ python/
   validate_roundtrip.py    # decoder round-trip validator (confirms BVAR/TERM stability)
   tokenizer_study.py       # BPE fragmentation study vs Qwen2.5-Coder
 docs/
-  decisions/LOG.md         # experiment decisions and confound documentation (DEC-001..036)
+  decisions/LOG.md         # experiment decisions and confound documentation (DEC-001..056)
   decisions/INDEX.md       # navigation index for decision log
   experiments/             # experiment designs, comparison matrix, probing task, AXIOM_DISCOVERY, BENCHMARK_CORPUS_PLAN
   reference/               # Design.md, ENCODER_FORMAT, PRIOR_ART, EXAMPLE_ROUNDTRIP, ...
