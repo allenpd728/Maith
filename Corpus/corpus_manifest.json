@@ -7,5 +7,5 @@
   "generated_by": "lake exe buildCorpus",
   "regeneration_note": "Run `lake exe buildCorpus` (module mode) or `lake exe buildCorpus --per-operator` (per-op mode). Requires Mathlib built. See AUDIT_2026_08_10.md P0-2.",
   "backup": "Corpus/corpus.per_operator.jsonl",
-  "created_by_commit": "34053e2968e21740d33125ee4db25222dd963e05"
+  "created_by_commit": "9e0c485ea1f837e73bf95b54e613598755fbac47"
 }
