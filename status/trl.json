@@ -1,0 +1,16 @@
+{
+  "components": {
+    "IR extraction + encode/decode pipeline": 6,
+    "Corpus builder": 6,
+    "Integrity gates (Tier 1)": 5,
+    "Axiom-discovery search harness": 3,
+    "Axiom-discovery results": 2
+  },
+  "_rationale": {
+    "IR extraction + encode/decode pipeline": "README: fully implemented, 2,554/2,554 round-trip clean and the v2 corpus is 4,029 with 0 failures -> the full intended input set, not a subset = level 6. The round-trip check is real as of #25 (harness exits non-zero on unexpected failure). Not 5: level 5 is the floor here, cleared by the CI-wired suite. Not 8: 4 documented known failures remain, so it is not defect-free/frozen.",
+    "Corpus builder": "v2 corpus covers all 14 Mathlib modules (4,029 examples, 0 failures) = the full intended corpus, so level 6. The 'harness exits 0 on failure' caveat in AGENT_HANDOFF was fixed by #25 (closed 2026-09-16, status:done): Tests/Harness.lean now exits non-zero on any unexpected failure and labels only pre-existing knownFailures as SKIP, so the check can genuinely fail. Not 8: 4 pre-existing known failures remain and validate_roundtrip.py is still not CI-wired.",
+    "Integrity gates (Tier 1)": "CI-enforced (8 gate steps in ci.yml), hygiene/vacuity/lethality clean including the binder scan made blocking in #38, and the scanners ship self-tests that must detect planted cases -- the check-must-be-able-to-fail bar = level 5.",
+    "Axiom-discovery search harness": "axiom-rewrite/ exists with a candidate ledger and tests, but #29 (the spec-in/gates-out harness) is still status:available and the real-data path waits on the PleaNP dependency -- runs on synthetic fixtures = level 3.",
+    "Axiom-discovery results": "The active track is scoped and documented (docs/experiments/AXIOM_DISCOVERY.md) but no kernel-checked transfer result exists yet = level 2."
+  }
+}
