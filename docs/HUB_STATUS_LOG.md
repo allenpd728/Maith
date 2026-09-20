@@ -36,11 +36,36 @@ One JSON object per line; append-only; never rewritten. See HuB's
   `MULTI_AGENT_WORKFLOW.md`: claim comment older than 1 hour with no activity
   since).
 - `notes` — the same counts as a one-line human-readable summary.
-- `trl` — *only present if* `status/trl.json` exists. TRL is a human judgement
-  about this project's components and cannot be derived from issue counts, so
-  it is never guessed here: absent file means the field is omitted and HuB
-  shows its "no TRL entries" message. To publish TRL, commit
-  `status/trl.json` as `{"components": {"<name>": <0-9>, ...}}`.
+- `trl` — *only present if* `status/trl.json` exists at the repo root. TRL is a human
+  judgement about a component's readiness and cannot be derived from issue counts, so it is
+  never guessed: an absent file means the field is omitted and HuB shows its
+  "No TRL entries" message. **That is the correct state until someone sets real levels**, not
+  a bug to work around.
+
+  What each level means is defined once, for all repos, in HuB's
+  [`PM_STATUS_FRAMEWORK.md`](https://github.com/allenpd728/HuB/blob/main/PM_STATUS_FRAMEWORK.md)
+  §"What TRL means here". Read it before setting a number — in particular: rate the weakest
+  real capability, a component can move *down*, and TRL measures readiness of the *piece*, not
+  confidence in the research hypothesis.
+
+  **To publish:** copy `status/trl.json.template` to `status/trl.json`, replace the `null`s
+  with integers 0–9, and commit on this repo's tracked branch. It appears on the dashboard
+  after the next sweep (up to 30 min, plus ~5 min CDN lag). Existing characters in the log are
+  never rewritten; only new snapshots carry the values.
+
+  **Candidate components for Maith** — drawn from this repo's own docs, not invented.
+  Rename, merge, or drop any of these; the list is a starting point, not a contract:
+
+  - **IR extraction + encode/decode pipeline** — The extract->encode->decode->decompile round trip. README: "Fully implemented pipeline ... 2,554/2,554 declarations round-trip cleanly".
+  - **Corpus builder** — `Scripts/BuildCorpus.lean` + the corpus plan (`docs/experiments/BENCHMARK_CORPUS_PLAN.md`).
+  - **Integrity gates (Tier 1)** — `tooling/gates/` — hygiene/vacuity/binder scans, CI-enforced.
+  - **Axiom-discovery search harness** — `axiom-rewrite/` — candidate ledger, gate dispatch (#27/#29). The active research track.
+  - **Axiom-discovery results** — Whether phi-transfer has produced kernel-checked transfers. Rate separately from the harness: good tooling with no result is a real, statable position.
+
+  Maith's own per-claim truth is the hypothesis grid (`docs/experiments/HYPOTHESIS_GRID.md`); that stays authoritative.
+
+  **Do not name a component after an internal task or issue.** Name the capability you would
+  hand to someone else — that is what makes the level meaningful to a reader outside this repo.
 
 ## Tests
 
