@@ -62,6 +62,16 @@ One JSON object per line; append-only; never rewritten. See HuB's
   - **Axiom-discovery search harness** — `axiom-rewrite/` — candidate ledger, gate dispatch (#27/#29). The active research track.
   - **Axiom-discovery results** — Whether phi-transfer has produced kernel-checked transfers. Rate separately from the harness: good tooling with no result is a real, statable position.
 
+  **How to arrive at a level for this repo.** The level is not a vibe — it is read off a
+  structure this repo already maintains:
+
+  Derive levels from **`docs/reference/PIPELINE_QUALITY_GATES.md`** (the five
+  stations: IR Build -> Corpus -> Dataset -> Training -> Evaluation, each with a gate).
+  A component that has passed its station gate but not the next is level 4; one that has
+  run end-to-end across the current corpus is 6. Note that the gates doc is currently a
+  **proposal**, not implemented — so do not rate anything as gated on its authority alone;
+  use the actual CI wiring (`tooling/gates/`, the stdlib test suite) as the evidence.
+
   Maith's own per-claim truth is the hypothesis grid (`docs/experiments/HYPOTHESIS_GRID.md`); that stays authoritative.
 
   **Do not name a component after an internal task or issue.** Name the capability you would
