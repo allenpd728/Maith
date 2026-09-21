@@ -612,7 +612,7 @@ Every Maith gate evaluates a candidate that already exists. Nothing tests whethe
   a rediscovery setting with ground truth.
 - Mechanistic-interpretability practice injects a known correlation into a background
   corpus and measures detector recovery against a naive baseline (method and numbers in
-  the sibling repo `allenpd728/ephapse`, `docs/reference/PRIOR_ART.md` §2).
+  the sibling repo `philipdallen/ephapse`, `docs/reference/PRIOR_ART.md` §2).
 
 Without an equivalent, "the proposal mechanism ran and found no candidates" is
 **uninterpretable**: it cannot distinguish "no candidate φ exists on this benchmark" from

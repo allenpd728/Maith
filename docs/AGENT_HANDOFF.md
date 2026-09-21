@@ -186,7 +186,7 @@ because a cross-repo issue cannot be a native GitHub `blocked_by` edge.
 
 Maith's benchmark corpus depends on PleaNP's circuit-complexity substrate.
 
-- **Repo:** `github.com/allenpd728/PleaNP`. **Work off `origin/dev`**, not
+- **Repo:** `github.com/philipdallen/PleaNP`. **Work off `origin/dev`**, not
   `main` — `dev` is 212 commits ahead and holds the circuits work.
 - **Pins (on `dev`):** Lean `v4.31.0`, Mathlib `v4.31.0` — same as Maith.
 - **`complexitylib` will never be imported** (PleaNP #70, 2026-09-13): its head
@@ -281,9 +281,9 @@ holds that blocker.
 > repo). So when a commit touches `.github/workflows/`:
 >
 > ```bash
-> git remote set-url origin "https://${GITHUB_TOKEN}@github.com/allenpd728/Maith.git"
+> git remote set-url origin "https://${GITHUB_TOKEN}@github.com/philipdallen/Maith.git"
 > git push origin dev
-> git remote set-url origin "https://${ALL_REPOs_GH_TOKEN}@github.com/allenpd728/Maith.git"  # restore
+> git remote set-url origin "https://${ALL_REPOs_GH_TOKEN}@github.com/philipdallen/Maith.git"  # restore
 > ```
 >
 > Both tokens authenticate as the same login, so this changes nothing else. A push

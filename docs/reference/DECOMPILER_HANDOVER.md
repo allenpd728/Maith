@@ -3,7 +3,7 @@
 **Author:** OpenHands Agent  
 **Date:** 2026-08-02 (updated 2026-08-05)  
 **Branch:** `openhands/phase-8d`  
-**PR:** https://github.com/allenpd728/Maith/pull/1
+**PR:** https://github.com/philipdallen/Maith/pull/1
 
 ---
 
