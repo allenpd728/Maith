@@ -47,7 +47,15 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # Create the branch on first run; thereafter track the remote.
+          #
+          # The fetch is required, not optional: actions/checkout fetches only
+          # the triggering ref, so `status` exists on the remote but has no
+          # local ref. `git worktree add .status-branch status` then fails with
+          # "fatal: invalid reference: status" even though ls-remote found it.
+          # That failure was invisible until the branch existed, because the
+          # orphan path was the only one ever taken.
           if git ls-remote --exit-code --heads origin status >/dev/null 2>&1; then
+            git fetch origin "status:refs/heads/status"
             git worktree add .status-branch status
           else
             echo "status branch does not exist yet; creating it"
