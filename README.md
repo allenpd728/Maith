@@ -1,5 +1,10 @@
 # Maith: Semantic IR for Lean Mathematics
 
+> **Branch status.** **`dev` is the working branch** — all current work, including
+> the active track described below, lands there first. `main` is the default branch
+> GitHub shows visitors and is promoted from `dev`; if the two ever diverge, `dev`
+> is authoritative. Commit to `dev`, never to `main` directly.
+
 > **Active track: axiom discovery (2026-09-15 →).** The research direction has
 > moved to **axiom discovery** — searching for a structure-preserving map φ
 > that pulls existing theorems back into a new domain as kernel-checked

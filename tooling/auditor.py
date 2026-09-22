@@ -46,6 +46,12 @@ API = "https://api.github.com"
 STATE_PATH = "status/auditor_state.json"
 STATUS_LOG = "status_log.jsonl"
 
+# Machine-written output (the status log and the audit checkpoint) lives on its
+# own branch so `main` can hold only reviewed code. A single branch cannot be
+# both: the sweep commits every 30 minutes, which would defeat branch
+# protection. See docs/HUB_STATUS_LOG.md and portfolio-ops 07_BRANCH_STRATEGY.md.
+STATUS_BRANCH = "status"
+
 LABEL_PROPOSED = "auditor:proposed"
 LABEL_REVISE = "auditor:revise"
 LABEL_HOLD = "on-hold"
@@ -950,11 +956,15 @@ REGISTRY = [
 ]
 
 
-def run_checks(root: Path) -> list[Finding]:
+def run_checks(root: Path, status_root: Path | None = None) -> list[Finding]:
     findings: list[Finding] = []
+    status_root = status_root or root
     for fn in REGISTRY:
         try:
-            findings.extend(fn(root))
+            # The status-log contract reads a machine-written file that is
+            # deliberately absent from `main`; check it on the branch that owns it.
+            arg = status_root if fn is check_status_log_contract else root
+            findings.extend(fn(arg))
         except Exception as exc:                      # noqa: BLE001
             findings.append(Finding(
                 "check-crashed", CATEGORY_CATCHALL,
@@ -1155,9 +1165,16 @@ def main(argv: list[str] | None = None) -> int:
                     help="emit findings as a machine-readable JSON object on stdout")
     ap.add_argument("--force", action="store_true",
                     help="ignore the checkpoint (still dedups against open issues)")
+    ap.add_argument("--status-root", default=None,
+                    help="checkout of the machine-output branch ("
+                         f"{STATUS_BRANCH}) holding {STATUS_LOG} and {STATE_PATH} "
+                         "(default: --root)")
     args = ap.parse_args(argv)
 
     root = Path(args.root).resolve()
+    # Machine output is read and written on its own branch; the read-only audit
+    # still reads code and docs from `main`.
+    status_root = Path(args.status_root).resolve() if args.status_root else root
     token = os.environ.get(args.token_env) or None
     gh = GitHub(token)
     now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
@@ -1168,7 +1185,7 @@ def main(argv: list[str] | None = None) -> int:
         print("error: not a git checkout", file=sys.stderr)
         return 1
 
-    state = load_state(root)
+    state = load_state(status_root)
     last = state.get("last_audited_sha")
 
     # Idempotency: nothing moved since the last SUCCESSFUL run -> produce nothing.
@@ -1179,7 +1196,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     commits = commits_between(root, last or "", sha)
-    findings = run_checks(root)
+    findings = run_checks(root, status_root)
 
     by_cat: dict[str, int] = {}
     for f in findings:
@@ -1248,8 +1265,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         create_issue(gh, args.repo, title, dbody, [LABEL_HOLD])
 
-    append_status_entry(root, build_status_entry(root, when, sha, len(opened), len(revised)))
-    save_state(root, sha, when)
+    append_status_entry(status_root,
+                        build_status_entry(status_root, when, sha, len(opened), len(revised)))
+    save_state(status_root, sha, when)
     print(f"done: {len(opened)} proposal(s), {len(revised)} revision(s); checkpoint -> {sha[:7]}")
     return 0
 

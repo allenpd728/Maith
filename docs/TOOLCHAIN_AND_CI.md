@@ -122,21 +122,21 @@ Accept iff the axiom set is exactly the trusted standard set
 Ported from PleaNP's branch discipline:
 
 - `dev` is the **single** integration branch. All work lands there first.
-- `main` is the reviewed branch. A different agent/human reviews `dev` before
-  merging to `main`. **Nothing is pushed directly to `main` unreviewed** â€” the
+- `main` is the working branch and the GitHub default (convention changed
+  2026-09-22). Commit and push there directly. `dev` is a **legacy name**, kept
+  level with `main`; nothing commits to it. The review control is unchanged: the
   agent that writes a change is not the agent that approves it (Gate 1/Gate 3
-  isolation, applied to the repo itself).
-- Historical per-task branches were consolidated into `dev` on 2026-09-15 (see
+  isolation, applied to the repo itself) -- that is enforced by the review
+  evidence in the done comment, not by the branch name.
+- Historical per-task branches were consolidated on 2026-09-15 (see
   `docs/decisions/LOG.md` DEC-036). Do not recreate long-lived parallel
-  branches; work on `dev` or short-lived topic branches that merge back.
+  branches; work on `main` or short-lived topic branches that merge back.
 
 ```bash
-git checkout dev && git pull origin dev
+git checkout main && git pull origin main
 # ... work ...
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
-git push origin dev
-# review, then:
-git checkout main && git merge --no-ff dev && git push origin main
+git push origin main
 ```
 
 ## 6. Known advisory items (as of 2026-09-15)

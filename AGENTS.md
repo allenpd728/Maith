@@ -5,6 +5,41 @@
 > For machine-specific details (paths, checkpoints, Python/Lean locations), read
 > `AGENTS_LOCAL.md` on the local machine (gitignored, not in this repo).
 
+
+## Portfolio front door — read this before you start work
+
+This repository is one part of a wider portfolio. Before you claim or start work
+here, spend five minutes in **`philipdallen/portfolio-ops`** (private), in this order:
+
+1. `HANDOFF.md` — current portfolio state, what is blocked and on whom.
+2. `EXECUTION_PLAN.md` — the week's priorities and the sequencing principles.
+3. `RISK_REGISTER.md` and `AGENTS.md` — open risks, and the rules that apply to you.
+
+Why this is worth five minutes: it is the only place that records **decisions already
+made** and **work already owned by a human**. Skipping it is how a session redoes
+someone else's work, contradicts a recorded decision, or spends its run on something
+a human must do anyway.
+
+**If you are an unattended automation run, skip this step** — the operating contract
+is already inlined at the top of your prompt, and this orientation is for
+human-directed and ad-hoc sessions.
+
+**Do not confuse the two queues.** Work here is claimed and executed locally. Janitorial
+work — lint sweeps, stale references, mechanical hygiene — is deliberately tracked
+privately in `portfolio-ops`, not filed here. If you find mechanical work, do not file
+it publicly; note it in your run output so it can be routed.
+
+## Branches
+
+`main` is the working branch and the GitHub default — every commit lands here, and it is
+the branch visitors and all tooling read. `dev` also exists and is kept level with `main`;
+it is a legacy name, and nothing should be committed to it. If the two ever differ, treat
+`main` as authoritative.
+
+**Edit workflows on `main`.** A `schedule:` trigger fires only from the default branch, so
+a workflow that exists only on `dev` will not run. The sweep and audit workflows check out
+`main` and push there for the same reason — the status snapshot must land where the default
+branch points, or the dashboard reads a stale log.
 ## Project overview
 
 Maith is a Lean 4 project that extracts a canonical semantic intermediate representation
@@ -32,7 +67,7 @@ rather than raw source syntax — improves performance on formal-math tasks.
 - **Direction (DEC-036, 2026-09-15):** the active track is now axiom discovery on a
   circuit-complexity benchmark, guarded by the ported PleaNP integrity gates
   (`tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`). All development is on the single
-  `dev` branch.
+  `main` branch.
 
 ## Key terms (see `docs/reference/GLOSSARY.md` for full definitions)
 
@@ -91,8 +126,8 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | `docs/experiments/AXIOM_DISCOVERY.md` | **Active research track** — search for a kernel-checked structure-preserving map φ (supersedes toy-model training) |
 | `docs/experiments/BENCHMARK_CORPUS_PLAN.md` | Companion: how the circuit-complexity benchmark corpus (transfer targets + conservativity corpus) is built and signed off |
 | `docs/experiments/TRANSFER_TARGETS.md` | The Part 2 target list (T1–T10 + N1/N2 screening results) — drafted, awaiting maintainer filtering + cross-check |
-| `docs/AGENT_HANDOFF.md` | **Cross-repo state** — PleaNP pin guidance (`@ "main"`, content-identical to `dev`), CI status, known gotchas |
-| `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-`dev`-branch protocol (ported from PleaNP) |
+| `docs/AGENT_HANDOFF.md` | **Cross-repo state** — PleaNP pin guidance (`@ "main"`, content-identical to `dev`, a legacy name), CI status, known gotchas |
+| `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-branch protocol (ported from PleaNP) |
 | `docs/MULTI_AGENT_WORKFLOW.md` | **Multi-agent task protocol** — run-ids, atomic claims, sweeps, `blocked by` lineages, done-evidence (ported from PleaNP); includes the known gate-model gaps |
 | `docs/AGENT_HANDOFF.md` | **New-agent entry point** — pick-up protocol, current state, open issues, upstream dependency, constraints |
 | `blockers/` | Agent blocker files (`open_*` → `closed_*`), per the workflow protocol |
@@ -158,10 +193,12 @@ consumers still overrides the default.
 
 ## Git workflow
 
-**Single dev branch (2026-09-15 consolidation).** All work lands on `dev`; `main`
-is the reviewed branch. Nothing is pushed to `main` unreviewed — the agent that
-writes a change is not the agent that approves it (see `docs/TOOLCHAIN_AND_CI.md`
-§5). All historical per-task branches were consolidated into `dev` (DEC-036).
+**Working branch: `main` (convention changed 2026-09-22).** All work lands on
+`main`, the GitHub default. `dev` is a **legacy name**, kept level with `main`;
+nothing commits to it. (DEC-036 consolidated 21 parallel branches into `dev` in
+2026-09-15; the single-branch consolidation stands, only the branch is renamed in
+effect.) The review-evidence control is unchanged — `needs-review` still marks
+work a human must accept, and gate output is still pasted into the done comment.
 
 **Task coordination** (claiming, run-ids, sweeps, `blocked by` lineages,
 done-evidence) is governed by `docs/MULTI_AGENT_WORKFLOW.md`. Commit directly to
@@ -172,20 +209,10 @@ An agent holds at most one `status:claimed` issue at a time.
 # Commit (identifies as AI agent)
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
 
-# Work on dev; push to dev for review (NOT main)
+# Work on main; push to main
 git fetch origin
-git checkout dev && git pull origin dev --ff-only
-git push origin dev
-
-# A different agent/human reviews dev, then merges to main:
-#   git checkout main && git merge --no-ff dev && git push origin main
-```
-
-If `dev` has diverged, use merge (not rebase) to avoid working-tree conflicts:
-```bash
-git fetch origin dev
-git merge origin/dev --no-edit
-git push origin dev
+git checkout main && git pull origin main --ff-only
+git push origin main
 ```
 
 ## Conventions

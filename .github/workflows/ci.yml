@@ -10,16 +10,16 @@ name: CI
 #      kernel cannot audit: no sorry/admit/axiom, no vacuous bodies, no inert
 #      binders. See docs/TOOLCHAIN_AND_CI.md.
 #
-# Runs on main and dev (the review branch). A green check here means "the code
+# Runs on main. A green check here means "the code
 # builds, the tests pass, and the Tier-1 mechanical checks are clean" — it is
 # necessary, not sufficient, for a validated claim (Tier 2 is the local
 # agent's `#print axioms` step; the semantic step is human review).
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 permissions:
   contents: read
@@ -131,6 +131,17 @@ jobs:
             python3 "python/$t.py"
             echo "::endgroup::"
           done
+
+      # The dashboard's own tooling tests. They were not wired into CI before,
+      # and that is how a stale assertion (asserting `trl` absent while reading
+      # the repo root, where status/trl.json exists) sat red unnoticed. The
+      # status-log contract is what the HuB tab depends on, so it is guarded
+      # here rather than left to a manual run.
+      - name: HuB tooling tests (sweep + auditor)
+        run: |
+          set -e
+          python3 tooling/tests/test_hub_sweep.py
+          python3 tooling/tests/test_auditor.py
 
       # #36: the mutation guards mutate a real source file and restore it. This
       # pins that restore AND bytecode purge happen on every exit path, including
