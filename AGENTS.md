@@ -67,7 +67,7 @@ rather than raw source syntax — improves performance on formal-math tasks.
 - **Direction (DEC-036, 2026-09-15):** the active track is now axiom discovery on a
   circuit-complexity benchmark, guarded by the ported PleaNP integrity gates
   (`tooling/gates/`, `docs/TOOLCHAIN_AND_CI.md`). All development is on the single
-  `dev` branch.
+  `main` branch.
 
 ## Key terms (see `docs/reference/GLOSSARY.md` for full definitions)
 
@@ -193,10 +193,12 @@ consumers still overrides the default.
 
 ## Git workflow
 
-**Single dev branch (2026-09-15 consolidation).** All work lands on `dev`; `main`
-is the reviewed branch. Nothing is pushed to `main` unreviewed — the agent that
-writes a change is not the agent that approves it (see `docs/TOOLCHAIN_AND_CI.md`
-§5). All historical per-task branches were consolidated into `dev` (DEC-036).
+**Working branch: `main` (convention changed 2026-09-22).** All work lands on
+`main`, the GitHub default. `dev` is a **legacy name**, kept level with `main`;
+nothing commits to it. (DEC-036 consolidated 21 parallel branches into `dev` in
+2026-09-15; the single-branch consolidation stands, only the branch is renamed in
+effect.) The review-evidence control is unchanged — `needs-review` still marks
+work a human must accept, and gate output is still pasted into the done comment.
 
 **Task coordination** (claiming, run-ids, sweeps, `blocked by` lineages,
 done-evidence) is governed by `docs/MULTI_AGENT_WORKFLOW.md`. Commit directly to
