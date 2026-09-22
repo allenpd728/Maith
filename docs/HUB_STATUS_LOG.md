@@ -2,8 +2,27 @@
 
 This repo publishes one append-only status snapshot per sweep. The HuB
 dashboard (https://philipdallen.github.io/HuB/) fetches
-`status_log.jsonl` from this repo's `dev` branch and renders it. This repo is
+`status_log.jsonl` from this repo's **`status` branch** and renders it. This repo is
 the writer; HuB only reads.
+
+## Why the log is not on `main`
+
+`main` holds only reviewed code, and the sweep commits every 30 minutes. A branch
+that receives an unreviewed commit on a schedule cannot also require review, so
+the machine-written files live on their own branch:
+
+| Branch | Holds |
+|---|---|
+| `main` | Code, docs, and `status/trl.json` (human-authored; see below) |
+| `status` | `status_log.jsonl` and `status/auditor_state.json` — machine-written only |
+
+One branch, one writer: `hub_sweep` and `auditor` are the only things that push to
+`status`, and nothing pushes machine output to `main`. Deleting the log from `main`
+does **not** lose history — the `status` branch was seeded from the existing log, so
+the dashboard's trend charts are continuous across the move.
+
+Because `main` no longer changes on every sweep, CI on `main` no longer pays for
+~48 machine commits a day.
 
 ## What writes it
 
@@ -86,3 +105,41 @@ python3 {test}
 They are offline and stdlib-only — no network, no token. They cover the
 claim-staleness rule, the flow counts, TRL handling, and the append-only /
 no-duplicate guarantees.
+
+Both suites run in CI (the "Python tests (stdlib-only)" job in `ci.yml`). They
+are the guard against a silent regression in the log contract, which is exactly
+the failure the dashboard would show as a missing tab rather than an error.
+
+## Migrating a repo to the `status` branch
+
+Run once per repo. The order matters: seed the branch **before** switching the
+reader, so the dashboard never sees an empty log.
+
+```bash
+# 1. Seed `status` from the log currently on main (preserves chart history).
+git fetch origin main
+LOG=$(git show origin/main:status_log.jsonl)   # may be empty on a first run
+git worktree add --orphan -b status .seed
+cd .seed
+mkdir -p status
+printf '%s\n' "$LOG" > status_log.jsonl        # skip if LOG is empty
+# Carry the audit checkpoint too, so the next audit does not re-scan history.
+git show origin/main:status/auditor_state.json > status/auditor_state.json 2>/dev/null || true
+git add -A && git commit -m "chore: seed the status branch from main"
+git push -u origin status
+cd .. && git worktree remove .seed
+
+# 2. Confirm the reader sees it BEFORE removing anything from main.
+curl -sf -o /dev/null \
+  "https://raw.githubusercontent.com/<owner>/<repo>/status/status_log.jsonl" \
+  && echo "status branch serves the log"
+
+# 3. Remove the machine files from main and merge the workflow change.
+git rm --cached status_log.jsonl status/auditor_state.json
+git commit -m "chore: move machine output to the status branch"
+
+# 4. Point HuB's config.json at branch: "status", then confirm the dashboard.
+```
+
+Step 2 is the one worth not skipping: it verifies the new ref serves the log while
+`main` still does, so a failure is recoverable by doing nothing.

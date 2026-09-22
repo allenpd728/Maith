@@ -178,11 +178,21 @@ def test_trl_invalid_json_is_ignored():
 
 # ---- snapshot + append semantics ----------------------------------------
 
-def test_snapshot_shape_has_timestamp_flow_notes():
-    snap = hub.build_snapshot([issue(1, ["status:available"])], [], [], Path("."), NOW)
+def test_snapshot_shape_has_timestamp_flow_notes(tmp_path):
+    # tmp_path has no status/trl.json, so the optional TRL field must be omitted
+    # rather than defaulted. Passing the repo root here instead would read the
+    # real status/trl.json and assert the opposite of what this test is for.
+    snap = hub.build_snapshot([issue(1, ["status:available"])], [], [], tmp_path, NOW)
     assert snap["timestamp"].endswith("Z")
     assert "flow" in snap and "notes" in snap
     assert "trl" not in snap
+
+
+def test_snapshot_includes_trl_when_file_present(tmp_path):
+    (tmp_path / "status").mkdir()
+    (tmp_path / "status" / "trl.json").write_text(json.dumps({"components": {"IR": 4}}))
+    snap = hub.build_snapshot([], [], [], tmp_path, NOW)
+    assert snap["trl"] == {"IR": 4}
 
 
 def test_append_only_never_rewrites(tmp_path):
