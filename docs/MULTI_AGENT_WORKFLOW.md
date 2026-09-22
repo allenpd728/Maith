@@ -10,7 +10,7 @@ shared GitHub identity.
 > dependents, and lose work at rebase. The branch sprawl *was* the symptom. This
 > file is the fix.
 
-> **System of record:** the issue queue plus `git log origin/dev`. Status tables
+> **System of record:** the issue queue plus `git log origin/main`. Status tables
 > in docs (HYPOTHESIS_GRID, RUN_REGISTRY) are caches updated by sweeps and may
 > lag — check the queue and `dev` history before concluding work is undone.
 
@@ -31,7 +31,7 @@ These labels now exist on the repo.
 |---|---|
 | `status:available` | Ready to be claimed. All blockers are `done`. |
 | `status:claimed` | An agent has claimed it. Claim comment is the heartbeat. |
-| `status:done` | Work committed to `dev`. The human reviews on `dev` at leisure; anything needing changes spawns a follow-up task. |
+| `status:done` | Work committed to `main`. The human reviews on `dev` at leisure; anything needing changes spawns a follow-up task. |
 | `status:blocked-needs-input` | Agent could not start or finish; needs human input. |
 | `priority:high` | Jumps the work queue (default order is lowest issue number). |
 | `community-ready` | Good first contribution for external contributors. |
@@ -173,7 +173,7 @@ because **each** agent respects this rule.
 
 2. **Pick work.** Any `status:available` issue the agent can start. Default
    order: lowest issue number first; `priority:high` jumps the queue. Before
-   concluding any work item is undone, check `git log origin/dev` and the issue
+   concluding any work item is undone, check `git log origin/main` and the issue
    queue — docs tables lag.
 
 2a. **Filing is not atomic — search, file, search again.** Before filing a new
@@ -196,8 +196,8 @@ because **each** agent respects this rule.
    re-fetch the issue **and read the latest claim comment**: if its run-id is not
    yours, a sibling won — back off and pick a different item.
 
-5. **Do the work; prove the done.** Commit directly to `dev` (no PR — review
-   happens retrospectively on `dev`). Swap `status:claimed` → `status:done` and
+5. **Do the work; prove the done.** Commit directly to `main`, the working
+   branch and GitHub default (no PR — review happens retrospectively on `main`). Swap `status:claimed` → `status:done` and
    close the issue with a comment linking the commits. **Tasks with
    known-answer criteria close only when the done comment includes the exact
    command and its output** — a done claim without evidence is how full maps ship
