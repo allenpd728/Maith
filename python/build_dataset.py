@@ -394,12 +394,20 @@ def run(corpus_path: str, out_dir: str, seed: int = 42, representation_id: str =
         json.dump([example_id(ex) for ex in eval_examples], f, indent=2)
     print(f"  Wrote train/eval manifests → {train_manifest_path}, {eval_manifest_path}")
 
+    # Read encoderVersion from the corpus stats rather than hardcoding it, so the
+    # dataset manifest cannot drift from the corpus that produced it (issue #57).
+    stats_path = os.path.join(os.path.dirname(os.path.abspath(corpus_path)), "stats.json")
+    encoder_version = "unknown"
+    if os.path.exists(stats_path):
+        with open(stats_path) as f:
+            encoder_version = json.load(f).get("encoderVersion", "unknown")
+
     representation_manifest_path = os.path.join(out_dir, "representation_manifest.json")
     with open(representation_manifest_path, "w") as f:
         json.dump(
             {
                 "representation_id": representation_id,
-                "encoderVersion": "1.3.0",
+                "encoderVersion": encoder_version,
                 "seed": seed,
                 "train_examples": len(train_examples),
                 "eval_examples": len(eval_examples),

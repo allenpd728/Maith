@@ -10,6 +10,9 @@ Checks:
   G2-3  No duplicate declaration names
   G2-4  Representation manifest exists with representation_id
   G2-5  Version strings current (advisory — warns, not fails)
+  G2-6  Corpus on disk matches the content_hash recorded in corpus_manifest.json
+  G2-7  Version strings agree across the tracked manifests (stats.json vs
+        datasets/representation_manifest.json vs Maith/Encoder.lean)
 
 Usage:
     python3 python/check_corpus.py [--corpus Corpus/corpus.per_operator.jsonl]
@@ -18,8 +21,10 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from collections import Counter
@@ -125,6 +130,110 @@ def check_g2_5_version_strings(args):
                         advisory=True)
 
 
+def sha256_file(path, max_bytes=256 * 1024 * 1024):
+    """Stream-hash a file, capped so a runaway artifact cannot hang the gate."""
+    h = hashlib.sha256()
+    n = 0
+    with open(path, "rb") as f:
+        while n < max_bytes:
+            chunk = f.read(1 << 20)
+            if not chunk:
+                break
+            h.update(chunk)
+            n += len(chunk)
+    return f"sha256:{h.hexdigest()}"
+
+
+def check_g2_6_content_hash(args):
+    """G2-6: Corpus bytes match the hash recorded in corpus_manifest.json.
+
+    The manifest's `content_hash` was previously written but never re-read, so a
+    corpus overwrite (or a hand-edited corpus) could go unnoticed. This closes
+    that gap: a fresh clone can trust the manifest, and CI can detect drift.
+    """
+    corpus_path = Path(args.corpus)
+    # The hash lives in corpus_manifest.json, which sits beside the corpus — not
+    # in representation_manifest.json (that is the dataset-side manifest).
+    candidates = [
+        corpus_path.parent / "corpus_manifest.json",
+        Path(args.manifest).parent / "corpus_manifest.json",
+    ]
+    manifest_path = next((c for c in candidates if c.exists()), None)
+    if manifest_path is None:
+        return _report("G2-6 content_hash", False,
+                        f"corpus_manifest.json not found beside {args.corpus}")
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+    recorded = manifest.get("content_hash", "")
+    if not recorded:
+        return _report("G2-6 content_hash", False,
+                        f"no content_hash in {manifest_path.name}")
+    actual = sha256_file(corpus_path)
+    if actual == recorded:
+        return _report("G2-6 content_hash", True,
+                        f"{actual[:23]}… matches {manifest_path.name}")
+    return _report("G2-6 content_hash", False,
+                    f"corpus hash {actual[:23]}… != manifest {recorded[:23]}… "
+                    f"— corpus was rebuilt/edited without regenerating "
+                    f"`python3 python/gen_corpus_manifest.py`")
+
+
+_LEAN_ENCODER_VERSION_RE = re.compile(r"Format version (\d+\.\d+\.\d+)")
+
+
+def check_g2_7_version_consistency(args):
+    """G2-7: Version strings agree across tracked manifests.
+
+    Three artifacts each carry a version string: Corpus/stats.json
+    (encoderVersion/irVersion), datasets/representation_manifest.json
+    (encoderVersion/representation_id) and Maith/Encoder.lean (the spec). They
+    disagreed (`1.4.0` vs `1.3.0` vs `v2_1_1`), so a figure could not be tied to
+    one artefact. Fail loudly on divergence rather than warn.
+    """
+    stats_path = Path(args.stats)
+    if not stats_path.exists():
+        return _report("G2-7 version_consistency", False,
+                        f"stats.json not found at {args.stats}")
+    with open(stats_path) as f:
+        stats = json.load(f)
+    stats_encoder = stats.get("encoderVersion", "")
+    stats_ir = stats.get("irVersion", "")
+
+    dis = _REPO_ROOT / "datasets" / "representation_manifest.json"
+    ds_encoder = ds_rep = ""
+    if dis.exists():
+        with open(dis) as f:
+            dman = json.load(f)
+        ds_encoder = dman.get("encoderVersion", "")
+        ds_rep = dman.get("representation_id", "")
+
+    encoder_lean = _REPO_ROOT / "Maith" / "Encoder.lean"
+    lean_version = ""
+    if encoder_lean.exists():
+        m = _LEAN_ENCODER_VERSION_RE.search(encoder_lean.read_text())
+        lean_version = m.group(1) if m else ""
+
+    problems = []
+    if stats_encoder != lean_version:
+        problems.append(
+            f"stats.json encoderVersion={stats_encoder!r} != Encoder.lean {lean_version!r}")
+    if ds_encoder and stats_encoder and ds_encoder != stats_encoder:
+        problems.append(
+            f"representation_manifest.json encoderVersion={ds_encoder!r} "
+            f"!= stats.json {stats_encoder!r}")
+    # irVersion names the IR graph id, not the encoder; the two live in different
+    # namespaces (e.g. `semantic_graph_ir_v1_4_0` vs `1.4.0`). Only require it to
+    # be present here — recording the naming divergence, not treating it as drift.
+    if not stats_ir:
+        problems.append("stats.json irVersion is empty")
+
+    if problems:
+        return _report("G2-7 version_consistency", False, "; ".join(problems))
+    return _report("G2-7 version_consistency", True,
+                    f"encoderVersion={stats_encoder} agrees across stats.json, "
+                    f"Encoder.lean and representation_manifest.json")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gate 2: Corpus Acceptance Check")
     parser.add_argument("--corpus", default=str(_REPO_ROOT / "Corpus" / "corpus.per_operator.jsonl"))
@@ -155,6 +264,8 @@ def main():
         check_g2_3_no_duplicates(args, records),
         check_g2_4_manifest(args),
         check_g2_5_version_strings(args),
+        check_g2_6_content_hash(args),
+        check_g2_7_version_consistency(args),
     ]
 
     all_pass = all(results)

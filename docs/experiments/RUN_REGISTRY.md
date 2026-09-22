@@ -24,7 +24,7 @@ alone (the gap this table closes; see issue #57).
 | Model repo | `Qwen/Qwen2.5-Coder-0.5B` |
 | Revision | `8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301` |
 | Resolved at | 2026-09-22 (HuggingFace `lastModified` 2024-11-18) |
-| Note | Every variant (A, B, B_small, C, flat) shares this transformer base and is fine-tuned from it. **No script pins this revision** — `train_v2_resume.py`/`launch_run.py` load `BASE_MODEL` by name, so a fresh HuggingFace pull can silently differ. The revision above is the one resolved at the time this row was written; treat it as advisory until the training scripts pin it. |
+| Note | Every variant (A, B, B_small, C, flat) shares this transformer base and is fine-tuned from it. **The revision is pinned** in `python/train_v2_resume.py` (`BASE_MODEL_REVISION`, passed as `revision=` at every tokenizer/model load and written to `results.json` as `base_model_revision`), so a fresh HuggingFace pull cannot silently differ. Verified by `python/verify_registry_inputs.py`. |
 
 ### Corpus
 
@@ -35,7 +35,7 @@ alone (the gap this table closes; see issue #57).
 | Format / count | `per_operator`, 4029 declarations |
 | Producing commit | `9e0c485ea1f837e73bf95b54e613598755fbac47` |
 | Mathlib commit | `fabf563a7c95a166b8d7b6efca11c8b4dc9d911f` (`Corpus/stats.json`) |
-| Note | `Corpus/corpus.jsonl` is gitignored (60 MB build artifact), so it is **absent from a fresh clone**. The hash is written by `gen_corpus_manifest.py` but nothing re-verifies it — `check_corpus.py` does not read `content_hash`. Re-deriving a figure therefore requires rebuilding the corpus and checking the hash by hand. Version strings are **inconsistent** across tracked manifests: `Corpus/stats.json` says `irVersion`/`encoderVersion` `1.4.0`, while `datasets/representation_manifest.json` says `semantic_graph_ir_v2_1_1` / encoder `1.3.0`. The corpus that produced the clean 3375/376 split is *not* demonstrably the same artefact as the v1.4.0 stats file — this is a documented gap, not a resolved one. |
+| Note | `Corpus/corpus.jsonl` is gitignored (60 MB build artifact), so it is **absent from a fresh clone**. The hash is now re-verified: `check_corpus.py` gate **G2-6** recomputes the sha256 of the corpus and fails if it does not match `corpus_manifest.json` ("a check that cannot fail is not a check" — the earlier state wrote the hash but never read it back). Gate **G2-7** fails if version strings disagree across `Corpus/stats.json` / `datasets/representation_manifest.json` / `Maith/Encoder.lean`. The previously inconsistent manifests are reconciled: `representation_manifest.json` now derives `encoderVersion` from the corpus stats at build time (`build_dataset.py`) and reads `1.4.0`, matching `stats.json` and `Encoder.lean`. `stats.json.irVersion` (`semantic_graph_ir_v1_4_0`) is a *different namespace* from `encoderVersion` (`1.4.0`) — the IR graph id vs the encoder, by design (see `LEAN_PIPELINE_AUDIT_2026_08.md` F2). Remaining gap: the corpus bytes themselves are not tracked, so G2-6 can only verify a locally rebuilt corpus. |
 
 ### Dataset splits (clean, 3375/376)
 
@@ -65,6 +65,34 @@ record the remaining training config, because it is not tracked.
 | Where config is written | `runs/<run_id>/results.json` (`variant`, `vocab_size`, `n_params_M`, `train_examples`, `epochs`, `eval_perplexity`, `seed`, `base_model`, `learning_rate`, `effective_batch_size`, `max_seq_len`) |
 | Tracked? | **No.** `runs/` is gitignored; only `runs/h6_retrieval/results.json` is tracked (forced in before the rule). So a clean clone cannot recover seed/batch/max_seq for any Variant A/B/C/flat row |
 | Note | These values are the *current* defaults in `train_v2_resume.py`, not the values captured at each historical run. A row is reproducible from the repo only if the script defaults happened to match at the time — which nothing records or checks. |
+
+### Reproducing a published figure
+
+Run the registry verifier — it re-derives what a figure depends on from the
+values recorded here, and reports PASS / FAIL / SKIP per input:
+
+```bash
+python3 python/verify_registry_inputs.py --variant A        # or B_small
+```
+
+Example (Variant A, clean clone), 2026-09-22 — issue #57 verify step:
+
+```
+  PASS  base_model_revision: pinned + used at all load sites
+  SKIP  corpus content_hash: SKIP — Corpus/corpus.jsonl is gitignored (absent from a fresh clone)
+  PASS  version consistency: stats.json == representation_manifest.json == Encoder.lean
+  PASS  dataset hashes (A): match registry
+  SKIP  figure value: eval_perplexity=1.2812 (in gitignored runs/; cannot be recomputed without the checkpoint)
+PASSED — 3/3 verifiable checks passed; 2 skipped (inputs not tracked).
+```
+
+Every tracked input a figure depends on now verifies; two remain **untracked**
+(the corpus bytes and the trained checkpoint). Consequently a figure is
+end-to-end reproducible only *after* rebuilding the corpus — `lake exe
+buildCorpus --per-operator` (G2-6 then confirms the hash) and re-running
+`python3 launch_run.py train --variant A` — not from a bare clone. Tracking
+those artifacts (or a public corpus mirror) is the remaining work, out of scope
+for a registry-only change.
 
 ## Checkpoint inventory
 

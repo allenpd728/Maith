@@ -86,6 +86,11 @@ if missing:
 # ---------------------------------------------------------------------------
 
 BASE_MODEL      = "Qwen/Qwen2.5-Coder-0.5B"  # 494M params — fits MPS 20 GB; swap to 1.5B for CUDA
+# Pinned HuggingFace commit for BASE_MODEL. Loading by name alone lets a fresh
+# pull resolve to a newer revision and silently change the weights, so every
+# load below passes this revision and results.json records it. Bump deliberately,
+# and re-record the revision in docs/experiments/RUN_REGISTRY.md when you do.
+BASE_MODEL_REVISION = "8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301"
 MAX_SEQ_LEN     = 1024
 BATCH_SIZE      = 1
 GRAD_ACCUM      = 8   # effective batch = BATCH_SIZE * GRAD_ACCUM = 8 (unchanged)
@@ -289,9 +294,12 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str,
         vocab_size = len(vocab)
         print(f"  Variant {variant}: custom vocab, {vocab_size} tokens")
 
-        tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            BASE_MODEL, revision=BASE_MODEL_REVISION, trust_remote_code=True
+        )
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL,
+            revision=BASE_MODEL_REVISION,
             trust_remote_code=True,
             dtype=torch.float32,
         )
@@ -322,9 +330,12 @@ def load_model_for_variant(variant: str, vocab_path: Optional[str], device: str,
 
     else:
         print(f"  Variant {variant}: native Qwen2.5-Coder BPE tokenizer")
-        tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            BASE_MODEL, revision=BASE_MODEL_REVISION, trust_remote_code=True
+        )
         model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL,
+            revision=BASE_MODEL_REVISION,
             trust_remote_code=True,
             dtype=torch.float32,
         )
@@ -707,6 +718,7 @@ def run(variant: str, datasets_dir: str, out_dir: str, smoke_test: bool,
         "training_minutes": round(elapsed / 60, 1),
         "seed": SEED,
         "base_model": BASE_MODEL,
+        "base_model_revision": BASE_MODEL_REVISION,
         "smoke_test": smoke_test,
         "embed_pretrain": embed_pretrain,
         "embed_project": embed_project,
