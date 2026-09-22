@@ -10,16 +10,16 @@ name: CI
 #      kernel cannot audit: no sorry/admit/axiom, no vacuous bodies, no inert
 #      binders. See docs/TOOLCHAIN_AND_CI.md.
 #
-# Runs on main and dev (the review branch). A green check here means "the code
+# Runs on main. A green check here means "the code
 # builds, the tests pass, and the Tier-1 mechanical checks are clean" — it is
 # necessary, not sufficient, for a validated claim (Tier 2 is the local
 # agent's `#print axioms` step; the semantic step is human review).
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
 
 permissions:
   contents: read
