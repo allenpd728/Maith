@@ -9,6 +9,48 @@
 > starts, with a designated run ID. After the run, fill in the actual values.
 > Never delete rows — superseded runs are marked SUPERSEDED.
 
+## Shared provenance inputs
+
+These are the inputs every run below shares. Per-run rows record what differs
+between runs; this table records what does not. Without it, a Run ID resolves
+only *within* the repo — it does not pin the base weights or the corpus bytes
+that produced a figure, so the figure cannot be re-derived from the registry
+alone (the gap this table closes; see issue #57).
+
+### Base transformer
+
+| Field | Value |
+|---|---|
+| Model repo | `Qwen/Qwen2.5-Coder-0.5B` |
+| Revision | `8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301` |
+| Resolved at | 2026-09-22 (HuggingFace `lastModified` 2024-11-18) |
+| Note | Every variant (A, B, B_small, C, flat) shares this transformer base and is fine-tuned from it. **No script pins this revision** — `train_v2_resume.py`/`launch_run.py` load `BASE_MODEL` by name, so a fresh HuggingFace pull can silently differ. The revision above is the one resolved at the time this row was written; treat it as advisory until the training scripts pin it. |
+
+### Corpus
+
+| Field | Value |
+|---|---|
+| Manifest | `Corpus/corpus_manifest.json` (tracked) |
+| Content hash | `sha256:d3da238290f5ca46232de5df280d4bcfeab60b127e1b2898cff4172e898e7fe9` |
+| Format / count | `per_operator`, 4029 declarations |
+| Producing commit | `9e0c485ea1f837e73bf95b54e613598755fbac47` |
+| Mathlib commit | `fabf563a7c95a166b8d7b6efca11c8b4dc9d911f` (`Corpus/stats.json`) |
+| Note | `Corpus/corpus.jsonl` is gitignored (60 MB build artifact), so it is **absent from a fresh clone**. The hash is written by `gen_corpus_manifest.py` but nothing re-verifies it — `check_corpus.py` does not read `content_hash`. Re-deriving a figure therefore requires rebuilding the corpus and checking the hash by hand. Version strings are **inconsistent** across tracked manifests: `Corpus/stats.json` says `irVersion`/`encoderVersion` `1.4.0`, while `datasets/representation_manifest.json` says `semantic_graph_ir_v2_1_1` / encoder `1.3.0`. The corpus that produced the clean 3375/376 split is *not* demonstrably the same artefact as the v1.4.0 stats file — this is a documented gap, not a resolved one. |
+
+### Dataset splits (clean, 3375/376)
+
+These are the split hashes for the rebuilt dedup'd datasets that Variant A and
+flat were retrained on (DEC-031). They are tracked in `datasets/`, so a figure
+can be reproduced from the hash alone.
+
+| Variant | Train file | Train sha256 | Eval file | Eval sha256 |
+|---|---|---|---|---|
+| A | `datasets/train_A.jsonl` | `161b3defb62d89b797e403f92e506d97ec86b6ac1f1593760c0b44b9427580d7` | `datasets/eval_A.jsonl` | `7dd41021995875dd5d6fea5093f365249f267b8ed5e89abeb4623ba7432a7e66` |
+| B | `datasets/train_B.jsonl` | `8f51502ee1cbcfaaef604ef244870b3d1d7fb16ad88fe65c34e78104072af419` | `datasets/eval_B.jsonl` | `edb4545b2e825f151c80f3d9edb89dc9615bc3d300d266513d587980f456fec2` |
+| B_small | `datasets/train_B_small.jsonl` | `1178585446c36c8ba47b21fb28b0200abd7c46346603c90b4170d6fdb56fb556` | `datasets/eval_B_small.jsonl` | `ebd7b256d2f0ad0d8ea79c38b844df81b69569f1d0731fb4f330bb69ec582847` |
+| C | `datasets/train_C.jsonl` | `c86f73b584045066d8e9289a07dba203e416bfa3514efd2de6ca7a2610ca112c` | `datasets/eval_C.jsonl` | `5686da1b4b133614c7a62b9a89849590a4a97591c1d0c956f608886338ce15b0` |
+| flat | `datasets/train_flat.jsonl` | `edcd2030382c7d861e40384f4b2018b072e2cd252aeb69826ae480d88dc8e2a4` | `datasets/eval_flat.jsonl` | `152d4dfb2637abf56d6a9a52cd2bc1ff9178f608378e0f779878c36728d389bc` |
+
 ## Checkpoint inventory
 
 ### Variant A (semantic IR)
