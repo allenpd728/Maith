@@ -205,7 +205,7 @@ because **each** agent respects this rule.
 
    **Concurrent-work rules** (agents run in parallel against `dev`):
    - Pull before you start, and again before you push.
-   - On push rejection (non-fast-forward): `git pull --rebase origin dev`,
+   - On push rejection (non-fast-forward): `git pull --rebase origin main`,
      resolve conflicts, push again. Repeat as needed.
    - **Rebase revealed a sibling landed the same work?** Compare the two
      implementations: if yours adds nothing, drop it; if yours genuinely extends
