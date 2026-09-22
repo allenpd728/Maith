@@ -2,7 +2,12 @@ name: auditor
 
 # Daily repo health & drift audit. Read-only over the tree; the only writes are
 # GitHub issues/comments/labels and one appended line in this repo's own
-# status_log.jsonl. See docs/AUDITOR.md for the contract.
+# status_log.jsonl, plus the audit checkpoint.
+#
+# Where machine output lives: the `status` branch, not `main`. The audit itself
+# reads code and docs from main; only status_log.jsonl and
+# status/auditor_state.json are read/written on `status`, so `main` can hold
+# only reviewed code. See docs/HUB_STATUS_LOG.md.
 #
 # Nothing here is actionable by agents: every finding lands under `on-hold`
 # until the human moves it into the real task pipeline.
@@ -30,20 +35,41 @@ jobs:
   audit:
     runs-on: ubuntu-latest
     steps:
+      # main, with history: the audit reads code/docs here, and git blame needs
+      # history for the TODO-age check.
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0        # git blame needs history for the TODO-age check
 
+      # A second worktree of the SAME repo at the status branch, holding the
+      # log and the checkpoint. Separate from main so the audit never reads
+      # machine output as if it were reviewed source.
+      - name: Check out the status branch
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin status >/dev/null 2>&1; then
+            git worktree add .status-branch status
+          else
+            echo "status branch does not exist yet; creating it"
+            git worktree add --orphan -b status .status-branch
+          fi
+
       - name: Run the audit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 tooling/auditor.py --repo ${{ github.repository }} --token-env GITHUB_TOKEN
+          python3 tooling/auditor.py \
+            --repo ${{ github.repository }} \
+            --token-env GITHUB_TOKEN \
+            --root . \
+            --status-root .status-branch
 
       - name: Commit the status entry and checkpoint
         run: |
           set -e
+          cd .status-branch
           # Stage first, then test the index: `git diff --quiet -- <path>` ignores
           # untracked files, so on a first run it would report "no change" and the
           # newly created checkpoint would be silently discarded.
@@ -52,18 +78,14 @@ jobs:
             echo "no change; nothing to commit"
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           git commit -m "chore(auditor): status entry + checkpoint [skip ci]"
-          # Same rebase-and-retry as the status sweep: agents push to dev
-          # continuously, so a single push can be rejected as non-fast-forward.
           for attempt in 1 2 3 4 5; do
-            if git push origin main; then
+            if git push origin status; then
               echo "pushed on attempt $attempt"
               exit 0
             fi
-            echo "push rejected; rebasing onto origin/main (attempt $attempt)"
-            git pull --rebase origin main
+            echo "push rejected; rebasing onto origin/status (attempt $attempt)"
+            git pull --rebase origin status
           done
           echo "push still rejected after 5 attempts" >&2
           exit 1

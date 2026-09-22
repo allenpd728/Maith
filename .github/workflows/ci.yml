@@ -132,6 +132,17 @@ jobs:
             echo "::endgroup::"
           done
 
+      # The dashboard's own tooling tests. They were not wired into CI before,
+      # and that is how a stale assertion (asserting `trl` absent while reading
+      # the repo root, where status/trl.json exists) sat red unnoticed. The
+      # status-log contract is what the HuB tab depends on, so it is guarded
+      # here rather than left to a manual run.
+      - name: HuB tooling tests (sweep + auditor)
+        run: |
+          set -e
+          python3 tooling/tests/test_hub_sweep.py
+          python3 tooling/tests/test_auditor.py
+
       # #36: the mutation guards mutate a real source file and restore it. This
       # pins that restore AND bytecode purge happen on every exit path, including
       # a mid-guard crash -- without it, a stale mutated .pyc corrupts a later

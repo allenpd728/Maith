@@ -42,6 +42,11 @@ def init_repo(path: Path) -> Path:
     return path
 
 
+def mkdir(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
 # ---- committed artifacts -------------------------------------------------
 
 def test_tracked_artifact_detected(tmp_path):
@@ -184,6 +189,18 @@ def test_state_corrupt_is_empty_dict(tmp_path):
     (root / "status").mkdir()
     (root / "status" / "auditor_state.json").write_text("{not json")
     assert aud.load_state(root) == {}
+
+
+def test_status_log_checked_on_status_root_not_main(tmp_path):
+    """The log lives on the machine-output branch, so the contract check must
+    read it there. On main it is correctly absent, and absent is not a finding."""
+    main_root = init_repo(mkdir(tmp_path / "main"))
+    status_root = init_repo(mkdir(tmp_path / "status"))
+    (status_root / "status_log.jsonl").write_text("not json\n")
+
+    assert aud.check_status_log_contract(main_root) == []
+    findings = aud.run_checks(main_root, status_root)
+    assert any(f.check == "status-log-contract" for f in findings), findings
 
 
 def test_state_file_lives_under_status_dir(tmp_path):
