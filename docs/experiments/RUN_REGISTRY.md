@@ -51,6 +51,21 @@ can be reproduced from the hash alone.
 | C | `datasets/train_C.jsonl` | `c86f73b584045066d8e9289a07dba203e416bfa3514efd2de6ca7a2610ca112c` | `datasets/eval_C.jsonl` | `5686da1b4b133614c7a62b9a89849590a4a97591c1d0c956f608886338ce15b0` |
 | flat | `datasets/train_flat.jsonl` | `edcd2030382c7d861e40384f4b2018b072e2cd252aeb69826ae480d88dc8e2a4` | `datasets/eval_flat.jsonl` | `152d4dfb2637abf56d6a9a52cd2bc1ff9178f608378e0f779878c36728d389bc` |
 
+### Producing config
+
+The per-run rows above record vocab, train n, epochs and LR. They do **not**
+record the remaining training config, because it is not tracked.
+
+| Field | Value |
+|---|---|
+| Script | `python/train_v2_resume.py` (canonical), via `python/launch_run.py train`. `python/train.py` is deprecated |
+| Seed | `42` (`SEED`) |
+| Effective batch size | `8` (`BATCH_SIZE` 1 × `GRAD_ACCUM` 8) |
+| Max seq len | `1024` |
+| Where config is written | `runs/<run_id>/results.json` (`variant`, `vocab_size`, `n_params_M`, `train_examples`, `epochs`, `eval_perplexity`, `seed`, `base_model`, `learning_rate`, `effective_batch_size`, `max_seq_len`) |
+| Tracked? | **No.** `runs/` is gitignored; only `runs/h6_retrieval/results.json` is tracked (forced in before the rule). So a clean clone cannot recover seed/batch/max_seq for any Variant A/B/C/flat row |
+| Note | These values are the *current* defaults in `train_v2_resume.py`, not the values captured at each historical run. A row is reproducible from the repo only if the script defaults happened to match at the time — which nothing records or checks. |
+
 ## Checkpoint inventory
 
 ### Variant A (semantic IR)
