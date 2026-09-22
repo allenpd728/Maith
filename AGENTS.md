@@ -126,8 +126,8 @@ All Maith variants are **toy tier** (<1B). IRCoder's positive results start at 1
 | `docs/experiments/AXIOM_DISCOVERY.md` | **Active research track** — search for a kernel-checked structure-preserving map φ (supersedes toy-model training) |
 | `docs/experiments/BENCHMARK_CORPUS_PLAN.md` | Companion: how the circuit-complexity benchmark corpus (transfer targets + conservativity corpus) is built and signed off |
 | `docs/experiments/TRANSFER_TARGETS.md` | The Part 2 target list (T1–T10 + N1/N2 screening results) — drafted, awaiting maintainer filtering + cross-check |
-| `docs/AGENT_HANDOFF.md` | **Cross-repo state** — PleaNP pin guidance (`@ "main"`, content-identical to `dev`), CI status, known gotchas |
-| `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-`dev`-branch protocol (ported from PleaNP) |
+| `docs/AGENT_HANDOFF.md` | **Cross-repo state** — PleaNP pin guidance (`@ "main"`, content-identical to `dev`, a legacy name), CI status, known gotchas |
+| `docs/TOOLCHAIN_AND_CI.md` | CI + toolchain bootstrap, two-tier integrity gates, single-branch protocol (ported from PleaNP) |
 | `docs/MULTI_AGENT_WORKFLOW.md` | **Multi-agent task protocol** — run-ids, atomic claims, sweeps, `blocked by` lineages, done-evidence (ported from PleaNP); includes the known gate-model gaps |
 | `docs/AGENT_HANDOFF.md` | **New-agent entry point** — pick-up protocol, current state, open issues, upstream dependency, constraints |
 | `blockers/` | Agent blocker files (`open_*` → `closed_*`), per the workflow protocol |
@@ -209,20 +209,10 @@ An agent holds at most one `status:claimed` issue at a time.
 # Commit (identifies as AI agent)
 git -c user.name="openhands" -c user.email="openhands@all-hands.dev" commit -m "message"
 
-# Work on dev; push to dev for review (NOT main)
+# Work on main; push to main
 git fetch origin
-git checkout dev && git pull origin dev --ff-only
-git push origin dev
-
-# A different agent/human reviews dev, then merges to main:
-#   git checkout main && git merge --no-ff dev && git push origin main
-```
-
-If `dev` has diverged, use merge (not rebase) to avoid working-tree conflicts:
-```bash
-git fetch origin dev
-git merge origin/dev --no-edit
-git push origin dev
+git checkout main && git pull origin main --ff-only
+git push origin main
 ```
 
 ## Conventions
