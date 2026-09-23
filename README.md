@@ -341,6 +341,34 @@ the encoder. Round-trip verified 2,554/2,554 via `validate_roundtrip.py`.
 
 ## 8) Limitations
 
+### Known limitations: retracted completion-accuracy results (DEC-010)
+
+The first completion-accuracy numbers this project published — **A=56%/60.5%,
+B=94%/96.8%, C=100%/94.9%** — were **invalid**, and the "IR representation
+hypothesis falsified" conclusion drawn from them was retracted. Two bugs in
+`python/eval_completion.py` produced them:
+
+- **Bug 1 (primary): single-token-only evaluation.** The logit loop used
+  `logit_pos = prefix_len - 1 + k`, but the forward pass emitted only
+  `prefix_len` rows, so the break guard fired at `k=1`. Every run evaluated
+  exactly one token per example regardless of `--mask-last`; "200 examples,
+  mask-last 10" was 200 predictions, not 2,000.
+- **Bug 2 (secondary, Variant C): biased test position.** The Qwen BPE
+  structural delimiter (token 13) landed at the tested position in 27% of
+  `eval_C` examples, preceded by the same 3-token pattern in 33/67 cases — a
+  single learnable n-gram that inflated C's score independently of Bug 1.
+
+After the fix, the corrected result was **A=89.7%, B=94.1%, C=94.6%** — a gap
+of ~5 percentage points, not 60 vs 95. The IR representation is *competitive*
+at this task, not strongly inferior; A's residual deficit is consistent with the
+cold-start embedding penalty rather than a failure of the hypothesis. The fix is
+guarded by `python/test_eval_regression.py` (DEC-012).
+
+This is recorded as a **strength, not a blemish**: the errors were caught, the
+results retracted, the evaluation rerun, and a regression test added rather than
+the numbers quietly revised. Full record: `docs/decisions/LOG.md` DEC-010,
+DEC-012; corrected figures in `docs/history/PHASE_5_RESULTS.md`.
+
 - **Corpus scale.** All training results are on 14 Mathlib algebra/topology/order modules
   (~3.5K examples). IRCoder's positive IR-grounding results appear at millions of files
   and 1.1B+ parameters; whether Maith's null holds at larger corpus/model scale is open.
