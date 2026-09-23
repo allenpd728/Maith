@@ -137,6 +137,62 @@ For a fuller, stage-by-stage architecture and artifact map, see:
 
 The full pipeline is implemented and validated. See section 7 for corpus results and section 8 for known limitations.
 
+### Active track pipeline (axiom discovery)
+
+The diagram above is the **extraction → training** path. The **active research track** is
+axiom discovery (DEC-036), which reuses the same extraction machinery but adds a
+proposal → validation loop. Its end-to-end pipeline is:
+
+```mermaid
+flowchart TD
+    subgraph upstream["Upstream — PleaNP (separate repo)"]
+      C1["PleaNP.Circuits<br/>Basic / AC0 / Monotone /<br/>MonotoneApprox / MustRefute"]
+      BC["#barrier_check elaborator<br/>(BarrierCalculus.lean)"]
+    end
+
+    subgraph corpus["Corpus (Maith)"]
+      T["Transfer targets<br/>Part 2 — plain-English list<br/>+ Lean statements"]
+      CC["Conservativity corpus<br/>Part 1 — blocked on breadth"]
+    end
+
+    subgraph search["Proposal (Maith)"]
+      L["Candidate ledger<br/>axiom-rewrite/candidates.jsonl"]
+      CM["Coverage map"]
+      SS["Structural similarity search"]
+    end
+
+    subgraph gates["Validation — 5 gates, in order"]
+      G1["1. Homomorphism"]
+      G2["2. Faithfulness (non-collapse)"]
+      G3["3. Transfer test"]
+      G4["4. Compression accounting (post-G3 only)"]
+      G5["5. Breadth check (2nd sub-domain)"]
+      H["Shared harness"]
+    end
+
+    C1 --> CC
+    T --> L
+    L --> SS
+    CM <--> SS
+    SS --> G1
+    G1 --> G2 --> G3 --> G4 --> G5
+    G5 -->|survives| PROMOTE["Promoted: reusable"]
+    G3 -->|any candidate crossing G3| BC
+    BC -->|DEAD| KILL["Not a P-vs-NP candidate"]
+    H --- G1
+    gates --> DEC["DEC entries (pass and fail alike)"]
+```
+
+Targets and the conservativity corpus come from upstream PleaNP (real, type-checking
+`PleaNP.Circuits` modules); Maith **proposes** candidate φ's (ledger + coverage map,
+found via the similarity search); the shared harness runs them through the five gates;
+anything crossing the transfer gate goes through `#barrier_check` before it counts.
+The toy-model training loop is not in this diagram — it is shelved (DEC-036).
+
+> **Full version:** [`docs/experiments/AXIOM_DISCOVERY.md#the-pipeline-how-the-pieces-connect`](docs/experiments/AXIOM_DISCOVERY.md#the-pipeline-how-the-pieces-connect)
+> (stage-by-stage, with issue links and reading notes). The companion corpus plan is
+> [`docs/experiments/BENCHMARK_CORPUS_PLAN.md`](docs/experiments/BENCHMARK_CORPUS_PLAN.md).
+
 ## 7) Current Status / Results
 
 ### Build and tests
