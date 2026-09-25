@@ -1,9 +1,9 @@
 # Maith: Semantic IR for Lean Mathematics
 
-> **Branch status.** **`dev` is the working branch** — all current work, including
-> the active track described below, lands there first. `main` is the default branch
-> GitHub shows visitors and is promoted from `dev`; if the two ever diverge, `dev`
-> is authoritative. Commit to `dev`, never to `main` directly.
+> **Branch status.** **`main` is the working branch** and the GitHub default — every
+> commit lands here, and it is the branch visitors and all tooling read. `dev` is a
+> legacy name, kept level with `main` and committed to by nobody. If the two ever
+> differ, `main` is authoritative. See [`AGENTS.md`](AGENTS.md#branches).
 
 > **Active track: axiom discovery (2026-09-15 →).** The research direction has
 > moved to **axiom discovery** — searching for a structure-preserving map φ
@@ -14,7 +14,7 @@
 > prior-art grounding is [`PRIOR_ART` §9](docs/reference/PRIOR_ART.md)
 > (DEC-054/055). The repo runs the PleaNP-derived CI and two-tier integrity
 > gates ([`TOOLCHAIN_AND_CI`](docs/TOOLCHAIN_AND_CI.md)) and develops on a
-> single `dev` branch.
+> single `main` branch.
 >
 > **⚠ Prediction-era results are under a reset notice.** The v2 prediction
 > results headline the v1-era record (Variant A v2 perplexity 1.2361 / top-1
